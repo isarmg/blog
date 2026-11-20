@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "blog"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "blog-application",
  "blog-assets-markdown-parser",
@@ -1137,7 +1137,7 @@ dependencies = [
 
 [[package]]
 name = "blog-setup"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "blog",
  "blog-cli-arguments",

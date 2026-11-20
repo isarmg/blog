@@ -22,49 +22,18 @@ impl<Fut> Fuse<Fut> {
 impl<Fut: Future> Fuse<Fut> {
     /// Creates a new `Fuse`-wrapped future which is already terminated.
     ///
-    /// This can be useful in combination with looping and the `select!`
-    /// macro, which bypasses terminated futures.
+    /// Use it as the initial state for a pinned future that will be set later.
     ///
     /// # Examples
     ///
     /// ```
-    /// # futures::executor::block_on(async {
     /// use core::pin::pin;
+    /// use futures::future::{ready, Fuse, FusedFuture, FutureExt, Ready};
     ///
-    /// use futures::channel::mpsc;
-    /// use futures::future::{Fuse, FusedFuture, FutureExt};
-    /// use futures::select;
-    /// use futures::stream::StreamExt;
-    ///
-    /// let (sender, mut stream) = mpsc::unbounded();
-    ///
-    /// // Send a few messages into the stream
-    /// sender.unbounded_send(()).unwrap();
-    /// sender.unbounded_send(()).unwrap();
-    /// drop(sender);
-    ///
-    /// // Use `Fuse::terminated()` to create an already-terminated future
-    /// // which may be instantiated later.
-    /// let foo_printer = Fuse::terminated();
-    /// let mut foo_printer = pin!(foo_printer);
-    ///
-    /// loop {
-    ///     select! {
-    ///         _ = foo_printer => {},
-    ///         () = stream.select_next_some() => {
-    ///             if !foo_printer.is_terminated() {
-    ///                 println!("Foo is already being printed!");
-    ///             } else {
-    ///                 foo_printer.set(async {
-    ///                     // do some other async operations
-    ///                     println!("Printing foo from `foo_printer` future");
-    ///                 }.fuse());
-    ///             }
-    ///         },
-    ///         complete => break, // `foo_printer` is terminated and the stream is done
-    ///     }
-    /// }
-    /// # });
+    /// let mut future = pin!(Fuse::<Ready<u32>>::terminated());
+    /// assert!(future.is_terminated());
+    /// future.set(ready(5).fuse());
+    /// assert!(!future.is_terminated());
     /// ```
     pub fn terminated() -> Self {
         Self { inner: None }

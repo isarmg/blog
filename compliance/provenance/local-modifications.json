@@ -4779,6 +4779,11 @@
       ],
       "reason": "Update the bundled SQLite amalgamation and matching Rust declarations to the fixed libsqlite3-sys 0.39.1 source for RUSTSEC-2026-0459.",
       "production_behavior_change": true
+    },
+    {
+      "directory": "src/foundation/runtime/async-toolkit",
+      "reason": "Use the retained future and stream interfaces in documentation and examples after removing the unused macro exports.",
+      "production_behavior_change": false
     }
   ]
 }

@@ -265,9 +265,8 @@ pub trait TryFutureExt: TryFuture {
     ///
     /// This method can be used to change the [`Error`](TryFuture::Error) type
     /// of the future into a different type. It is similar to the
-    /// [`Result::map_err`] method. You can use this method for example to
-    /// ensure that futures have the same [`Error`](TryFuture::Error) type when
-    /// using [`select!`] or [`join!`].
+    /// [`Result::map_err`] method. Use it to give futures the same error type
+    /// before combining them with [`try_join`](crate::future::try_join).
     ///
     /// The provided closure `f` will only be called if this future is resolved
     /// to an [`Err`]. If it resolves to an [`Ok`], panics, or is dropped, then
@@ -300,9 +299,6 @@ pub trait TryFutureExt: TryFuture {
     /// assert_eq!(future.await, Ok(1));
     /// # });
     /// ```
-    ///
-    /// [`join!`]: crate::join
-    /// [`select!`]: crate::select
     fn map_err<E, F>(self, f: F) -> MapErr<Self, F>
     where
         F: FnOnce(Self::Error) -> E,
@@ -317,8 +313,7 @@ pub trait TryFutureExt: TryFuture {
     /// This method does for futures what the `?`-operator does for
     /// [`Result`]: It lets the compiler infer the type of the resulting
     /// error. Just as [`map_err`](TryFutureExt::map_err), this is useful for
-    /// example to ensure that futures have the same [`Error`](TryFuture::Error)
-    /// type when using [`select!`] or [`join!`].
+    /// giving futures a common error type before combining them.
     ///
     /// Note that this method consumes the future it is called on and returns a
     /// wrapped version of it.
@@ -333,9 +328,6 @@ pub trait TryFutureExt: TryFuture {
     /// let future_err_i32 = future_err_u8.err_into::<i32>();
     /// # });
     /// ```
-    ///
-    /// [`join!`]: crate::join
-    /// [`select!`]: crate::select
     fn err_into<E>(self) -> ErrInto<Self, E>
     where
         Self: Sized,

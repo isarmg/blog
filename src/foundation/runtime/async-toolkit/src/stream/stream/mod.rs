@@ -1640,53 +1640,25 @@ pub trait StreamExt: Stream {
     /// Returns a [`Future`] that resolves when the next item in this stream is
     /// ready.
     ///
-    /// This is similar to the [`next`][StreamExt::next] method, but it won't
-    /// resolve to [`None`] if used on an empty [`Stream`]. Instead, the
-    /// returned future type will return `true` from
-    /// [`FusedFuture::is_terminated`][] when the [`Stream`] is empty, allowing
-    /// [`select_next_some`][StreamExt::select_next_some] to be easily used with
-    /// the [`select!`] macro.
+    /// The returned future resolves to the item directly. A polling loop can
+    /// use [`FusedFuture::is_terminated`] to stop polling this future when the
+    /// stream terminates.
     ///
-    /// If the future is polled after this [`Stream`] is empty it will panic.
-    /// Using the future with a [`FusedFuture`][]-aware primitive like the
-    /// [`select!`] macro will prevent this.
+    /// The future panics if polled after the stream has terminated.
     ///
-    /// [`FusedFuture`]: crate::future::FusedFuture
     /// [`FusedFuture::is_terminated`]: crate::future::FusedFuture::is_terminated
     ///
     /// # Examples
     ///
     /// ```
-    /// # futures::executor::block_on(async {
-    /// use futures::{future, select};
-    /// use futures::stream::{StreamExt, FuturesUnordered};
+    /// use futures::stream::{self, StreamExt};
     ///
-    /// let mut fut = future::ready(1);
-    /// let mut async_tasks = FuturesUnordered::new();
-    /// let mut total = 0;
-    /// loop {
-    ///     select! {
-    ///         num = fut => {
-    ///             // First, the `ready` future completes.
-    ///             total += num;
-    ///             // Then we spawn a new task onto `async_tasks`,
-    ///             async_tasks.push(async { 5 });
-    ///         },
-    ///         // On the next iteration of the loop, the task we spawned
-    ///         // completes.
-    ///         num = async_tasks.select_next_some() => {
-    ///             total += num;
-    ///         }
-    ///         // Finally, both the `ready` future and `async_tasks` have
-    ///         // finished, so we enter the `complete` branch.
-    ///         complete => break,
-    ///     }
-    /// }
-    /// assert_eq!(total, 6);
+    /// let mut values = stream::iter([1, 2]).fuse();
+    /// # futures::executor::block_on(async {
+    /// assert_eq!(values.select_next_some().await, 1);
+    /// assert_eq!(values.select_next_some().await, 2);
     /// # });
     /// ```
-    ///
-    /// [`select!`]: crate::select
     fn select_next_some(&mut self) -> SelectNextSome<'_, Self>
     where
         Self: Unpin + FusedStream,

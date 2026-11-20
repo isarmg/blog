@@ -66,6 +66,10 @@ features = ["streams", "simd", "runtime-detection"]
 package = "blog-assets-style-compiler"
 path = "../../foundation/assets/style-compiler"
 
+[[example]]
+name = "browser-fixture-bindings"
+path = "../../../test/interface/dom/browser/generate.rs"
+
 [[test]]
 name = "configuration_contracts"
 path = "../../../test/tools/assets/integration/configuration_contracts.rs"

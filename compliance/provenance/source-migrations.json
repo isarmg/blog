@@ -12440,6 +12440,39 @@
           "reason": "Replace the bundled SQLite implementation with the fixed upstream release 3.54.1."
         }
       ]
+    },
+    {
+      "id": "blog-release-3-0-1",
+      "reason": "Version the server and setup tool together after repairing the release documentation gate.",
+      "from": [
+        {
+          "directory": "src/server",
+          "name": "blog",
+          "version": "3.0.0",
+          "origins": []
+        },
+        {
+          "directory": "src/tools/setup",
+          "name": "blog-setup",
+          "version": "3.0.0",
+          "origins": []
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/server",
+          "name": "blog",
+          "version": "3.0.1",
+          "origins": []
+        },
+        {
+          "directory": "src/tools/setup",
+          "name": "blog-setup",
+          "version": "3.0.1",
+          "origins": []
+        }
+      ],
+      "retired_origins": []
     }
   ]
 }

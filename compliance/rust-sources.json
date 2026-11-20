@@ -5843,13 +5843,18 @@
         ],
         "production_behavior_change": true,
         "reason": "Update the bundled SQLite amalgamation and matching Rust declarations to the fixed libsqlite3-sys 0.39.1 source for RUSTSEC-2026-0459."
+      },
+      {
+        "directory": "src/foundation/runtime/async-toolkit",
+        "production_behavior_change": false,
+        "reason": "Use the retained future and stream interfaces in documentation and examples after removing the unused macro exports."
       }
     ],
     "schema": 1
   },
-  "local_modifications_sha256": "e7265033e135251bcce1ea3cd8404bc7d1972fd3d5353596cdb301e726ea1a90",
+  "local_modifications_sha256": "85c4cda5fd5c22b8857ec98ac259172ca3bf1b46f4f95e4c683fee25f739bd68",
   "lockfiles_sha256": {
-    "Cargo.lock": "5fb2ee79374e54d6bc84e394ff1d650f6b9e40c9dff9c5a6a6011cdfc818b8f0"
+    "Cargo.lock": "65283fc1ddd80ee78fc8bf828313ba5e9470b3fa2ec8c0c2e323130df7f78f15"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6055,9 +6060,9 @@
     "src/interface/Cargo.toml": "1a47ccd5309b05c632b49a5d57eb2aead7673599db494da1a07a5c99b87fc677",
     "src/interface/dom/Cargo.toml": "881bcf20628fc2c7daaef484364991862864aa2b7cfe1f11c7948b0d45ab400e",
     "src/interface/macros/Cargo.toml": "44040134fece65724eef03f46252573ec0c5704f9807711fa25d18e488d6360f",
-    "src/server/Cargo.toml": "bdd1c378ac42c5de16b7ab3c2aa21edea89ee9df3709cf86e77dbacb8dbdf809",
-    "src/tools/assets/Cargo.toml": "ad81fbea85bf57b9be27b9e6e8d7ac2bfe8d58417736804724d151668fe06cbf",
-    "src/tools/setup/Cargo.toml": "a82e3a8c2c5cf1d3ca2bd5f61bb6f2915305e9d9d8f3db05e331fadd14bd1811",
+    "src/server/Cargo.toml": "727a3b2d3f7e14d5931da91cc7dc5f8812779c056b3616ea1ae9c467a09bd2b9",
+    "src/tools/assets/Cargo.toml": "b0cb0b5c0b673db7d459e94bcd38bf3b10e5ede03a3a0fa2f462966b461516d3",
+    "src/tools/setup/Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
     "test/browser-domain/Cargo.toml": "a8960cc84bf02373c106ffdc6f501659768e979774076041ca45d3a9769b6477"
   },
   "origin_records_sha256": {
@@ -41518,7 +41523,7 @@
         "src/future/either.rs": "feebefa6bc23537a3aa739af7bf34d0a3d76e75901a4afb69d8a080c1bf8ea58",
         "src/future/future/catch_unwind.rs": "6b2c4ee2729fc87d8901d9a8388e73f923f61b05aa3c10902c5c292329412852",
         "src/future/future/flatten.rs": "e666ff46b05910a714a250d53755d2e33641ad7498a2c80b69c5bc08c3c4ab63",
-        "src/future/future/fuse.rs": "819e3c5adfa96442b624d5c92444dad70db885946f110208afc33b1045e14664",
+        "src/future/future/fuse.rs": "188a56add9d20402482b50901824e77ec49dbbb9413ab94d1aaf80e27f129e16",
         "src/future/future/map.rs": "1f3ff2e7a1f8d256b1acb73321cc77804029a70d38529bc094577b143aa17e28",
         "src/future/future/mod.rs": "c7692aef08e5117b6812ff4a403dd5da4969d395a2cda6b8700ae7ddb29aaef8",
         "src/future/future/remote_handle.rs": "52812f55cc5c2483a273222ab08c0061c0d8c06a95038cf0c093b220229b2569",
@@ -41537,7 +41542,7 @@
         "src/future/select_all.rs": "de86b4890412163d1357a455b42d9ad2e9b1a635d23ab3621553a9804c319285",
         "src/future/select_ok.rs": "c9f2da330cb316246c28a528f2e9ddfb1e0fe0c39c582a30ee5b14d7c3dca584",
         "src/future/try_future/into_future.rs": "33509672b12d6187a46b1e4a2f23bc088bbee1d73f3e5a9249146aa4424c6d0e",
-        "src/future/try_future/mod.rs": "5385d46ebd933d7508f9d1ad3fb5d65cef35200723ed67f01d762bbece6b1c02",
+        "src/future/try_future/mod.rs": "7a24e2e674a03cf339e1c0c96079ba811afc1a9bedc87094adcb300fa9f8303b",
         "src/future/try_future/try_flatten.rs": "38dd995be9a39abe0a3c428c3b5afbb2d58e312080697c0b505d601f98b847c9",
         "src/future/try_future/try_flatten_err.rs": "795f3b463e05655e8c9104678df2866ba22c87640f2ad7aea4f23b21dc963ba5",
         "src/future/try_join.rs": "fc88af26d5313dc20a60f04fbadcbdbc1257a536ff7079edee1ee80ff651db2e",
@@ -41641,7 +41646,7 @@
         "src/stream/stream/fuse.rs": "2c1352d441b79cf183bd0efc11c350bb36ff4ef54465ad02c935535620a47966",
         "src/stream/stream/into_future.rs": "32f3e8aa1422f32c2377513beb56e25cbd3fb45d065c89186480018883ce8d7f",
         "src/stream/stream/map.rs": "bb0715bdaec87f89fe311f8c53802eba0a42d4367fb3f54e184491e00ed26857",
-        "src/stream/stream/mod.rs": "05669c53dd100ee87362e4fecca39e3c9b2a544752fa838b2d8d5180f70cbb88",
+        "src/stream/stream/mod.rs": "01672a344630cdd883d8d979ffa9083071ad4042097b04d9c850d78eae0208d0",
         "src/stream/stream/next.rs": "206ce5a9bf625ff630d4b433fd51bcb51a09e8dfc8708708af77889723ff514f",
         "src/stream/stream/peek.rs": "635fa932203e9ffa2de39706697439cc6fde7385bda92313dc503c9eaf0eddf2",
         "src/stream/stream/ready_chunks.rs": "6cfd7a45e0f7571243972fa8b1545ff62d34e72d94650b85376c2f0a85c3f3c2",
@@ -46841,7 +46846,7 @@
       "origins": [],
       "purpose": "博客组件、浏览器 API、主题和应用挂载",
       "tests_sha256": {
-        "test/interface/browser/build.sh": "c5c174aadac0a4c77b86c4f202efc1961f1f769ea8f8af42d5d1eeef962a613b",
+        "test/interface/browser/build.sh": "02d20340f75ec748e905f4a73c828c8c20b303d199b0676f10886519be0f203d",
         "test/interface/browser/corner-listener-lifecycle.mjs": "9ff8f1311a56fb0938b2d9eaf28e7fdc1c4aef30b10596cf342052617e9c3cbd",
         "test/interface/browser/fixture.rs": "0b1c0dfb450660b283d9c24fb915666c816c1e3dccc731af92a29ed309c38bab",
         "test/interface/integration/csr_components.rs": "46085818bc7810eca3dec877211cbacea01f0a52c902e031f98037fd9c3ce91f",
@@ -47092,10 +47097,10 @@
       ],
       "purpose": "响应式 DOM 视图、组件属性和生命周期",
       "tests_sha256": {
-        "test/interface/dom/browser/build.sh": "f1bfba0b1a198b43412076a9d2086e4c7a6bb5040e1f94d0d3f14b71255d03b0",
+        "test/interface/dom/browser/build.sh": "a4443fcc065e88752b62a57e55b4b3e3172d62b50cf131a6e62717abf7caf9a5",
         "test/interface/dom/browser/dom-errors.mjs": "9b546763693e311fd8b18b00baeb44ffca3069bf8c42e8ee3a16b3cc3e9d0058",
         "test/interface/dom/browser/fixture.rs": "9f0125c823cd0cf9599ff35ca93d17fde96966639ebb8829fa935310deecd359",
-        "test/interface/dom/browser/generate.rs": "0f61642d23a6174c29a5a934cc84de0b60d9b533bf4204f77d3b86299cfdecb3",
+        "test/interface/dom/browser/generate.rs": "ee56bf5b4f0f6b4077b130ecd325bb150c197d0ad86db0e48055c86b07a7146b",
         "test/interface/dom/browser/helper-contracts.mjs": "6f178934c9e1f697d731a23a97aaae83b3e74ff386d24b7088b044dc7ca48fbb",
         "test/interface/dom/erasure-consumer.rs": "a0c4b62b8a06304d7d74ebd977b8a335c1f1cbadab857b648a622611828e2f81",
         "test/interface/dom/erasure-contracts.sh": "205d5a8548f10d145b857d6abd53b2734560f3e22201780da15d619cdd1411b5",
@@ -47191,7 +47196,7 @@
       ],
       "directory": "src/server",
       "files_sha256": {
-        "Cargo.toml": "bdd1c378ac42c5de16b7ab3c2aa21edea89ee9df3709cf86e77dbacb8dbdf809",
+        "Cargo.toml": "727a3b2d3f7e14d5931da91cc7dc5f8812779c056b3616ea1ae9c467a09bd2b9",
         "build.rs": "26bfa0190c338532cf029c003937aeaea00e0c302004a5d0503df7761c7ef453",
         "schema/initialize-site-author.sql": "fa82753ff3758d95a71df0fd0c0318cfe134b4738137cd7d3f30c93cb2f500af",
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
@@ -47274,7 +47279,7 @@
         "test/server/unit/tests/slow_body.rs": "6a1ac8ef4915ca93098b7b2a4f3297c06e97ba81ad5eed35b12bdf92d9609951",
         "test/server/unit/tests/taxonomy.rs": "ac76ba50b078a8bafb00edfb561722602e6acf1f84fd935221ffeb84aa5b28e8"
       },
-      "version": "3.0.0"
+      "version": "3.0.1"
     },
     "src/tools/assets": {
       "dependencies": [
@@ -47302,7 +47307,7 @@
       "directory": "src/tools/assets",
       "files_sha256": {
         ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-        "Cargo.toml": "ad81fbea85bf57b9be27b9e6e8d7ac2bfe8d58417736804724d151668fe06cbf",
+        "Cargo.toml": "b0cb0b5c0b673db7d459e94bcd38bf3b10e5ede03a3a0fa2f462966b461516d3",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "ORIGIN.json": "93ce2b98016b4bfed5ba1ace17bc948b38f9fa9cfb124a00ea4a19cd0667fb49",
         "README.md": "77a380007c6b7b8cf3d0245436d8b3f8264d4e980d94e293cdce94109b46ba8b",
@@ -47363,7 +47368,7 @@
       ],
       "directory": "src/tools/setup",
       "files_sha256": {
-        "Cargo.toml": "a82e3a8c2c5cf1d3ca2bd5f61bb6f2915305e9d9d8f3db05e331fadd14bd1811",
+        "Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
         "README.md": "f95afde5b745a37129b5e6c19ee5138e2730c563817d47049b26e8bb990c5206",
         "src/main.rs": "c4aa568381c76e8154dc147d4e3999525f10b4450548ef295e2a706784481919"
       },
@@ -47373,7 +47378,7 @@
       "origins": [],
       "purpose": "离线初始化、账户恢复与实例维护",
       "tests_sha256": {},
-      "version": "3.0.0"
+      "version": "3.0.1"
     },
     "test/browser-domain": {
       "dependencies": [
@@ -49031,7 +49036,7 @@
           "roles": [
             "runtime"
           ],
-          "version": "3.0.0"
+          "version": "3.0.1"
         },
         "src/tools/setup": {
           "features": [],
@@ -49039,7 +49044,7 @@
           "roles": [
             "runtime"
           ],
-          "version": "3.0.0"
+          "version": "3.0.1"
         }
       },
       "profile": "native",
@@ -54162,7 +54167,7 @@
           "roles": [
             "compile"
           ],
-          "version": "3.0.0"
+          "version": "3.0.1"
         },
         "src/tools/assets": {
           "features": [],
@@ -54178,7 +54183,7 @@
           "roles": [
             "compile"
           ],
-          "version": "3.0.0"
+          "version": "3.0.1"
         },
         "test/browser-domain": {
           "features": [],
@@ -66997,9 +67002,42 @@
             "version": "0.0.0"
           }
         ]
+      },
+      {
+        "from": [
+          {
+            "directory": "src/server",
+            "name": "blog",
+            "origins": [],
+            "version": "3.0.0"
+          },
+          {
+            "directory": "src/tools/setup",
+            "name": "blog-setup",
+            "origins": [],
+            "version": "3.0.0"
+          }
+        ],
+        "id": "blog-release-3-0-1",
+        "reason": "Version the server and setup tool together after repairing the release documentation gate.",
+        "retired_origins": [],
+        "to": [
+          {
+            "directory": "src/server",
+            "name": "blog",
+            "origins": [],
+            "version": "3.0.1"
+          },
+          {
+            "directory": "src/tools/setup",
+            "name": "blog-setup",
+            "origins": [],
+            "version": "3.0.1"
+          }
+        ]
       }
     ],
     "schema": 1
   },
-  "source_migrations_sha256": "c672e863a8477920267b2ae1ee89060675e2a17e0bc47fb9f624b829fe8e144e"
+  "source_migrations_sha256": "13592531f76610a56325c3060c054c79b6d5793fc72b5f3f57d288ee71f3cca8"
 }
