@@ -68,8 +68,6 @@ impl<'i, T: ToCss> ToCss for ScopeRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@scope")?;
     dest.whitespace()?;
     if let Some(scope_start) = &self.scope_start {

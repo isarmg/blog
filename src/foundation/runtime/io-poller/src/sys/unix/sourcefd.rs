@@ -12,9 +12,7 @@ use crate::{event, Interest, Registry, Token};
 ///
 /// `SourceFd` enables registering any type with an FD with [`Poll`].
 ///
-/// While only implementations for TCP and UDP are provided, Mio supports
-/// registering any FD that can be registered with the underlying OS selector.
-/// `SourceFd` provides the necessary bridge.
+/// The underlying operating system determines which descriptors support registration.
 ///
 /// Note that `SourceFd` takes a `&RawFd`. This is because `SourceFd` **does
 /// not** take ownership of the FD. Specifically, it will not manage any

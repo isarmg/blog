@@ -4,37 +4,43 @@ import { expect } from './dependencies.mjs';
 // Exercise the actual WASM loader, including recovery by a user action.
 // Consumers supply their real built page and any API fixtures it needs.
 export async function verifyStartupFailures(browser, url, preparePage = async () => {}, contextOptions = {}) {
-  for (const resource of ["wasm", "invalid-wasm"]) {
+  for (const resource of ["wasm", "invalid-wasm", "missing-root"]) {
     const context = await browser.newContext({ ...contextOptions, locale: "en-US" });
     try {
       const page = await context.newPage();
       await preparePage(page);
-      let documents = 0, blocked = 0;
+      let documents = 0, intercepted = 0;
       page.on("request", request => { if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents++; });
       const pattern = /\.wasm(?:\?|$)/u;
-      const reject = route => {
-        blocked++;
+      const injectFailure = async route => {
+        intercepted++;
+        if (resource === "missing-root") {
+          await page.locator("#root").evaluate(root => root.remove());
+          await route.continue();
+          return;
+        }
         return route.fulfill(resource === "invalid-wasm"
           ? { status: 200, contentType: "application/wasm", body: "invalid wasm fixture" }
           : { status: 503, contentType: "text/plain", body: "resource unavailable fixture" });
       };
-      await page.route(pattern, reject);
+      await page.route(pattern, injectFailure);
       await page.goto(url, { waitUntil: "domcontentloaded" });
       const panel = page.locator("#blog-startup-error");
       await expect(panel).toBeVisible({ timeout: 30_000 });
       await expect(panel).toHaveAttribute("role", "alert");
+      await expect(panel).toHaveAttribute("data-stage", "runtime");
       await expect(panel).toBeFocused();
       await expect(page.locator("html")).toHaveAttribute("data-blog-startup", "failed");
       assert.equal(await page.locator("html").getAttribute("data-blog-runtime"), null);
       assert.equal(await panel.evaluate(node => getComputedStyle(node).visibility), "visible");
-      assert.ok(blocked > 0, `The ${resource} fault must reach the actual network request`);
-      const failedRequests = blocked;
+      assert.ok(intercepted > 0, `The ${resource} fault must be injected before startup`);
+      const failedRequests = intercepted;
       await page.clock.install();
       await page.clock.runFor(120_000);
-      assert.equal(blocked, failedRequests, "Startup must not retry resources automatically");
+      assert.equal(intercepted, failedRequests, "Startup must not retry resources automatically");
       assert.equal(documents, 1, "Startup must not refresh automatically");
       await expect(panel).toHaveCount(1);
-      await page.unroute(pattern, reject);
+      await page.unroute(pattern, injectFailure);
       await page.clock.resume();
       await panel.getByRole("button", { name: "Reload page", exact: true }).focus();
       await panel.getByRole("button", { name: "Reload page", exact: true }).press("Enter");

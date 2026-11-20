@@ -59,7 +59,7 @@ pub(super) fn Articles() -> impl IntoView {
                         .build(),
                 ),
                 move || {
-                    data.value.get().map(|v| {
+                    data.current().map(|v| {
                         View::new(
                             blog_interface::html::div()
                                 .child(

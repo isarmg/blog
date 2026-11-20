@@ -1,18 +1,9 @@
-use crate::browser_compatibility::EngineTargets;
 use rustc_hash::FxHashSet;
 
 pub use crate::language_semantics::side_effects::PropertyReadSideEffects;
 
 #[derive(Debug, Clone)]
 pub struct CompressOptions {
-    /// Engine targets for feature detection.
-    ///
-    /// Used to determine which ES features are supported by the target engines
-    /// and whether transformations can be applied.
-    ///
-    /// Default: empty (supports all features)
-    pub target: EngineTargets,
-
     /// Remove `debugger;` statements.
     ///
     /// Default `true`
@@ -65,7 +56,6 @@ impl Default for CompressOptions {
 impl CompressOptions {
     pub fn smallest() -> Self {
         Self {
-            target: EngineTargets::default(),
             keep_names: CompressOptionsKeepNames::all_false(),
             drop_debugger: true,
             drop_console: false,
@@ -80,7 +70,6 @@ impl CompressOptions {
 
     pub fn safest() -> Self {
         Self {
-            target: EngineTargets::default(),
             keep_names: CompressOptionsKeepNames::all_true(),
             drop_debugger: false,
             drop_console: false,
@@ -95,7 +84,6 @@ impl CompressOptions {
 
     pub fn dce() -> Self {
         Self {
-            target: EngineTargets::default(),
             keep_names: CompressOptionsKeepNames::all_true(),
             drop_debugger: false,
             drop_console: false,

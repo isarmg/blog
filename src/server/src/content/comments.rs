@@ -1,4 +1,4 @@
-use super::{AdminPageQuery, PageResult};
+use super::{PageBounds, PageQuery, PageResult, input::ShortContent};
 use crate::{ApiResult, AppError, AppState, absent, invalid};
 use axum::{Json, extract::State};
 use blog_application::admin_core::AuthenticatedIdentity;
@@ -100,7 +100,7 @@ impl CommentTarget {
 
 struct CommentSubmission {
     request_id: String,
-    content: String,
+    content: ShortContent,
     parent: i64,
 }
 
@@ -109,14 +109,15 @@ impl CommentSubmission {
         if !valid_request_id(&input.request_id) {
             return Err(invalid("评论请求标识必须为小写 UUIDv4"));
         }
-        let content = input.content.trim();
         let parent = input.parent_comment_id.unwrap_or(0);
-        if content.is_empty() || content.chars().count() > 1024 || parent < 0 {
+        if parent < 0 {
             return Err(invalid("评论内容或回复目标无效"));
         }
+        let content =
+            ShortContent::try_from(input.content).map_err(|_| invalid("评论内容或回复目标无效"))?;
         Ok(Self {
             request_id: input.request_id,
-            content: content.to_owned(),
+            content,
             parent,
         })
     }
@@ -129,7 +130,7 @@ async fn create_anonymous_comment(
 ) -> ApiResult<Comment> {
     let source = target.source();
     let kind = target.as_str();
-    let content = &input.content;
+    let content = input.content.as_str();
     let parent = input.parent;
     let mut hash = Sha256::new();
     hash.update(source.to_be_bytes());
@@ -252,33 +253,11 @@ async fn visible_comment_article(
     }
     Ok(())
 }
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct RepliesQuery {
-    page: Option<i64>,
-    size: Option<i64>,
-}
-
-struct CommentPagination {
-    page: i64,
-    size: i64,
-}
-
-impl RepliesQuery {
-    fn bounds(self, default_size: i64) -> CommentPagination {
-        CommentPagination {
-            page: self.page.unwrap_or(1).clamp(1, 100_000),
-            size: self.size.unwrap_or(default_size).clamp(1, 50),
-        }
-    }
-}
-
 async fn read_root_comments(
     connection: &mut sqlx::SqliteConnection,
     target: CommentTarget,
-    pagination: CommentPagination,
+    pagination: PageBounds,
 ) -> Result<PageResult<Comment>, AppError> {
-    let CommentPagination { page, size } = pagination;
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
@@ -294,25 +273,19 @@ async fn read_root_comments(
     )))
     .bind(target.source())
     .bind(target.as_str())
-    .bind(size)
-    .bind((page - 1) * size)
+    .bind(pagination.size)
+    .bind(pagination.offset())
     .fetch_all(connection)
     .await?;
-    Ok(PageResult {
-        items,
-        total,
-        page,
-        size,
-    })
+    Ok(pagination.result(items, total))
 }
 
 async fn read_comment_replies(
     connection: &mut sqlx::SqliteConnection,
     target: CommentTarget,
     id: i64,
-    pagination: CommentPagination,
+    pagination: PageBounds,
 ) -> Result<PageResult<Comment>, AppError> {
-    let CommentPagination { page, size } = pagination;
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE floor_comment_id=? AND source=? AND type=?",
     )
@@ -328,16 +301,11 @@ async fn read_comment_replies(
     .bind(id)
     .bind(target.source())
     .bind(target.as_str())
-    .bind(size)
-    .bind((page - 1) * size)
+    .bind(pagination.size)
+    .bind(pagination.offset())
     .fetch_all(connection)
     .await?;
-    Ok(PageResult {
-        items,
-        total,
-        page,
-        size,
-    })
+    Ok(pagination.result(items, total))
 }
 
 pub(super) async fn comments(
@@ -347,11 +315,11 @@ pub(super) async fn comments(
     // Authorization and returned comments must describe the same snapshot.
     let mut transaction = state.pool.begin().await?;
     visible_comment_article(&mut transaction, query.article_id).await?;
-    let pagination = RepliesQuery {
+    let pagination = PageQuery {
         page: query.page,
         size: query.size,
     }
-    .bounds(10);
+    .bounds(10, 50);
     let result = read_root_comments(
         &mut transaction,
         CommentTarget::Article(query.article_id),
@@ -365,23 +333,23 @@ pub(super) async fn comments(
 pub(super) async fn comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-    Query(query): Query<RepliesQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Comment>> {
     let mut transaction = state.pool.begin().await?;
     let article = sqlx::query_scalar(
-        "SELECT source FROM comment WHERE id=? AND type='article'
-            AND (parent_comment_id IS NULL OR parent_comment_id=0)",
+        "SELECT c.source FROM comment c JOIN article a ON a.id=c.source
+         WHERE c.id=? AND c.type='article' AND (c.parent_comment_id IS NULL OR c.parent_comment_id=0)
+            AND a.deleted=0 AND a.view_status=1 AND a.password IS NULL",
     )
     .bind(id)
     .fetch_optional(&mut *transaction)
-    .await?;
-    let article = article.ok_or_else(absent)?;
-    visible_comment_article(&mut transaction, article).await?;
+    .await?
+    .ok_or_else(absent)?;
     let result = read_comment_replies(
         &mut transaction,
         CommentTarget::Article(article),
         id,
-        query.bounds(5),
+        query.bounds(5, 50),
     )
     .await?;
     transaction.commit().await?;
@@ -390,11 +358,15 @@ pub(super) async fn comment_replies(
 
 pub(super) async fn message_comments(
     State(state): State<AppState>,
-    Query(query): Query<RepliesQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Comment>> {
     let mut transaction = state.pool.begin().await?;
-    let result =
-        read_root_comments(&mut transaction, CommentTarget::Message, query.bounds(10)).await?;
+    let result = read_root_comments(
+        &mut transaction,
+        CommentTarget::Message,
+        query.bounds(10, 50),
+    )
+    .await?;
     transaction.commit().await?;
     Ok(Json(result))
 }
@@ -402,7 +374,7 @@ pub(super) async fn message_comments(
 pub(super) async fn message_comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-    Query(query): Query<RepliesQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Comment>> {
     let mut transaction = state.pool.begin().await?;
     let root: Option<i64> = sqlx::query_scalar(
@@ -419,7 +391,7 @@ pub(super) async fn message_comment_replies(
         &mut transaction,
         CommentTarget::Message,
         id,
-        query.bounds(5),
+        query.bounds(5, 50),
     )
     .await?;
     transaction.commit().await?;
@@ -428,14 +400,14 @@ pub(super) async fn message_comment_replies(
 
 pub(super) async fn love_comments(
     State(state): State<AppState>,
-    Query(query): Query<RepliesQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Comment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
     let result = read_root_comments(
         &mut transaction,
         CommentTarget::Love(source),
-        query.bounds(10),
+        query.bounds(10, 50),
     )
     .await?;
     transaction.commit().await?;
@@ -445,7 +417,7 @@ pub(super) async fn love_comments(
 pub(super) async fn love_comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-    Query(query): Query<RepliesQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Comment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
@@ -464,7 +436,7 @@ pub(super) async fn love_comment_replies(
         &mut transaction,
         CommentTarget::Love(source),
         id,
-        query.bounds(5),
+        query.bounds(5, 50),
     )
     .await?;
     transaction.commit().await?;
@@ -483,22 +455,17 @@ pub(super) struct AdminComment {
 }
 pub(super) async fn admin_comments(
     State(state): State<AppState>,
-    Query(query): Query<AdminPageQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<AdminComment>> {
-    let (page, size) = query.bounds();
+    let pagination = query.admin_bounds();
     let mut transaction = state.pool.begin().await?;
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM comment")
         .fetch_one(&mut *transaction)
         .await?;
     let items=sqlx::query_as::<_,AdminComment>("SELECT c.id,c.source,c.type AS comment_type,c.user_id,u.username,c.comment_content,c.create_time FROM comment c LEFT JOIN user u ON u.id=c.user_id ORDER BY c.id DESC LIMIT ? OFFSET ?")
-        .bind(size).bind((page-1)*size).fetch_all(&mut *transaction).await?;
+        .bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }
 pub(super) async fn delete_comment(
     State(state): State<AppState>,

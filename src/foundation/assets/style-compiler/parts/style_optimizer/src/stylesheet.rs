@@ -17,8 +17,6 @@ use crate::style_optimizer::values::string::CowArcStr;
 #[cfg(all())]
 use crate::style_optimizer::visitor::{Visit, VisitTypes, Visitor};
 use crate::style_parser::{Parser, ParserInput, StyleSheetParser};
-#[cfg(any())]
-use parcel_sourcemap::SourceMap;
 use std::collections::{HashMap, HashSet};
 
 pub use crate::style_optimizer::parser::{ParserFlags, ParserOptions};
@@ -77,8 +75,6 @@ pub struct StyleSheet<'i, 'o, T = DefaultAtRule> {
   /// A list of file names for all source files included within the style sheet.
   /// Sources are referenced by index in the `loc` property of each rule.
   pub sources: Vec<String>,
-  /// The source map URL extracted from the original style sheet.
-  pub(crate) source_map_urls: Vec<Option<String>>,
   /// The license comments that appeared at the start of the file.
   pub license_comments: Vec<CowArcStr<'i>>,
   /// A list of content hashes for all source files included within the style sheet.
@@ -137,7 +133,6 @@ where
   ) -> StyleSheet<'i, 'o, T> {
     StyleSheet {
       sources,
-      source_map_urls: Vec::new(),
       license_comments: Vec::new(),
       content_hashes: None,
       rules,
@@ -204,24 +199,11 @@ where
 
     Ok(StyleSheet {
       sources: vec![options.filename.clone()],
-      source_map_urls: vec![parser.current_source_map_url().map(|s| s.to_owned())],
       content_hashes,
       rules,
       license_comments,
       options,
     })
-  }
-
-  /// Returns the source map URL for the source at the given index.
-  pub fn source_map_url(&self, source_index: usize) -> Option<&String> {
-    self.source_map_urls.get(source_index)?.as_ref()
-  }
-
-  /// Returns the inline source map associated with the source at the given index.
-  #[cfg(any())]
-  #[cfg_attr(docsrs, doc(cfg(any())))]
-  pub fn source_map(&self, source_index: usize) -> Option<SourceMap> {
-    SourceMap::from_data_url("/", self.source_map_url(source_index)?).ok()
   }
 
   /// Minify and transform the style sheet for the provided browser targets.
@@ -270,25 +252,14 @@ where
 
   /// Serialize the style sheet to a CSS string.
   pub fn to_css(&self, options: PrinterOptions) -> Result<ToCssResult, Error<PrinterErrorKind>> {
-    // Make sure we always have capacity > 0: https://github.com/napi-rs/napi-rs/issues/1124.
-    let mut dest = String::with_capacity(1);
+    let mut dest = String::new();
     let project_root = options.project_root.clone();
     let mut printer = Printer::new(&mut dest, options);
 
-    #[cfg(any())]
-    {
-      printer.sources = Some(&self.sources);
-    }
-
-    #[cfg(any())]
-    if printer.source_map.is_some() {
-      printer.source_maps = self.sources.iter().enumerate().map(|(i, _)| self.source_map(i)).collect();
-    }
-
     for comment in &self.license_comments {
       printer.write_str("/*")?;
-      printer.write_str_with_newlines(comment)?;
-      printer.write_str_with_newlines("*/\n")?;
+      printer.write_str(comment)?;
+      printer.write_str("*/\n")?;
     }
 
     if let Some(config) = &self.options.css_modules {
@@ -403,14 +374,7 @@ impl<'i> StyleAttribute<'i> {
 
   /// Serializes the style attribute to a CSS string.
   pub fn to_css(&self, options: PrinterOptions) -> Result<ToCssResult, PrinterError> {
-    #[cfg(any())]
-    assert!(
-      options.source_map.is_none(),
-      "Source maps are not supported for style attributes"
-    );
-
-    // Make sure we always have capacity > 0: https://github.com/napi-rs/napi-rs/issues/1124.
-    let mut dest = String::with_capacity(1);
+    let mut dest = String::new();
     let mut printer = Printer::new(&mut dest, options);
     printer.sources = Some(&self.sources);
 

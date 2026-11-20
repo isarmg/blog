@@ -7,8 +7,6 @@ use std::os::unix::io::FromRawFd;
 use std::os::unix::net::SocketAddr;
 use std::{io, mem, ptr};
 
-pub(crate) mod datagram;
-pub(crate) mod listener;
 pub(crate) mod stream;
 
 const UNNAMED_ADDRESS: &[u8] = &[];

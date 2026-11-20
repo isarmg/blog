@@ -12,6 +12,7 @@ use futures::{
     future::{LocalBoxFuture, Shared},
     lock::Mutex,
 };
+use js_sys::futures::JsFuture;
 use js_sys::{Reflect, Uint8Array};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
@@ -22,7 +23,6 @@ use std::{
     sync::Arc,
 };
 use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     AbortController, AbortSignal, RequestCache, RequestCredentials, RequestInit, RequestRedirect,
     Response, Url,
@@ -364,14 +364,13 @@ pub async fn request_with_options(
     body: Option<Value>,
     options: RequestOptions,
 ) -> Result<Value, ApiError> {
-    let (generation, token) = STATE.with(|s| {
-        let s = s.borrow();
-        (
-            s.generation,
-            s.session.as_ref().map(|v| v.csrf_token().to_owned()),
-        )
-    });
-    send(path, method, body, options, token, generation).await
+    send_for_session(
+        path,
+        method,
+        body.map_or(RequestBody::Empty, RequestBody::Json),
+        options,
+    )
+    .await
 }
 
 /// Stream the browser's Blob directly; do not copy uploads into WASM memory.
@@ -381,22 +380,7 @@ pub async fn request_blob(
     body: web_sys::Blob,
     options: RequestOptions,
 ) -> Result<Value, ApiError> {
-    let (generation, token) = STATE.with(|s| {
-        let s = s.borrow();
-        (
-            s.generation,
-            s.session.as_ref().map(|v| v.csrf_token().to_owned()),
-        )
-    });
-    send_body(
-        path,
-        method,
-        RequestBody::Blob(body),
-        options,
-        token,
-        generation,
-    )
-    .await
+    send_for_session(path, method, RequestBody::Blob(body), options).await
 }
 
 enum RequestBody {
@@ -405,23 +389,23 @@ enum RequestBody {
     Blob(web_sys::Blob),
 }
 
-async fn send(
+async fn send_for_session(
     path: &str,
     method: &str,
-    body: Option<Value>,
+    body: RequestBody,
     options: RequestOptions,
-    token: Option<String>,
-    generation: u64,
 ) -> Result<Value, ApiError> {
-    send_body(
-        path,
-        method,
-        body.map_or(RequestBody::Empty, RequestBody::Json),
-        options,
-        token,
-        generation,
-    )
-    .await
+    let (generation, token) = STATE.with(|state| {
+        let state = state.borrow();
+        (
+            state.generation,
+            state
+                .session
+                .as_ref()
+                .map(|session| session.csrf_token().to_owned()),
+        )
+    });
+    send_body(path, method, body, options, token, generation).await
 }
 
 async fn send_body(
@@ -525,98 +509,14 @@ async fn send_body(
         .map_err(|source| ApiError::with_source(LocalErrorCode::NetworkError, source))?
         .dyn_into()
         .map_err(|source| ApiError::with_source(LocalErrorCode::InvalidResponseShape, source))?;
-        // Malformed optional diagnostic identifiers are omitted from the UI.
-        let request_id = response_header(&response, "x-request-id")?
-            .and_then(|value| RequestId::try_from(value).ok());
-        let status = response.status();
-        // Invalidate on headers, even if a malformed/slow 401 body cannot be read.
-        if status == 401
-            && path != LOGIN_PATH
-            && path != LOGOUT_PATH
-            && is_current_generation(generation)
-        {
-            invalidate(None);
-        }
-        if status == 204
-            || status == 205
-            || method == "HEAD"
-            || response_header(&response, "content-length")?.as_deref() == Some("0")
-        {
-            return if response.ok() {
-                Ok(Value::Null)
-            } else {
-                Err(ApiError {
-                    status,
-                    request_id,
-                    ..ApiError::local(LocalErrorCode::InvalidErrorResponse)
-                })
-            };
-        }
-        let is_json = response_header(&response, "content-type")?.is_some_and(|v| {
-            let media = v
-                .split(';')
-                .next()
-                .expect("invariant: split always yields a first segment")
-                .trim()
-                .to_ascii_lowercase();
-            media == "application/json" || media.ends_with("+json")
-        });
-        // The UI supports delay-seconds, not the alternative HTTP-date form.
-        let retry_after_seconds = response_header(&response, "retry-after")?
-            .and_then(|value| value.parse::<u64>().ok())
-            .map(|v| v.min(86_400) as u32);
-        if !is_json {
-            return Err(ApiError {
-                status,
-                request_id,
-                retry_after_seconds,
-                ..ApiError::local(if response.ok() {
-                    LocalErrorCode::InvalidContentType
-                } else {
-                    LocalErrorCode::InvalidErrorResponse
-                })
-            });
-        }
-        let limit = if response.ok() {
-            options.max_response_bytes
-        } else {
-            64 * 1024
-        };
-        let bytes = read_bounded(&response, limit).await.map_err(|mut error| {
-            error.status = status;
-            error.request_id = request_id.clone();
-            error
-        })?;
-        let value: Value = serde_json::from_slice(&bytes).map_err(|source| ApiError {
-            status,
-            request_id: request_id.clone(),
-            ..ApiError::with_source(
-                if response.ok() {
-                    LocalErrorCode::InvalidJsonResponse
-                } else {
-                    LocalErrorCode::InvalidErrorResponse
-                },
-                source,
-            )
-        })?;
-        if response.ok() {
-            return Ok(value);
-        }
-        let envelope = decode_error_envelope(value).map_err(|error| ApiError {
-            status,
-            request_id: request_id.clone(),
-            retry_after_seconds,
-            ..error
-        })?;
-        Err(ApiError {
-            status,
-            code: envelope.code,
-            message: envelope.message,
-            request_id: envelope.request_id.or(request_id),
-            retryable: envelope.retryable,
-            retry_after_seconds,
-            source: None,
-        })
+        read_response(
+            &response,
+            path,
+            &method,
+            generation,
+            options.max_response_bytes,
+        )
+        .await
     }
     .await;
     drop(timeout);
@@ -627,6 +527,112 @@ async fn send_body(
         return Err(ApiError::local(LocalErrorCode::RequestAborted));
     }
     operation
+}
+
+async fn read_response(
+    response: &Response,
+    path: &str,
+    method: &str,
+    generation: u64,
+    max_response_bytes: usize,
+) -> Result<Value, ApiError> {
+    // Malformed optional diagnostic identifiers are omitted from the UI.
+    let request_id = response_header(response, "x-request-id")?
+        .and_then(|value| RequestId::try_from(value).ok());
+    let status = response.status();
+    let success = response.ok();
+    // Invalidate on headers, even if a malformed/slow 401 body cannot be read.
+    if status == 401
+        && path != LOGIN_PATH
+        && path != LOGOUT_PATH
+        && is_current_generation(generation)
+    {
+        invalidate(None);
+    }
+    let bodyless = matches!(status, 204 | 205) || method == "HEAD";
+    let content_length = if bodyless {
+        None
+    } else {
+        response_header(response, "content-length")?
+    };
+    if bodyless || content_length.as_deref() == Some("0") {
+        return if success {
+            Ok(Value::Null)
+        } else {
+            Err(ApiError {
+                status,
+                request_id,
+                ..ApiError::local(LocalErrorCode::InvalidErrorResponse)
+            })
+        };
+    }
+    let is_json = response_header(response, "content-type")?.is_some_and(|v| {
+        let media = v
+            .split(';')
+            .next()
+            .expect("invariant: split always yields a first segment")
+            .trim()
+            .to_ascii_lowercase();
+        media == "application/json" || media.ends_with("+json")
+    });
+    // The UI supports delay-seconds, not the alternative HTTP-date form.
+    let retry_after_seconds = response_header(response, "retry-after")?
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(|v| v.min(86_400) as u32);
+    if !is_json {
+        return Err(ApiError {
+            status,
+            request_id,
+            retry_after_seconds,
+            ..ApiError::local(if success {
+                LocalErrorCode::InvalidContentType
+            } else {
+                LocalErrorCode::InvalidErrorResponse
+            })
+        });
+    }
+    let limit = if success {
+        max_response_bytes
+    } else {
+        64 * 1024
+    };
+    let bytes = read_bounded(response, content_length.as_deref(), limit)
+        .await
+        .map_err(|mut error| {
+            error.status = status;
+            error.request_id = request_id.clone();
+            error
+        })?;
+    let value: Value = serde_json::from_slice(&bytes).map_err(|source| ApiError {
+        status,
+        request_id: request_id.clone(),
+        ..ApiError::with_source(
+            if success {
+                LocalErrorCode::InvalidJsonResponse
+            } else {
+                LocalErrorCode::InvalidErrorResponse
+            },
+            source,
+        )
+    })?;
+    if success {
+        return Ok(value);
+    }
+    let envelope = decode_error_envelope(value).map_err(|error| ApiError {
+        status,
+        request_id: request_id.clone(),
+        retry_after_seconds,
+        ..error
+    })?;
+    Err(ApiError {
+        status,
+        code: envelope.code,
+        message: envelope.message,
+        request_id: envelope.request_id.or(request_id),
+        retryable: envelope.retryable,
+        retry_after_seconds,
+        source: None,
+    })
 }
 
 #[derive(Deserialize)]
@@ -665,8 +671,12 @@ fn response_header(response: &Response, name: &str) -> Result<Option<String>, Ap
         .map_err(|source| ApiError::with_source(LocalErrorCode::InvalidHeaders, source))
 }
 
-async fn read_bounded(response: &Response, maximum: usize) -> Result<Vec<u8>, ApiError> {
-    if let Some(value) = response_header(response, "content-length")? {
+async fn read_bounded(
+    response: &Response,
+    content_length: Option<&str>,
+    maximum: usize,
+) -> Result<Vec<u8>, ApiError> {
+    if let Some(value) = content_length {
         let length = value
             .parse::<u64>()
             .map_err(|source| ApiError::with_source(LocalErrorCode::InvalidHeaders, source))?;
@@ -725,10 +735,10 @@ pub async fn login(username: &str, password: &str) -> Result<AdministratorSessio
     let generation = begin_mutation(SessionMutation::Login);
     let mutex = MUTATIONS.with(Clone::clone);
     let _guard = mutex.lock().await;
-    let received = send(
+    let received = send_body(
         LOGIN_PATH,
         "POST",
-        Some(json!({"username":username,"password":password})),
+        RequestBody::Json(json!({"username":username,"password":password})),
         RequestOptions::default(),
         None,
         generation,
@@ -753,10 +763,10 @@ pub async fn restore() -> Result<AdministratorSession, ApiError> {
         let pending = async move {
             let mutex = MUTATIONS.with(Clone::clone);
             let _guard = mutex.lock().await;
-            let received = send(
+            let received = send_body(
                 SESSION_PATH,
                 "GET",
-                None,
+                RequestBody::Empty,
                 RequestOptions::default(),
                 None,
                 generation,
@@ -802,10 +812,10 @@ pub async fn logout() -> Result<(), ApiError> {
             .as_ref()
             .map(|v| v.csrf_token().to_owned())
     });
-    let result = send(
+    let result = send_body(
         LOGOUT_PATH,
         "POST",
-        None,
+        RequestBody::Empty,
         RequestOptions::default(),
         token,
         generation,

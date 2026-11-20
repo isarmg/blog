@@ -31,10 +31,10 @@ use {std::ffi::OsStr, std::path::Path};
 /// # Examples
 ///
 /// ```
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// use rustix::path::DecInt;
 ///
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// assert_eq!(
 ///     format!("hello {}", DecInt::new(9876).as_ref().display()),
 ///     "hello 9876"

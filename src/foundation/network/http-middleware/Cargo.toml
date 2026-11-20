@@ -29,8 +29,8 @@ default = []
 fs = [
     "dep:tokio", "tokio/fs", "tokio/io-util", "dep:futures",
     "futures/alloc", "futures/utilities", "dep:http-body", "http-body/utilities",
-    "dep:tokio-util", "dep:http-range-header", "dep:mime_guess", "dep:mime",
-    "dep:url-encoding", "dep:httpdate",
+    "dep:tokio-util", "dep:mime_guess", "dep:mime",
+    "dep:url-encoding",
 ]
 trace = ["dep:http-body", "dep:tracing"]
 
@@ -45,16 +45,6 @@ package = "blog-encoding-byte-buffer"
 [dependencies.http]
 path = "../http-message"
 package = "blog-network-http-message"
-
-[dependencies.http-range-header]
-optional = true
-path = "../byte-ranges"
-package = "blog-network-byte-ranges"
-
-[dependencies.httpdate]
-optional = true
-path = "../http-date"
-package = "blog-network-http-date"
 
 [dependencies.mime]
 optional = true

@@ -1,8 +1,8 @@
 //! Chronological articles and short journal notes.
 use super::shell::{Chrome, site_data};
 use crate::common::{
-    BrowsePager, Feedback, Lightbox, Petals, Sliding, href, load, num, page_number, rows, safe_url,
-    search_signal, t, text,
+    BrowsePager, Feedback, Lightbox, Petals, Sliding, href, load, num, page_items, page_number,
+    safe_url, search_signal, t, text,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -22,8 +22,7 @@ pub(super) fn Journey() -> impl IntoView {
         component_props_builder(&Chrome)
             .title(Signal::derive(|| "blog".into()))
             .cover(Signal::derive(move || {
-                site.value
-                    .get()
+                site.current()
                     .and_then(|site| site.media.journey_background)
                     .unwrap_or_default()
             }))
@@ -46,16 +45,17 @@ pub(super) fn Journey() -> impl IntoView {
                             ),
                             html::div()
                                 .child(move || {
-                                    data.value.get().map(|v| {
-                                        let items = rows(&v, "items");
-                                        let len = items.len();
-                                        items
-                                            .into_iter()
-                                            .enumerate()
-                                            .map(|(i, item)| {
-                                                let row = i / 5;
-                                                let reverse = row % 2 == 1;
-                                                View::new(
+                                    data.with_current(|value| {
+                                        value.map(|v| {
+                                            let items = page_items(v);
+                                            let len = items.len();
+                                            items
+                                                .iter()
+                                                .enumerate()
+                                                .map(|(i, item)| {
+                                                    let row = i / 5;
+                                                    let reverse = row % 2 == 1;
+                                                    View::new(
                                                     html::a()
                                                         .child((
                                                             html::span()
@@ -64,7 +64,7 @@ pub(super) fn Journey() -> impl IntoView {
                                                                         .child(
                                                                             safe_url(
                                                                                 &text(
-                                                                                    &item,
+                                                                                    item,
                                                                                     "article_cover",
                                                                                 ),
                                                                                 false,
@@ -99,7 +99,7 @@ pub(super) fn Journey() -> impl IntoView {
                                                             html::strong().child(Sliding(
                                                                 component_props_builder(&Sliding)
                                                                     .title(text(
-                                                                        &item,
+                                                                        item,
                                                                         "article_title",
                                                                     ))
                                                                     .build(),
@@ -107,14 +107,14 @@ pub(super) fn Journey() -> impl IntoView {
                                                             html::small().child((
                                                                 html::time()
                                                                     .child(crate::dates::format(
-                                                                        &text(&item, "create_time"),
+                                                                        &text(item, "create_time"),
                                                                     ))
                                                                     .datetime(text(
-                                                                        &item,
+                                                                        item,
                                                                         "create_time",
                                                                     )),
                                                                 html::span().child(
-                                                                    num(&v, "total")
+                                                                    num(v, "total")
                                                                         - i as i64
                                                                         - (page_number(state)
                                                                             as i64
@@ -139,11 +139,12 @@ pub(super) fn Journey() -> impl IntoView {
                                                         })
                                                         .href(href(&format!(
                                                             "/article/{}",
-                                                            num(&item, "id")
+                                                            num(item, "id")
                                                         ))),
                                                 )
-                                            })
-                                            .collect_view()
+                                                })
+                                                .collect_view()
+                                        })
                                     })
                                 })
                                 .class("journey-grid"),
@@ -174,8 +175,7 @@ pub(super) fn Journal() -> impl IntoView {
         component_props_builder(&Chrome)
             .title(Signal::derive(|| "blog".into()))
             .cover(Signal::derive(move || {
-                site.value
-                    .get()
+                site.current()
                     .and_then(|site| site.media.journal_background)
                     .unwrap_or_default()
             }))
@@ -194,9 +194,7 @@ pub(super) fn Journal() -> impl IntoView {
                                             .build(),
                                     ),
                                     move || {
-                                        data.value
-                                            .get()
-                                            .map(|v| rows(&v, "items"))
+                                        data.current_items()
                                             .unwrap_or_default()
                                             .into_iter()
                                             .map(|item| {
@@ -210,11 +208,11 @@ pub(super) fn Journal() -> impl IntoView {
                                             .collect_view()
                                     },
                                     move || {
-                                        data.value
-                                            .get()
-                                            .filter(|v| rows(v, "items").is_empty())
-                                            .map(|_| {
-                                                View::new(
+                                        data.with_current(|v| {
+                                            v.is_some_and(|v| page_items(v).is_empty())
+                                        })
+                                        .then(|| {
+                                            View::new(
     html::div()
         .child(
             (
@@ -227,7 +225,7 @@ pub(super) fn Journal() -> impl IntoView {
         )
         .class("public-empty-state"),
 )
-                                            })
+                                        })
                                     },
                                     BrowsePager(
                                         component_props_builder(&BrowsePager)

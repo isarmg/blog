@@ -73,6 +73,35 @@ try {
         await page.unroute(pattern);
       }
 
+      const categoryPath = '**/api/v1/categories';
+      const categoryDelete = '**/api/v1/content/categories/42';
+      const remainingCategory = { id: 1, sort_name: 'Retained category', sort_description: null, priority: 0, article_count: 0 };
+      let deletedCategory = false;
+      let failCategoryRefresh = true;
+      await page.route(categoryPath, route => {
+        if (!deletedCategory) {
+          return route.fulfill({ json: [remainingCategory, { ...remainingCategory, id: 42, sort_name: 'Deleted category' }] });
+        }
+        return failCategoryRefresh ? failed(route) : route.fulfill({ json: [remainingCategory] });
+      });
+      await page.route(categoryDelete, route => {
+        assert.equal(route.request().method(), 'DELETE');
+        deletedCategory = true;
+        return route.fulfill({ json: { deleted: true } });
+      });
+      await page.goto(`${base}admin?lang=en#categories`);
+      const categoryTable = page.getByRole('table');
+      await categoryTable.getByRole('row', { name: /Deleted category/ }).getByRole('button', { name: 'Delete', exact: true }).click();
+      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(categoryTable).toContainText('Retained category');
+      await expect(categoryTable).not.toContainText('Deleted category');
+      failCategoryRefresh = false;
+      await page.getByRole('button', { name: 'Try again', exact: true }).click();
+      await expect(page.getByRole('alert')).toHaveCount(0);
+      await expect(categoryTable).toContainText('Retained category');
+      await page.unroute(categoryPath);
+      await page.unroute(categoryDelete);
+
       const articles = Array.from({ length: 16 }, (_, index) => ({ ...summary, id: index + 1, article_title: `Deletion row ${index + 1}` }));
       const articleReads = [], deletes = [];
       let pendingDelete, immediateDelete = false;
@@ -161,7 +190,7 @@ try {
       await expect(page.getByRole('status').filter({ hasText: 'Your comment has been posted.' })).toBeVisible();
       assert.equal(postBodies.length, 2); assert.deepEqual(postBodies[1], postBodies[0]);
       assert.ok(wasm.length >= 1); assert.deepEqual(errors, []);
-      console.log(`${engine.name()}: current WASM admin page retry, DELETE serialization/clamping/cancellation, upload cancellation and independent unknown-write recovery passed`);
+      console.log(`${engine.name()}: current WASM page retry, retained taxonomy, DELETE serialization/clamping/cancellation, upload cancellation and unknown-write recovery passed`);
       await page.close();
     } finally { await browser.close(); }
   }

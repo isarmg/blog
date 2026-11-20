@@ -6,12 +6,7 @@
 
 `blog-assets` 直接消费两个独立编译器：`assets/compiler` 处理 JavaScript 的解析、AST、语义、生成与压缩；`assets/style-compiler` 处理 CSS 的解析、选择器、目标浏览器转换和压缩。各自的类型与派生宏归属对应管线，修改一条管线不要求另一条重新编译。
 
-CSS 资料与实现相邻：
-
-- [编译接口](../../src/foundation/assets/style-compiler/parts/style_optimizer/website/pages/transforms.md)、[语法转换](../../src/foundation/assets/style-compiler/parts/style_optimizer/website/pages/transpilation.md)、[压缩](../../src/foundation/assets/style-compiler/parts/style_optimizer/website/pages/minification.md)。
-- [模块](../../src/foundation/assets/style-compiler/parts/style_optimizer/website/pages/css-modules.md)、[打包](../../src/foundation/assets/style-compiler/parts/style_optimizer/website/pages/bundling.md)。
-
-这些组件资料中的 Node 调用示例属于原始接口背景。本项目的生产入口使用 Rust `blog-assets`，命令、配置、输出目录和资源收据见[构建工具](../../src/tools/assets/README.md)。构建输入使用内容摘要，每次构建建立新快照；进程内复用解析结果仍必须对应同一源码快照。
+CSS 编译入口见[样式表接口](../../src/foundation/assets/style-compiler/parts/style_optimizer/src/stylesheet.rs)。来源说明见[Lightning CSS](origins/lightningcss-1.0.0-alpha.71/README.md)。生产入口使用 Rust `blog-assets`，命令、配置、输出目录和资源收据见[构建工具](../../src/tools/assets/README.md)。构建输入使用内容摘要，每次构建建立新快照；进程内复用解析结果仍必须对应同一源码快照。
 
 ## Markdown
 

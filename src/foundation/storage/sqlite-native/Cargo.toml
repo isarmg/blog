@@ -13,13 +13,10 @@ description = "sqlite native"
 license = "MIT"
 publish = false
 
-[features]
-with-asan = []
-
 [lib]
 name = "blog_storage_sqlite_native"
 path = "src/lib.rs"
 
-[build-dependencies.cc]
-path = "../../native/c-compiler"
-package = "blog-native-c-compiler"
+[build-dependencies.shlex]
+path = "../../text/shell-words"
+package = "blog-text-shell-words"

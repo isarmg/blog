@@ -18,9 +18,9 @@ from unittest.mock import patch
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('release', ROOT / 'src/operations/package-release.py')
-release = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(release)
+spec = importlib.util.spec_from_file_location('blog_stager', ROOT / 'src/operations/stage-package.py')
+stager = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(stager)
 
 
 class Staging(unittest.TestCase):
@@ -29,41 +29,26 @@ class Staging(unittest.TestCase):
             root = Path(temporary)
             binary, destination = root / 'server', root / 'staged'
             binary.write_bytes(b'owned binary fixture')
-            receipt = {'format': 'blog-assets-receipt-v1',
-                       'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest(),
-                       'identity': {'source_revision': 'a' * 40, 'product': 'blog',
-                                    'target': 'x86_64-unknown-linux-gnu'}}
-            path = Path(str(binary) + '.blog-assets.json')
-            path.write_text(json.dumps(receipt))
-            release.stage_verified_server(binary, destination, 'a' * 40)
-            self.assertEqual(destination.read_bytes(), binary.read_bytes())
-            self.assertEqual(destination.stat().st_mode & 0o777, 0o755)
-            with self.assertRaises(FileExistsError):
-                release.stage_verified_server(binary, destination, 'a' * 40)
-            destination.unlink()
-            for field, value in [('product', 'xsos'), ('source_revision', 'b' * 40), ('target', 'wrong')]:
-                altered = {**receipt, 'identity': {**receipt['identity'], field: value}}
-                path.write_text(json.dumps(altered))
-                with self.assertRaises(ValueError):
-                    release.stage_verified_server(binary, destination, 'a' * 40)
-                self.assertFalse(destination.exists())
-            path.write_text(json.dumps(receipt))
-            binary.write_bytes(b'replaced after receipt')
-            with self.assertRaises(ValueError):
-                release.stage_verified_server(binary, destination, 'a' * 40)
-            self.assertFalse(destination.exists())
+            receipt = b'{"binary_sha256":"fixture"}'
 
-    def test_original_license_is_copied_unchanged(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            destination = Path(temporary)
-            release.stage_original_notices(destination, source=ROOT)
-            self.assertEqual((destination / 'LICENSE').read_bytes(), (ROOT / 'LICENSE').read_bytes())
-            self.assertEqual(list(destination.iterdir()), [destination / 'LICENSE'])
+            def verify(arguments):
+                self.assertEqual(arguments[arguments.index('--binary') + 1], str(destination / 'bin/blog'))
+                self.assertEqual(arguments[arguments.index('--receipt') + 1],
+                                 str(destination / 'share/build/server.blog-assets.json'))
+                binary.write_bytes(b'replaced during verification')
+                self.assertEqual((destination / 'bin/blog').read_bytes(), b'owned binary fixture')
+                self.assertEqual((destination / 'share/build/server.blog-assets.json').read_bytes(), receipt)
+
+            with patch.object(stager, 'command', side_effect=verify):
+                stager.stage_verified_server(binary, receipt, destination)
+                with self.assertRaises(FileExistsError):
+                    stager.stage_verified_server(binary, receipt, destination)
+            self.assertEqual((destination / 'bin/blog').stat().st_mode & 0o777, 0o755)
 
     def test_standalone_manual_links_resolve_inside_the_package(self):
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary)
-            release.stage_documentation(destination, 'a' * 40, source=ROOT)
+            stager.stage_documentation(destination, 'a' * 40, source=ROOT)
             self.assertEqual(len(list(destination.rglob('*.md'))), 6)
             for manual in destination.rglob('*.md'):
                 for target in re.findall(r'\[[^\]\n]+\]\(([^\s)]+)\)', manual.read_text()):
@@ -74,7 +59,7 @@ class Staging(unittest.TestCase):
                     self.assertTrue(resolved.is_relative_to(destination), target)
                     self.assertTrue(resolved.is_file(), f'{manual.name}: {target}')
             first_run = (destination / 'docs/getting-started.md').read_text()
-            self.assertIn('https://github.com/isarmg/xocs/blob/' + 'a' * 40
+            self.assertIn('https://github.com/isarmg/blog/blob/' + 'a' * 40
                           + '/docs/development.md', first_run)
 
 
@@ -88,27 +73,27 @@ class CompiledBuildIdentity(unittest.TestCase):
 
     def test_sidecar_identity_cannot_relabel_an_existing_executable(self):
         identity = self.identity()
-        encoded = release.canonical_build_identity(identity)
+        encoded = stager.package.canonical_build_identity(identity)
         digest = hashlib.sha256(encoded).hexdigest()
         binary = b'compiler artifact' + encoded + digest.encode()
-        release.require_compiled_identity(binary, identity, encoded, digest)
+        stager.package.require_compiled_identity(binary, identity, encoded, digest)
         for field, value in (('source_tree_sha256', 'f' * 64),
                              ('schema_sha256', '0' * 64), ('core_source_sha256', '1' * 64)):
             altered = {**identity, field: value}
-            sidecar = release.canonical_build_identity(altered)
+            sidecar = stager.package.canonical_build_identity(altered)
             with self.assertRaises(ValueError):
-                release.require_compiled_identity(binary, altered, sidecar, hashlib.sha256(sidecar).hexdigest())
+                stager.package.require_compiled_identity(binary, altered, sidecar, hashlib.sha256(sidecar).hexdigest())
 
     def test_both_canonical_identity_bytes_and_digest_must_be_retained(self):
         identity = self.identity()
-        encoded = release.canonical_build_identity(identity)
+        encoded = stager.package.canonical_build_identity(identity)
         digest = hashlib.sha256(encoded).hexdigest()
         for binary in (encoded, digest.encode(), b'unrelated executable'):
             with self.assertRaises(ValueError):
-                release.require_compiled_identity(binary, identity, encoded, digest)
+                stager.package.require_compiled_identity(binary, identity, encoded, digest)
         with self.assertRaises(ValueError):
-            release.require_compiled_identity(encoded + digest.encode(), identity,
-                                              json.dumps(identity, indent=2).encode(), digest)
+            stager.package.require_compiled_identity(encoded + digest.encode(), identity,
+                                                    json.dumps(identity, indent=2).encode(), digest)
 
 
 class PackageIntegrity(unittest.TestCase):
@@ -124,7 +109,7 @@ class PackageIntegrity(unittest.TestCase):
         inventory_bytes = json.dumps(inventory, separators=(',', ':')).encode()
         build_identity = CompiledBuildIdentity().identity()
         build_identity.update(source_dirty=dirty, web_assets_sha256=hashlib.sha256(inventory_bytes).hexdigest())
-        encoded = release.canonical_build_identity(build_identity)
+        encoded = self.package.canonical_build_identity(build_identity)
         identity_sha256 = hashlib.sha256(encoded).hexdigest()
         binary = b'fixture executable' + encoded + identity_sha256.encode()
         state = dict(contract_version=1, application='blog', application_version='1.0.1',
@@ -226,7 +211,7 @@ class PackageIntegrity(unittest.TestCase):
             material = root / 'share/build'
             receipt = json.loads((material / 'server.blog-assets.json').read_bytes())
             receipt['identity']['build_mode'] = 'release'
-            encoded = release.canonical_build_identity(receipt['identity'])
+            encoded = self.package.canonical_build_identity(receipt['identity'])
             receipt['identity_sha256'] = hashlib.sha256(encoded).hexdigest()
             (material / 'blog-build-identity.json').write_bytes(encoded)
             (material / 'server.blog-assets.json').write_text(json.dumps(receipt))
@@ -404,9 +389,6 @@ class PackageIntegrity(unittest.TestCase):
                 self.package.relative(name)
 
     def test_staging_accepts_stable_source_and_rejects_material_copy_changes(self):
-        spec = importlib.util.spec_from_file_location('blog_stager', ROOT / 'src/operations/stage-package.py')
-        stager = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(stager)
         previous_umask = os.umask(0o022)  # The stager's command-line entry sets this.
         self.addCleanup(os.umask, previous_umask)
         with tempfile.TemporaryDirectory() as temporary:
@@ -452,29 +434,29 @@ class PackageIntegrity(unittest.TestCase):
                     shutil.copyfile(metadata / name, output / name)
                 return binary
 
-            stage_notices = release.stage_original_notices
+            stage_documentation = stager.stage_documentation
 
-            def change_material(destination, *, source):
-                stage_notices(destination, source=source)
+            def change_material(destination, revision, *, source):
+                stage_documentation(destination, revision, source=source)
                 (source / 'LICENSE').write_bytes(original_license + b'changed while staging')
 
             with patch.object(stager, 'SOURCE', source), \
                     patch.object(stager, 'current_source_stamp', side_effect=source_stamp), \
                     patch.object(stager, 'build_setup', side_effect=build_setup), \
-                    patch.object(stager, 'command', return_value='1700000000\n'), \
-                    patch.object(stager, 'module', return_value=release):
+                    patch.object(stager, 'command', return_value='1700000000\n'):
                 archive = stager.build(binary, metadata, work / 'stable-output')
                 with tarfile.open(archive) as packed:
                     prefix = 'blog-1.0.1-linux-x86_64/share/'
                     for name in ('README.md', 'docs/configuration.md', 'docs/operations.md'):
                         self.assertIn(prefix + name, packed.getnames())
+                    with packed.extractfile(prefix + 'LICENSE') as license:
+                        self.assertEqual(license.read(), original_license)
                 # The real payload is copied; only Cargo and Git commands are
                 # substituted. The changed legal input must invalidate staging.
-                with patch.object(release, 'stage_original_notices', side_effect=change_material):
+                with patch.object(stager, 'stage_documentation', side_effect=change_material):
                     with self.assertRaisesRegex(ValueError, 'source changed while staging'):
                         stager.build(binary, metadata, work / 'output')
-            self.assertFalse(list((work / 'output').glob('*.tar.gz')))
-            self.assertFalse((work / 'output/SHA256SUMS').exists())
+            self.assertFalse((work / 'output').exists())
 
 
 if __name__ == '__main__':

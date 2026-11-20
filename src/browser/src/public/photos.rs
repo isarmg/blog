@@ -1,6 +1,6 @@
 //! Photo browsing, category filters and paged collection state.
 use super::shell::Chrome;
-use crate::common::{Feedback, Lightbox, enc, list, load, num, rows, safe_url, t, text};
+use crate::common::{Feedback, Lightbox, enc, list, load, num, page_items, safe_url, t, text};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
 use blog_interface::ev;
@@ -151,7 +151,7 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
     let all_total = RwSignal::new(None::<i64>);
     let lightbox = RwSignal::new(None::<String>);
     Effect::new(move |_| {
-        if !love && let Some(v) = classes.value.get() {
+        if !love && let Some(v) = classes.current() {
             let first = v
                 .as_array()
                 .and_then(|a| a.first())
@@ -186,20 +186,27 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
         }
     }));
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
-            let next = rows(&v, "items");
-            total.set(Some(num(&v, "total")));
+        let response = data.with_current(|value| {
+            value.map(|value| {
+                (
+                    page_items(value).to_vec(),
+                    num(value, "page") as u64,
+                    num(value, "size"),
+                    num(value, "total"),
+                )
+            })
+        });
+        if let Some((next, response_page, response_size, response_total)) = response {
+            total.set(Some(response_total));
             if selected.get_untracked().is_empty() {
-                all_total.set(Some(num(&v, "total")));
+                all_total.set(Some(response_total));
             }
-            let response_page = num(&v, "page") as u64;
-            let response_size = num(&v, "size");
             // Offset pages can overlap when photos are published while browsing.
             // Display deduplication must not determine whether another page exists.
             has_more.set(
-                response_page < 100_000
+                response_page < crate::contracts::MAX_PAGE
                     && next.len() as i64 == response_size
-                    && response_page as i64 * response_size < num(&v, "total"),
+                    && response_page as i64 * response_size < response_total,
             );
             loaded.set(response_page);
             items.update(|items| {
@@ -243,7 +250,7 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
                             .aria_pressed(move || selected.get().is_empty().to_string())
                             .on(ev::click, move |_| selected.set(String::new())),
                         move || {
-                            list(classes.value.get())
+                            list(classes.current())
                                 .into_iter()
                                 .map(|c| {
                                     let title = text(&c, "classify");

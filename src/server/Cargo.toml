@@ -1,9 +1,9 @@
 [package]
 autotests = false
 name = "blog"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
-rust-version = "1.99"
+rust-version.workspace = true
 publish = false
 build = "build.rs"
 description = "博客 HTTP 服务、内容业务与管理员 API"

@@ -28,7 +28,6 @@ full = [
     "adapter-tracing",
 ]
 http1 = [
-    "dep:atomic-waker",
     "dep:futures",
     "futures/std",
     "dep:httparse",
@@ -36,7 +35,6 @@ http1 = [
 ]
 nightly = []
 server = [
-    "dep:httpdate",
     "dep:pin-project-lite",
     "dep:smallvec",
 ]
@@ -194,11 +192,6 @@ check-cfg = [
     "cfg(hyper_unstable_tracing)",
 ]
 
-[dependencies.atomic-waker]
-optional = true
-path = "../../runtime/task-waker"
-package = "blog-runtime-task-waker"
-
 [dependencies.bytes]
 path = "../../encoding/byte-buffer"
 package = "blog-encoding-byte-buffer"
@@ -215,11 +208,6 @@ package = "blog-network-body-stream"
 optional = true
 path = "../http-parser"
 package = "blog-network-http-parser"
-
-[dependencies.httpdate]
-optional = true
-path = "../http-date"
-package = "blog-network-http-date"
 
 [dependencies.itoa]
 optional = true

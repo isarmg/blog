@@ -89,7 +89,7 @@ assert.match(read(entryPath), /blog_browser_bg\.wasm\?url/);
 assert.match(read(entryPath), /startApplication/);
 assert.match(read(entryPath), /["']\.\.\/runtime\/startup\.js["']/);
 assert.match(read(entryPath), /["']\.\.\/runtime\/startup\.css["']/);
-assert.match(read('runtime/startup.js'), /export function startApplication/);
+assert.match(read('runtime/startup.js'), /^export async function startApplication\(/m);
 assert.equal(existsSync(new URL('xcss-web', web)), false);
 assert.equal(existsSync(new URL('vendor/xcss', web)), false);
 for (const file of readdirSync(tests).filter(file => file.endsWith('.mjs'))) {

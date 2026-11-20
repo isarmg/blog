@@ -9792,6 +9792,52 @@
     },
     {
       "changes": [
+        "Import checksum-verified libsqlite3-sys 0.39.1 with upstream SQLite 3.54.1 for RUSTSEC-2026-0459.",
+        "Integrate the exact bundled SQLite amalgamation and its Rust bindings with the existing repository-owned GNU compiler runner and native compile options."
+      ],
+      "directory": "src/foundation/libsqlite3-sys-0.39.1",
+      "id": "libsqlite3-sys@0.39.1",
+      "license": "MIT",
+      "license_materials": [
+        "compliance/licenses/upstream/libsqlite3-sys-0.39.1/LICENSE"
+      ],
+      "name": "libsqlite3-sys",
+      "original_files_sha256": {
+        ".cargo_vcs_info.json": "f410bda919d68f688b35fb4fe324b8a506dfcfebcc4b5b6a31a1885d806485b7",
+        ".gitignore": "d89b7a44f37a816f5b0ca8297e0d17067ca5f41e45d1455b0a56d072679a00a6",
+        "Cargo.lock": "2d92ba6eb01ec3fd049051d66dbe040062139e380b475ccb7d5ee62e89c2e5b2",
+        "Cargo.toml": "3fb7e11b7b71251e7e360511000befe692e5aee8d31415d477774f060577bb15",
+        "Cargo.toml.orig": "be5ec76809a60444ceccf8fc823d2c0a660f549f270f664ba0a8256b574bedcb",
+        "LICENSE": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f",
+        "README.md": "37bc68dfc68170cb60f5dad7cfa64a6bc74893947e9d466575ca2c4c00ad6061",
+        "Upgrade.md": "d151a67d4bbb1a5a300d084d210d6cd238d833a6d4bd5d958ae7469a9deccb36",
+        "bindgen-bindings/bindgen_3.45.3.rs": "2633a8b90cded7bc2c8464fc423891a6dda7f68a72fcf433b3a5408aaa8f37ce",
+        "bindgen-bindings/bindgen_3.45.3_ext.rs": "35d3d3f2388bfeb6d950242f0efa217541d2eb0d686195f41eb9ce9cef86f99d",
+        "build.rs": "769b31370a41aa722e1d5a530012432c985bb142eab34d095481ffd1a3436e1b",
+        "sqlcipher/bindgen_bundled_version.rs": "4ce4a6519255f9d1c22c9f894b7f0452f1ae11d54dc9bf3205265ec9142f1da3",
+        "sqlite3/bindgen_bundled_version.rs": "a25057a06d8cb5053a61c8f0ff746cc3d81b3bd778fbd3199ba12c8a6ee2945d",
+        "sqlite3/bindgen_bundled_version_ext.rs": "b4757194d9f463c9c9168d38f943eedfd2a06d7c402374a75062e6fda8d4ff2c",
+        "sqlite3/sqlite3.c": "0c657666d819f261cc4007526ad57e1669de9949df7a8ea847aa284a2bf0ee52",
+        "sqlite3/sqlite3.h": "d6c84557261893439b341d2e6c35187ae3ea24fbfd843ad94616f72d89242b8c",
+        "sqlite3/sqlite3ext.h": "48963abfefb41ac329ef9d706acb5eadba952a99a748285c9ded6b5e0942721b",
+        "sqlite3/wasm32-wasi-vfs.c": "b95842044da2b8777876b7d3fef8c9711e8c201fb4a4255dbac98729a456bb5d",
+        "src/error.rs": "eea43c9e7e05a58002a406ce1bf518299284798a64158a2114516c2fcc7df524",
+        "src/lib.rs": "f61d8e306e11357479e20999f7b7adc5f3dbaea40cd17361853574001cf79360",
+        "wrapper.h": "b78f576f7eeabf316e183d476b0f16344b6897680b4df47628d3ce38c0aa979a",
+        "wrapper_ext.h": "fa7a53fea99318ee29d75e6d5fab4d7ed26e9599803268e6a24396265f2a6f3a"
+      },
+      "repository": "https://github.com/rusqlite/rusqlite",
+      "upstream": {
+        "archive": "compliance/provenance/archives/libsqlite3-sys-0.39.1.crate",
+        "archive_sha256": "14a5f01b87b92705d07b433c06f96cbc764637d81a0bffb5734ce17cf0f9a2b3",
+        "archive_url": "https://static.crates.io/crates/libsqlite3-sys/libsqlite3-sys-0.39.1.crate",
+        "name": "libsqlite3-sys",
+        "version": "0.39.1"
+      },
+      "version": "0.39.1"
+    },
+    {
+      "changes": [
         "Use repository-local path dependencies for the supported Linux amd64 / browser WASM closure.",
         "Remove independent workspace/lockfiles and upstream development scaffolding; centralize legal material and top-level upstream documentation.",
         "Trim dependency declarations and feature branches outside the recorded product/build/test graphs; preserve original source archive for review."
@@ -14085,6 +14131,79 @@
         "version": "0.13.4"
       },
       "version": "0.13.4"
+    },
+    {
+      "changes": [
+        "Import pulldown-cmark 0.13.6, verified against the crates.io index checksum, to resolve RUSTSEC-2026-0414 and RUSTSEC-2026-0433.",
+        "Integrate the 0.13.6 production parser with repository-local dependencies, the relocated test harness, and existing HTML escaping and link detection."
+      ],
+      "directory": "src/foundation/pulldown-cmark-0.13.6",
+      "id": "pulldown-cmark@0.13.6",
+      "license": "MIT",
+      "license_materials": [
+        "compliance/licenses/upstream/pulldown-cmark-0.13.6/LICENSE"
+      ],
+      "name": "pulldown-cmark",
+      "original_files_sha256": {
+        ".cargo_vcs_info.json": "d2e36e5c39fc291838236cee467604dda5ce531107aef2c272e2458deddbf901",
+        "Cargo.lock": "eb90c8c97b8c798969ee86964edc02a212619a9130a6319824c668a9f6ed5076",
+        "Cargo.toml": "53881f2c8634c803c715a6498d7745642abac1ba2541cd8da4dfe5b0ed9b68dd",
+        "Cargo.toml.orig": "06f952d7ff42d652b3bad96adaeef57813b85795126e1aaf16657ca087d24aec",
+        "LICENSE": "c4f10f55904bdb9f27d3fbf94c354926d6cfe8b982276e556238c258941b243b",
+        "README.md": "83c86a8d5c92c4d033667da29bc16288cdf6ba855cb8368f296bd35d49eb163d",
+        "build.rs": "5e262c501fbe1e771a1234c634cfb4dc503d0a4993f3def56470c661a0ffcbec",
+        "examples/broken-link-callbacks.rs": "f98d7092004a338a0f86879b3e30270be28b19d2c1bd250380610f84b84eef4a",
+        "examples/event-filter.rs": "2e297d9a6117969cb5f690375122d2306a697bf09aee108ddaecb213f29c8c62",
+        "examples/events.rs": "6dcdfda734581a220806aafa58f4aab6de225dfa665f5861e575c05c1f69e9e1",
+        "examples/footnote-rewrite.rs": "789772c69ebcc60c879c6a1c71b7d4e9980bc1499467dd734dee566906da92e1",
+        "examples/normalize-wikilink.rs": "6c6ac7842db9c69ad70ca66a154110845f4f00757a5bfcb9c4b3a0c8bc7b3abc",
+        "examples/parser-map-event-print.rs": "b35fab7747364e0357f6793c7cab30181d5b6cfd1ee95cd247f688c4fe550e8e",
+        "examples/parser-map-tag-print.rs": "cdaa3b0d578f754207e229c2614f4ace95c995d172ca91cde67c9c7a67830fcc",
+        "examples/string-to-string.rs": "33cfc2ccee93637db64a18135fedb5bbf2950dcb8c72bed50eed067ec3758f57",
+        "src/entities.rs": "1602f3c4d22c0b0e3a4a08467a50bf9d0c27aadf2e5661b15a2cda20da0895a9",
+        "src/firstpass.rs": "a342dd2e30b8683f2096ebcc1a8a0a487a0b8db2d02a3e4f9a2ee97cdfe232b6",
+        "src/html.rs": "853b3b211276555ffc66fd583a3e071f61ee8fad0f2864c428947b7bd36a2fa3",
+        "src/lib.rs": "f916b7bf0c3035776d6d5f8f62c4619855b291ba245b0ee1f46f980c59ce3919",
+        "src/linklabel.rs": "6793cd0a2b1df6423d7cc8587b74a8e86261d5f7be9a8869cb69eda140b03501",
+        "src/main.rs": "570babf9ab7dc14d7e687f46a0baa089214a864b7615a16ff379dc88bb693561",
+        "src/parse.rs": "a97c96cb69e416c87c9652cf85b8714b734fd10347b36370719f7cdd73c23983",
+        "src/puncttable.rs": "b591c2b353ba60b88661597f853b4986df87bee6b53045ab94ae562848457be4",
+        "src/scanners.rs": "2cdcb3cc76bc3d6947eec066eefe4582b660dd52da71d048f6dc515665291840",
+        "src/strings.rs": "3204335caa3eb6be8b86ec5a21f7ff25b2ab34a364facb86b451e178b4992684",
+        "src/tree.rs": "d40c3406404ab9a179aba35d37f248a88b43e9c93060d462a4f83bef8d714418",
+        "src/utils.rs": "bbe32779232463ae8a82badab6b7fe201df59bd01b4db9f272a5840423973af9",
+        "tests/errors.rs": "2f8166be75a794d2c04362b4ed3209ba2f625e81cefd1ec41739010dd4dbf7b8",
+        "tests/html.rs": "d4dc41b10880449d2c241223171e5c5f9f0e56141ef16c71b6d1c08e538e564f",
+        "tests/lib.rs": "cda30bf004c046f954554a84773c5db32c18864fe4251e28a862d5ff8d0fb0ae",
+        "tests/serde.rs": "bc38923455eb8f4dcdf4883d2d8d1331628466d903c9cc78345d09ae00e4d2a0",
+        "tests/suite/blockquotes_tags.rs": "42570b46d88b31dde283db75e2260bab5991ffad6907555a9bf757d9cb29608d",
+        "tests/suite/definition_lists.rs": "d38ddc9fda185c9e663731991ec5e7bc8ae58ec0c069ac9cf4670a6e9a4d258f",
+        "tests/suite/footnotes.rs": "683362451afb1d1de4b713035c5060a211122e614ca0985c6e6c4452e9b5bf7c",
+        "tests/suite/gfm_strikethrough.rs": "ecb96ba25c00291c561cad8a4216a0ddfc1c8d1b5afbb3a04b71af29888780ca",
+        "tests/suite/gfm_table.rs": "007c5351157233e9b8e2311cf1cb73ce7ccad848f82779369cfac8d8e2a02888",
+        "tests/suite/gfm_tasklist.rs": "0109e285c7be5b8d690af7cfb5edf4e8516721ca8113f2568bed0737acc981a0",
+        "tests/suite/heading_attrs.rs": "39b82471c76b7c4cd948b1c15a724ad357e9da62f6404edff7f7284366229773",
+        "tests/suite/math.rs": "ccc6a2727640403010e231c788b0f7095295b2c517e87520ab4a5be5e8f54f67",
+        "tests/suite/metadata_blocks.rs": "22cc8104e7c7e511af9434b2f92c1fc1688ab4fc2c96f21823abe3d74e76a36c",
+        "tests/suite/mod.rs": "19e53648f8b9ba9558914d39d50188ad1243659c0984cd634b9ee732b9fe39b5",
+        "tests/suite/old_footnotes.rs": "f31e09da6a0bee50239d6fdfc1b08835bf074ecdd7303ee2597b1e5107eb3075",
+        "tests/suite/regression.rs": "fa0b2076e658eee072418896f1482df7e98b3db597bc531e4070f6a68917af78",
+        "tests/suite/smart_punct.rs": "06fa804a3e728d7f01826158a017e9db1e97897abebd6f9818ee2e76e0c256f0",
+        "tests/suite/spec.rs": "5ae9fb1fd6f52a3bd1fd2126223057cb3590c45cbf3fc611355b40b315641362",
+        "tests/suite/strikethrough.rs": "cedced485eeb5d000b371b8761cc376597388a93fc65b5526d0a0549959687bc",
+        "tests/suite/super_sub.rs": "5c76071119559d9646637074cf7156d547a0a7e2f2769f49031714e498a5ebd2",
+        "tests/suite/table.rs": "8f15d50098cfbeaf41dd96936244b8f717b1c2825c234b8fe35006dce4001393",
+        "tests/suite/wikilinks.rs": "36c447a0e516d6c73491e3ecfd01be70af54f9bd92a32e9e92448d552264075a"
+      },
+      "repository": "https://github.com/raphlinus/pulldown-cmark",
+      "upstream": {
+        "archive": "compliance/provenance/archives/pulldown-cmark-0.13.6.crate",
+        "archive_sha256": "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b",
+        "archive_url": "https://static.crates.io/crates/pulldown-cmark/pulldown-cmark-0.13.6.crate",
+        "name": "pulldown-cmark",
+        "version": "0.13.6"
+      },
+      "version": "0.13.6"
     },
     {
       "changes": [

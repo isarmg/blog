@@ -2,7 +2,6 @@ pub mod catch_handler;
 pub mod export_sp_restore;
 pub mod externref;
 pub mod jspi;
-pub mod jspi_hooks;
 pub mod multi_value;
 pub mod threads;
 
@@ -98,10 +97,3 @@ pub(crate) fn unstart_start_function(module: &mut walrus::Module) -> bool {
     module.exports.add("__wbindgen_start", start);
     true
 }
-
-#[cfg(test)]
-include!("../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/mod/3083.rs");
-
-#[path = "../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/mod/tests.rs"]
-#[cfg(test)]
-mod tests;

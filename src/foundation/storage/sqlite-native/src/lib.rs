@@ -19,7 +19,7 @@ pub fn SQLITE_TRANSIENT() -> sqlite3_destructor_type {
 
 #[allow(dead_code, clippy::all)]
 mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindgen.rs"));
+    include!("../sqlite3/bindgen_bundled_version.rs");
 }
 pub use bindings::*;
 

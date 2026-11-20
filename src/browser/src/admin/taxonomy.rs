@@ -37,7 +37,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
         }
     }));
     let category_names = Memo::new(move |_| {
-        categories.value.with(|value| {
+        categories.with_current(|value| {
             let mut names = BTreeMap::new();
             if let Some(categories) = value {
                 for category in categories
@@ -202,15 +202,12 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                             if editing.get_untracked() == Some(id) {
                                                 reset.run(())
                                             }
-                                            for state in [data.value, data.previous] {
-                                                state.update(|value| {
-                                                    if let Some(rows) =
-                                                        value.as_mut().and_then(Value::as_array_mut)
-                                                    {
-                                                        rows.retain(|row| num(row, "id") != id);
-                                                    }
-                                                });
-                                            }
+                                            data.update_latest(|value| {
+                                                value
+                                                    .as_array_mut()
+                                                    .expect("invariant: taxonomy passed the list response contract")
+                                                    .retain(|row| num(row, "id") != id);
+                                            });
                                             data.reload();
                                             notify(if labels {
                                                 t("标签已删除", "Tag deleted")
@@ -311,7 +308,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                                                 t("选择分类", "Select a category"),
                                                             ))
                                                             .chain(
-                                                                list(categories.value.get())
+                                                                list(categories.current())
                                                                     .into_iter()
                                                                     .map(|c| {
                                                                         (
@@ -332,7 +329,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                                         }))
                                                         .required(true)
                                                         .disabled(Signal::derive(move || {
-                                                            categories.value.get().is_none()
+                                                            categories.with_current(|value| value.is_none())
                                                         }))
                                                         .build(),
                                                 ),
@@ -399,7 +396,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                             .class("inline-form blog-frame blog-frame--padded blog-flow blog-form-flow")
                             .on(blog_interface::ev::submit, submit),
                         move || {
-                            data.value.get().or_else(|| data.previous.get()).map(|v| {
+                            data.with_latest(|value| value.cloned()).map(|v| {
                                 View::new(
                                     blog_interface::html::div()
                                         .child(

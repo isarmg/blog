@@ -97,7 +97,7 @@
         let stack = Stack::<u64>::new();
         assert_len_cap_last!(stack, 0, 0, None);
         let vec = stack.into_vec();
-        assert_eq!(vec, vec![]);
+        assert!(vec.is_empty());
         assert_eq!(vec.capacity(), 0);
     }
 
@@ -115,7 +115,7 @@
         let stack = Stack::<u64>::new();
         assert_len_cap_last!(stack, 0, 0, None);
         let vec = Vec::from(stack);
-        assert_eq!(vec, vec![]);
+        assert!(vec.is_empty());
         assert_eq!(vec.capacity(), 0);
     }
 
@@ -308,14 +308,14 @@
 
             stack.pop();
             assert_eq!(drops(), &[30]);
-            assert_eq!(drops(), []);
+            assert!(drops().is_empty());
 
             stack.push(Droppy(31));
             stack.push(Droppy(40));
             stack.push(Droppy(50));
             assert_eq!(stack.len(), 5);
             assert_eq!(stack.capacity(), 8);
-            assert_eq!(drops(), []);
+            assert!(drops().is_empty());
         }
 
         assert_eq!(drops(), &[10, 20, 31, 40, 50]);

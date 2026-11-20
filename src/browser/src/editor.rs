@@ -1,6 +1,6 @@
 use crate::common::Action;
 use crate::common::*;
-use crate::models::{Article, ArticleDraft, Category, Label, News, Page};
+use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -140,15 +140,12 @@ fn pending_creation(receipt: RwSignal<Option<CreationReceipt>>) -> impl IntoView
 }
 
 #[component]
-pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
+pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
+    let id = id.map(ArticleId::get);
     let categories = load_typed::<Vec<Category>>(Signal::derive(|| "/api/v1/categories".into()));
     let labels = load_typed::<Vec<Label>>(Signal::derive(|| "/api/v1/content/labels".into()));
     let article = load_typed::<Article>(Signal::derive(move || {
-        if id > 0 {
-            format!("/api/v1/content/articles/{id}")
-        } else {
-            String::new()
-        }
+        id.map_or_else(String::new, |id| format!("/api/v1/content/articles/{id}"))
     }));
     let form = RwSignal::new(ArticleDraft::default());
     let category_id = Memo::new(move |_| form.with(|form| form.sort_id));
@@ -161,7 +158,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
             )
         })
     });
-    let ready = RwSignal::new(id == 0);
+    let ready = RwSignal::new(id.is_none());
     let preview = RwSignal::new(false);
     let preview_html = RwSignal::new(String::new());
     let preview_timer = StoredValue::new(blog_interface::thread_bound::SendWrapper::new(
@@ -200,9 +197,12 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
     let creation = creation_receipt(save);
     let created_id = RwSignal::new(None::<i64>);
     Effect::new(move |_| {
-        if let Some(v) = article.value.get() {
-            form.set(ArticleDraft::from(&v));
-            existing.set(v.password_required);
+        let draft = article.with_current(|article| {
+            article.map(|article| (ArticleDraft::from(article), article.password_required))
+        });
+        if let Some((draft, password_required)) = draft {
+            form.set(draft);
+            existing.set(password_required);
             ready.set(true);
         }
     });
@@ -212,8 +212,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
             return;
         }
         let name = file.name().replace(['[', ']'], "");
-        upload.upload(file, move |v| {
-            let path = text(&v, "path");
+        upload.upload(file, move |path| {
             form.update(|f| {
                 if cover {
                     f.article_cover = Some(path)
@@ -237,8 +236,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
                 )
             });
             let previous = form.with_untracked(|form| form.video_url.clone());
-            upload.upload_video(file, move |response| {
-                let path = text(&response, "path");
+            upload.upload_video(file, move |path| {
                 if let Some(insertion) = insertion {
                     let Some(block) = crate::markdown::video_block(&path) else {
                         upload.error.set(Some(invalid()));
@@ -296,8 +294,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
                                                         ))
                                                         .chain(
                                                             categories
-                                                                .value
-                                                                .get()
+                                                                .current()
                                                                 .unwrap_or_default()
                                                                 .into_iter()
                                                                 .map(|c| {
@@ -335,8 +332,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
                                                         ))
                                                         .chain(
                                                             labels
-                                                                .value
-                                                                .get()
+                                                                .current()
                                                                 .unwrap_or_default()
                                                                 .into_iter()
                                                                 .filter(|c| {
@@ -727,11 +723,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
                         save.error.set(Some(invalid()));
                         return;
                     };
-                    let target = if id > 0 {
-                        Some(id)
-                    } else {
-                        created_id.get_untracked()
-                    };
+                    let target = id.or_else(|| created_id.get_untracked());
                     let path = target
                         .map(|id| format!("/api/v1/content/articles/{id}"))
                         .unwrap_or("/api/v1/content/articles".into());
@@ -771,7 +763,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
                     );
                 }),
             move || {
-                (if id > 0 { Some(id) } else { created_id.get() }).map(|id| {
+                id.or_else(|| created_id.get()).map(|id| {
                     View::new(NewsEditor(
                         component_props_builder(&NewsEditor).id(id).build(),
                     ))
@@ -784,7 +776,7 @@ pub fn ArticleEditor(#[prop(default = 0)] id: i64) -> impl IntoView {
         .child(
             (
                     blog_interface::html::h1().class("blog-row")
-                    .child( move || if id > 0 || created_id.get().is_some() {
+                    .child( move || if id.is_some() || created_id.get().is_some() {
                     t("编辑文章", "Edit article") } else { t("新增文章",
                     "Add article") }),
                     blog_interface::html::p().class("blog-row")
@@ -1011,7 +1003,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
 )),)).class("blog-actions blog-flow"),))
                     .class("blog-fieldset blog-stack")
                     .disabled(move
-                    | | save.busy.get() || data.value.get().is_none()))
+                    | | save.busy.get() || data.current().is_none()))
                     .class("editor-form blog-frame blog-frame--padded blog-stack").on(blog_interface::ev::submit,
                     move |ev| {
                         ev.prevent_default();
@@ -1057,7 +1049,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move | | data.value.get().map(| v | View::new(
+                    move | | data.current().map(| v | View::new(
     blog_interface::html::div()
         .child(
 
@@ -1310,8 +1302,8 @@ pub fn Notes() -> impl IntoView {
                     filename.get())).disabled( Signal::derive(move | | upload.busy.get() || save.busy.get()))
                     .choose( Callback::new(move | file :
                     blog_interface::thread_bound::SendWrapper < web_sys::File > | { let name = file
-                    .name(); upload.upload(file, move | v | { form.update(| f |
-                    f["image_path"] = v["path"].clone()); filename.set(name);
+                    .name(); upload.upload(file, move | path | { form.update(| f |
+                    f["image_path"] = Value::String(path)); filename.set(name);
                     notify(t("图片已上传", "Image uploaded")); }); }))
                     .build()),
                     move | | safe_url(& text(& form.get(), "image_path"), true).map(|
@@ -1425,7 +1417,7 @@ pub fn Notes() -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move | | data.value.get().map(| v | View::new(
+                    move | | data.current_items().map(| items | View::new(
     blog_interface::html::div()
         .child(
 
@@ -1445,8 +1437,7 @@ pub fn Notes() -> impl IntoView {
         ),
 )).collect_view())),
                                 blog_interface::html::tbody()
-                                .child( rows(& v,
-                                "items").into_iter().map(render_row).collect_view())
+                                .child( items.into_iter().map(render_row).collect_view())
                             ,),
                     )
                     .class("blog-table")

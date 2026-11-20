@@ -21,12 +21,7 @@ use zerofrom::*;
 /// A struct containing "Hello World" in the requested language.
 #[derive(Debug, PartialEq, Clone, Yokeable, ZeroFrom)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
-#[cfg_attr(
-    any(feature = "deserialize_json", feature = "export"),
-    derive(serde::Serialize)
-)]
-#[cfg_attr(feature = "export", derive(databake::Bake))]
-#[cfg_attr(feature = "export", databake(path = icu_provider::hello_world))]
+#[cfg_attr(feature = "deserialize_json", derive(serde::Serialize))]
 pub struct HelloWorld<'data> {
     /// The translation of "Hello World".
     #[cfg_attr(feature = "serde", serde(borrow))]
@@ -49,12 +44,7 @@ impl<'a> ZeroFrom<'a, str> for HelloWorld<'a> {
     }
 }
 
-crate::data_struct!(
-    HelloWorld<'data>,
-    varule: str,
-    #[cfg(feature = "export")]
-    encode_as_varule: |v: &HelloWorld<'_>| &*v.message
-);
+crate::data_struct!(HelloWorld<'data>, varule: str);
 
 data_marker!(
     /// Marker type for [`HelloWorld`].
@@ -62,8 +52,6 @@ data_marker!(
     HelloWorldV1,
     HelloWorld<'static>,
     has_checksum = true,
-    #[cfg(feature = "export")]
-    attributes_domain = "hello",
 );
 
 /// A data provider returning Hello World strings in different languages.
@@ -278,9 +266,6 @@ impl IterableDataProvider<HelloWorldV1> for HelloWorldProvider {
             .collect())
     }
 }
-
-#[cfg(feature = "export")]
-icu_provider::export::make_exportable_provider!(HelloWorldProvider, [HelloWorldV1,]);
 
 define_preferences!(
     /// Hello World Preferences.

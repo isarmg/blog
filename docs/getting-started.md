@@ -6,7 +6,7 @@ blog 的服务端和构建工具运行于 AMD64 Linux GNU/glibc。浏览器界�
 
 | 用途 | 入口 |
 | --- | --- |
-| 安装生产站点 | 从 [GitHub Releases](https://github.com/isarmg/xocs/releases) 下载 Linux x86_64 安装包，按[部署说明](../deploy/linux-x86_64/README.md)安装 |
+| 安装生产站点 | 从 [GitHub Releases](https://github.com/isarmg/blog/releases) 下载 Linux x86_64 安装包，按[部署说明](../deploy/linux-x86_64/README.md)安装 |
 | 修改源码或本机试用 | 按[开发说明](development.md)准备工具链、构建和启动 |
 
 生产安装前，通过可信渠道核对 `SHA256SUMS`；安装器还会核验包内完整文件清单。为新站点选择一个独立的绝对路径作为 `ROOT`，将配置放在 `ROOT/config/config.json`。配置字段和目录要求见[配置参考](configuration.md)。

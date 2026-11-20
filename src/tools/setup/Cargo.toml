@@ -1,8 +1,8 @@
 [package]
 name = "blog-setup"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2024"
-rust-version = "1.99"
+rust-version.workspace = true
 publish = false
 description = "离线初始化、账户恢复与实例维护"
 build = "../assets/src/platform_contract.rs"

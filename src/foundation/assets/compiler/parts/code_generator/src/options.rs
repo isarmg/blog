@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::compiler_collections::code_buffer::{DEFAULT_INDENT_WIDTH, IndentChar};
 
 /// Codegen Options.
@@ -39,13 +37,6 @@ pub struct CodegenOptions {
     /// Default is [CommentOptions::default].
     pub comments: CommentOptions,
 
-    /// Enable sourcemap.
-    ///
-    /// The provided path sets the `source` field in the returned sourcemap.
-    ///
-    /// Default is `None` - no sourcemap is produced.
-    pub source_map_path: Option<PathBuf>,
-
     /// Indentation character.
     ///
     /// Default is [`IndentChar::Tab`].
@@ -69,7 +60,6 @@ impl Default for CodegenOptions {
             minify: false,
             ascii_only: false,
             comments: CommentOptions::default(),
-            source_map_path: None,
             indent_char: IndentChar::default(),
             indent_width: DEFAULT_INDENT_WIDTH,
             initial_indent: 0,
@@ -85,7 +75,6 @@ impl CodegenOptions {
             minify: true,
             ascii_only: false,
             comments: CommentOptions::disabled(),
-            source_map_path: None,
             indent_char: IndentChar::default(),
             indent_width: DEFAULT_INDENT_WIDTH,
             initial_indent: 0,

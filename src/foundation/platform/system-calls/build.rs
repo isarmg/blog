@@ -1,4 +1,4 @@
-//! The product uses Rust 1.99 and Linux amd64 raw syscalls.
+//! Configure the Linux AMD64 raw syscall backend.
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     assert_eq!(

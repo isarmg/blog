@@ -36,6 +36,6 @@
 
         v.clear();
         assert_eq!(v.len(), 0);
-        assert_eq!(v.as_slice(), &[]);
+        assert!(v.as_slice().is_empty());
         assert_eq!(v, IndexVec::<TestIdx, u32>::new());
     }

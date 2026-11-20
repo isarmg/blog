@@ -1,7 +1,6 @@
 use crate::optimizer::TraverseCtx;
 use crate::syntax_arena::TakeIn;
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     constant_evaluation::{ConstantEvaluation, ConstantValue, DetermineValueType},
     side_effects::MayHaveSideEffects,
@@ -325,9 +324,7 @@ impl<'a> PeepholeOptimizations {
         }
 
         // Try using the "??" or "?." operators
-        if (ctx.supports_feature(ESFeature::ES2020NullishCoalescingOperator)
-            || ctx.supports_feature(ESFeature::ES2020OptionalChaining))
-            && let Expression::BinaryExpression(test_binary) = &mut expr.test
+        if let Expression::BinaryExpression(test_binary) = &mut expr.test
             && let Some(is_negate) = match test_binary.operator {
                 BinaryOperator::Inequality => Some(true),
                 BinaryOperator::Equality => Some(false),
@@ -355,45 +352,41 @@ impl<'a> PeepholeOptimizations {
                 None
             };
             if let Some((target_id_name, value_expr)) = value_expr_with_id_name {
-                if ctx.supports_feature(ESFeature::ES2020NullishCoalescingOperator) {
-                    // `a == null ? b : a` -> `a ?? b`
-                    // `a != null ? a : b` -> `a ?? b`
-                    // `(a = foo) == null ? b : a` -> `(a = foo) ?? b`
-                    // `(a = foo) != null ? a : b` -> `(a = foo) ?? b`
-                    let maybe_same_id_expr =
-                        if is_negate { &mut expr.consequent } else { &mut expr.alternate };
-                    if maybe_same_id_expr.is_specific_id(&target_id_name) {
-                        return Some(Expression::new_logical_expression(
-                            expr.span,
-                            value_expr.take_in(ctx),
-                            LogicalOperator::Coalesce,
-                            if is_negate {
-                                expr.alternate.take_in(ctx)
-                            } else {
-                                expr.consequent.take_in(ctx)
-                            },
-                            ctx,
-                        ));
-                    }
+                // `a == null ? b : a` -> `a ?? b`
+                // `a != null ? a : b` -> `a ?? b`
+                // `(a = foo) == null ? b : a` -> `(a = foo) ?? b`
+                // `(a = foo) != null ? a : b` -> `(a = foo) ?? b`
+                let maybe_same_id_expr =
+                    if is_negate { &mut expr.consequent } else { &mut expr.alternate };
+                if maybe_same_id_expr.is_specific_id(&target_id_name) {
+                    return Some(Expression::new_logical_expression(
+                        expr.span,
+                        value_expr.take_in(ctx),
+                        LogicalOperator::Coalesce,
+                        if is_negate {
+                            expr.alternate.take_in(ctx)
+                        } else {
+                            expr.consequent.take_in(ctx)
+                        },
+                        ctx,
+                    ));
                 }
-                if ctx.supports_feature(ESFeature::ES2020OptionalChaining) {
-                    // "a == null ? undefined : a.b.c[d](e)" => "a?.b.c[d](e)"
-                    // "a != null ? a.b.c[d](e) : undefined" => "a?.b.c[d](e)"
-                    // "(a = foo) == null ? undefined : a.b.c[d](e)" => "(a = foo)?.b.c[d](e)"
-                    // "(a = foo) != null ? a.b.c[d](e) : undefined" => "(a = foo)?.b.c[d](e)"
-                    let maybe_undefined_expr =
-                        if is_negate { &expr.alternate } else { &expr.consequent };
-                    if ctx.is_expression_undefined(maybe_undefined_expr) {
-                        let expr_to_inject_optional_chaining =
-                            if is_negate { &mut expr.consequent } else { &mut expr.alternate };
-                        if Self::inject_optional_chaining_if_matched(
-                            &target_id_name,
-                            value_expr,
-                            expr_to_inject_optional_chaining,
-                            ctx,
-                        ) {
-                            return Some(expr_to_inject_optional_chaining.take_in(ctx));
-                        }
+                // "a == null ? undefined : a.b.c[d](e)" => "a?.b.c[d](e)"
+                // "a != null ? a.b.c[d](e) : undefined" => "a?.b.c[d](e)"
+                // "(a = foo) == null ? undefined : a.b.c[d](e)" => "(a = foo)?.b.c[d](e)"
+                // "(a = foo) != null ? a.b.c[d](e) : undefined" => "(a = foo)?.b.c[d](e)"
+                let maybe_undefined_expr =
+                    if is_negate { &expr.alternate } else { &expr.consequent };
+                if ctx.is_expression_undefined(maybe_undefined_expr) {
+                    let expr_to_inject_optional_chaining =
+                        if is_negate { &mut expr.consequent } else { &mut expr.alternate };
+                    if Self::inject_optional_chaining_if_matched(
+                        &target_id_name,
+                        value_expr,
+                        expr_to_inject_optional_chaining,
+                        ctx,
+                    ) {
+                        return Some(expr_to_inject_optional_chaining.take_in(ctx));
                     }
                 }
             }

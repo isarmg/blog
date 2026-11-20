@@ -64,7 +64,8 @@ try {
       if (/^\/(?:legacy|live)\//.test(path)) removedRequests.push(path);
     });
     const state = { authenticated: true, site: structuredClone(site), adminSite: structuredClone(adminSite) };
-    let pendingVideo = null, holdVideo = false;
+    const pendingVideos = [];
+    let holdVideo = false;
     try {
       await mockApi(page, state);
       await page.route('**/api/v1/family', route => route.fulfill({ json: families }));
@@ -87,7 +88,7 @@ try {
       });
       await page.route('**/api/v1/content/upload-video', async route => {
         assert.deepEqual(route.request().postDataBuffer(), fixtureVideoBytes);
-        if (holdVideo) await new Promise(resolve => { pendingVideo = { route, resolve }; });
+        if (holdVideo) await new Promise(resolve => { pendingVideos.push({ route, resolve }); });
         else await route.fulfill({ json: videoUpload });
       });
 
@@ -155,18 +156,25 @@ try {
 
       holdVideo = true;
       await chooseFile(page, labels.toolbox_video, { name: 'cancelled.webm', mimeType: 'video/webm', buffer: fixtureVideoBytes });
-      await expect.poll(() => Boolean(pendingVideo)).toBe(true);
+      await expect.poll(() => pendingVideos.length).toBe(1);
       await expect(page.getByRole('button', { name: 'Save settings', exact: true })).toBeDisabled();
       await expect(page.getByRole('textbox', { name: labels.toolbox_video, exact: true })).toBeDisabled();
       await page.getByRole('button', { name: 'Cancel upload', exact: true }).click();
       await expect(page.getByRole('textbox', { name: labels.toolbox_video, exact: true })).toBeEnabled();
       await page.getByRole('textbox', { name: labels.toolbox_video, exact: true }).fill(videoPath);
-      const pending = pendingVideo; pendingVideo = null;
-      try { await pending.route.fulfill({ json: videoUpload }); } catch (error) {
+      // A late cancelled response must leave the active replacement upload alone.
+      await chooseFile(page, labels.toolbox_video, { name: 'replacement.webm', mimeType: 'video/webm', buffer: fixtureVideoBytes });
+      await expect.poll(() => pendingVideos.length).toBe(2);
+      const [cancelled, replacement] = pendingVideos;
+      try { await cancelled.route.fulfill({ json: videoUpload }); } catch (error) {
         assert.match(error.message, /closed|aborted|already|intercept|invalid/i);
-      } finally { pending.resolve(); }
+      } finally { cancelled.resolve(); }
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       await expect(page.getByRole('textbox', { name: labels.toolbox_video, exact: true })).toHaveValue(videoPath);
+      await expect(page.getByRole('button', { name: 'Save settings', exact: true })).toBeDisabled();
+      try { await replacement.route.fulfill({ json: videoUpload }); } finally { replacement.resolve(); }
+      await expect(page.getByRole('textbox', { name: labels.toolbox_video, exact: true })).toHaveValue(videoUpload.path);
+      await expect(page.getByRole('button', { name: 'Save settings', exact: true })).toBeEnabled();
 
       for (const key of siteMediaKeys) await page.getByRole('button', { name: `Clear ${labels[key]}`, exact: true }).click();
       await page.getByRole('button', { name: 'Save settings', exact: true }).click();
@@ -178,7 +186,7 @@ try {
       assert.deepEqual(removedRequests, []); assert.deepEqual(errors, []);
       console.log(`${engine.name()}: empty media, configured backgrounds/logo/avatar/video, upload/save/reload, cancellation and clearing passed`);
     } finally {
-      if (pendingVideo) { pendingVideo.resolve(); await pendingVideo.route.abort().catch(() => {}); }
+      for (const pending of pendingVideos) { pending.resolve(); await pending.route.abort().catch(() => {}); }
       await context.close(); await browser.close();
     }
   }

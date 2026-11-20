@@ -34,17 +34,9 @@ bench = false
 path = "../../diagnostics/error-context"
 package = "blog-diagnostics-error-context"
 
-[dependencies.gimli]
-path = "../debug-information"
-package = "blog-wasm-debug-information"
-
 [dependencies.id-arena]
 path = "../../memory/indexed-arena"
 package = "blog-memory-indexed-arena"
-
-[dependencies.leb128]
-path = "../../encoding/signed-variable-integer"
-package = "blog-encoding-signed-variable-integer"
 
 [dependencies.log]
 path = "../../diagnostics/event-facade"

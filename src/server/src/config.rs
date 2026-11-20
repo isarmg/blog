@@ -146,9 +146,7 @@ pub fn runtime_lock(
     settings: &Settings,
 ) -> Result<blog_application::state_file::InstanceLock, Error> {
     let state = blog_application::state_file::PrivateStateDirectory::open(&settings.data_dir)?;
-    let lock = state.try_instance_lock()?;
-    state.verify_identity()?;
-    Ok(lock)
+    Ok(state.try_instance_lock()?)
 }
 
 #[path = "../../../test/server/unit/config/tests.rs"]

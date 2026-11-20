@@ -66,15 +66,3 @@ trivial_casts = "warn"
 trivial_numeric_casts = "warn"
 unused_lifetimes = "warn"
 unused_qualifications = "warn"
-
-[target."cfg(all(target_arch = \"aarch64\", target_os = \"android\"))".dependencies]
-libc = { default-features = false, path = "../system-abi",package = "blog-platform-system-abi"}
-
-[target."cfg(all(target_arch = \"aarch64\", target_os = \"linux\"))".dependencies]
-libc = { default-features = false, path = "../system-abi",package = "blog-platform-system-abi"}
-
-[target."cfg(all(target_arch = \"aarch64\", target_vendor = \"apple\"))".dependencies]
-libc = { default-features = false, path = "../system-abi",package = "blog-platform-system-abi"}
-
-[target."cfg(all(target_arch = \"loongarch64\", target_os = \"linux\"))".dependencies]
-libc = { default-features = false, path = "../system-abi",package = "blog-platform-system-abi"}

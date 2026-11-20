@@ -13,10 +13,10 @@ fn test_extensions() {
     assert_eq!(extensions.get_mut(), Some(&mut 5i32));
 
     let dbg = format!("{extensions:?}");
+    let name = std::any::type_name::<MyType>();
     // map order is NOT deterministic
     assert!(
-        (dbg == "{http::extensions::test_extensions::MyType, i32}")
-            || (dbg == "{i32, http::extensions::test_extensions::MyType}"),
+        dbg == format!("{{{name}, i32}}") || dbg == format!("{{i32, {name}}}"),
         "{}",
         dbg
     );

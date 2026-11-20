@@ -1,5 +1,5 @@
 use super::{
-    PageResult,
+    PageQuery, PageResult,
     input::{IdempotencyKey, ShortContent},
 };
 use crate::{ApiResult, AppError, AppState, absent, invalid};
@@ -102,8 +102,11 @@ async fn list_articles(
     query: ArticleQuery,
     audience: ArticleAudience,
 ) -> Result<PageResult<ArticleSummary>, AppError> {
-    let page = query.page.unwrap_or(1).clamp(1, 100_000);
-    let size = query.size.unwrap_or(12).clamp(1, 100);
+    let pagination = PageQuery {
+        page: query.page,
+        size: query.size,
+    }
+    .bounds(12, 100);
     let search = query.search.as_deref().unwrap_or_default().trim();
     if search.encode_utf16().count() > 200 {
         return Err(invalid("搜索词过长"));
@@ -177,17 +180,12 @@ async fn list_articles(
         .bind(recommended)
         .bind(&phrase)
         .bind(query.label_id)
-        .bind(size)
-        .bind((page - 1) * size)
+        .bind(pagination.size)
+        .bind(pagination.offset())
         .fetch_all(&mut *transaction)
         .await?;
     transaction.commit().await?;
-    Ok(PageResult {
-        items,
-        total,
-        page,
-        size,
-    })
+    Ok(pagination.result(items, total))
 }
 
 fn article_page_sql(
@@ -300,13 +298,6 @@ pub(super) struct ArticleNews {
 }
 const ARTICLE_NEWS_SQL: &str = "SELECT w.id,w.content,w.create_time FROM wei_yan w";
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct ArticleNewsQuery {
-    page: Option<i64>,
-    size: Option<i64>,
-}
-
 pub(super) async fn article_news(
     State(state): State<AppState>,
     Path(id): Path<i64>,
@@ -329,10 +320,9 @@ pub(super) async fn article_news(
 pub(super) async fn admin_article_news(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-    Query(query): Query<ArticleNewsQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<ArticleNews>> {
-    let page = query.page.unwrap_or(1).clamp(1, 100_000);
-    let size = query.size.unwrap_or(20).clamp(1, 100);
+    let pagination = query.admin_bounds();
     let mut transaction = state.pool.begin().await?;
     article_author(&mut transaction, id).await?;
     let total: i64 =
@@ -341,14 +331,9 @@ pub(super) async fn admin_article_news(
             .fetch_one(&mut *transaction)
             .await?;
     let items = sqlx::query_as::<_, ArticleNews>(sqlx::AssertSqlSafe(format!("{ARTICLE_NEWS_SQL} WHERE w.type='news' AND w.source=? ORDER BY w.create_time DESC,w.id DESC LIMIT ? OFFSET ?")))
-        .bind(id).bind(size).bind((page - 1) * size).fetch_all(&mut *transaction).await?;
+        .bind(id).bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -465,27 +450,19 @@ async fn insert_article_news(
 ) -> Result<ArticleNews, AppError> {
     let content = input.content.as_str();
     let time = normalize_news_time(input.create_time)?;
-    use sha2::{Digest, Sha256};
     // Bind the key to its article and normalized original draft, including time.
-    let request_hash = Sha256::digest(
-        serde_json::to_vec(&(id, content, &time))
-            .expect("invariant: news strings and identifiers serialize to JSON"),
-    )
-    .to_vec();
+    let request = request_id.map(|key| key.bind_payload(&(id, content, &time)));
     let mut transaction = crate::content::begin_mutation(&state.pool, identity).await?;
     let author = article_author(&mut transaction, id).await?;
-    let previous: Option<(Vec<u8>, Option<i64>)> = if let Some(key) = &request_id {
-        sqlx::query_as(
+    let news_id = if let Some(request) = &request
+        && let Some((hash, news_id)) = sqlx::query_as::<_, (Vec<u8>, Option<i64>)>(
             "SELECT request_hash,news_id FROM article_news_submission WHERE request_id=?",
         )
-        .bind(key.as_str())
+        .bind(request.key.as_str())
         .fetch_optional(&mut *transaction)
         .await?
-    } else {
-        None
-    };
-    let news_id = if let Some((hash, news_id)) = previous {
-        if hash != request_hash {
+    {
+        if hash != request.hash {
             return Err(AppError::Public(
                 HttpStatus::Conflict,
                 "进展请求标识已用于不同内容",
@@ -498,9 +475,9 @@ async fn insert_article_news(
     } else {
         let news_id = sqlx::query("INSERT INTO wei_yan(user_id,content,type,source,is_public,create_time) VALUES(?,?,'news',?,1,COALESCE(?,CURRENT_TIMESTAMP))")
             .bind(author).bind(content).bind(id).bind(time).execute(&mut *transaction).await?.last_insert_rowid();
-        if let Some(key) = request_id {
+        if let Some(request) = request {
             sqlx::query("INSERT INTO article_news_submission(request_id,request_hash,news_id) VALUES(?,?,?)")
-                .bind(key.as_str()).bind(request_hash).bind(news_id).execute(&mut *transaction).await?;
+                .bind(request.key.as_str()).bind(request.hash.as_slice()).bind(news_id).execute(&mut *transaction).await?;
         }
         news_id
     };
@@ -725,12 +702,7 @@ pub(super) async fn create_article(
     if !input.view_status && input.password.is_none() {
         return Err(invalid("加密文章必须设置访问密码"));
     }
-    let request_id = IdempotencyKey::from_headers(&headers)?;
-    use sha2::{Digest, Sha256};
-    let request_hash = Sha256::digest(
-        serde_json::to_vec(&input).expect("invariant: article strings and flags serialize to JSON"),
-    )
-    .to_vec();
+    let request = IdempotencyKey::from_headers(&headers)?.map(|key| key.bind_payload(&input));
     let password = input
         .password
         .as_deref()
@@ -739,21 +711,24 @@ pub(super) async fn create_article(
         .map_err(AppError::InvalidPassword)?;
     let password = hash_article_password(&state, password).await?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    if let Some(key) = &request_id {
-        let receipt: Option<(Vec<u8>, i64, i64)> = sqlx::query_as("SELECT s.request_hash,s.article_id,a.deleted FROM article_submission s JOIN article a ON a.id=s.article_id WHERE s.request_id=?")
-            .bind(key.as_str()).fetch_optional(&mut *transaction).await?;
-        if let Some((hash, id, deleted)) = receipt {
-            if hash != request_hash || deleted != 0 {
-                return Err(AppError::Public(
-                    HttpStatus::Conflict,
-                    "文章请求已使用或文章已删除",
-                ));
-            }
-            let article =
-                load_article(&mut *transaction, id, ArticleAudience::Administrator).await?;
-            transaction.commit().await?;
-            return Ok(Json(article));
+    if let Some(request) = &request
+        && let Some((hash, id, deleted)) = sqlx::query_as::<_, (Vec<u8>, i64, i64)>(
+            "SELECT s.request_hash,s.article_id,a.deleted FROM article_submission s
+             JOIN article a ON a.id=s.article_id WHERE s.request_id=?",
+        )
+        .bind(request.key.as_str())
+        .fetch_optional(&mut *transaction)
+        .await?
+    {
+        if hash != request.hash || deleted != 0 {
+            return Err(AppError::Public(
+                HttpStatus::Conflict,
+                "文章请求已使用或文章已删除",
+            ));
         }
+        let article = load_article(&mut *transaction, id, ArticleAudience::Administrator).await?;
+        transaction.commit().await?;
+        return Ok(Json(article));
     }
     let author = crate::site_author_id(&mut *transaction).await?;
     validate_article_taxonomy(&mut transaction, &input).await?;
@@ -762,12 +737,12 @@ pub(super) async fn create_article(
         .bind(input.sort_id).bind(input.label_id).bind(input.article_cover).bind(input.article_title).bind(input.article_content).bind(input.video_url)
         .bind(i64::from(input.view_status)).bind(i64::from(input.recommend_status)).bind(i64::from(input.comment_status)).bind(password).bind(input.tips)
         .execute(&mut *transaction).await?.last_insert_rowid();
-    if let Some(key) = request_id {
+    if let Some(request) = request {
         sqlx::query(
             "INSERT INTO article_submission(request_id,request_hash,article_id) VALUES(?,?,?)",
         )
-        .bind(key.as_str())
-        .bind(request_hash)
+        .bind(request.key.as_str())
+        .bind(request.hash.as_slice())
         .bind(id)
         .execute(&mut *transaction)
         .await?;

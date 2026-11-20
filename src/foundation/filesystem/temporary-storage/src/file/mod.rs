@@ -12,6 +12,7 @@ use crate::env;
 use crate::error::IoResultExt;
 use crate::Builder;
 
+#[path = "linux.rs"]
 mod imp;
 
 /// Create a new temporary file. Also see [`tempfile_in`].

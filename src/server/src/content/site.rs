@@ -6,7 +6,11 @@ use crate::{ApiResult, AppError, AppState, invalid};
 use axum::{Json, extract::State};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, sqlx::FromRow)]
+const READ_SITE: &str =
+    "SELECT web_name,web_title,notices,background_image,avatar,random_cover,media
+                         FROM web_info ORDER BY id LIMIT 1";
+
+#[derive(Default, Serialize, sqlx::FromRow)]
 pub(super) struct SiteInfo {
     web_name: Option<String>,
     web_title: Option<String>,
@@ -17,20 +21,22 @@ pub(super) struct SiteInfo {
     media: sqlx::types::Json<media::SiteMedia>,
 }
 pub(super) async fn site_info(State(state): State<AppState>) -> ApiResult<SiteInfo> {
-    Ok(Json(sqlx::query_as::<_,SiteInfo>("SELECT web_name,web_title,notices,background_image,avatar,random_cover,media FROM web_info ORDER BY id LIMIT 1")
-        .fetch_optional(&state.pool).await?.unwrap_or(SiteInfo {web_name:Some("blog".into()),web_title:Some("相信记录的力量".into()),notices:None,background_image:None,avatar:None,random_cover:None,media:Default::default()})))
+    let site = sqlx::query_as(READ_SITE)
+        .fetch_optional(&state.pool)
+        .await?
+        .unwrap_or_else(|| SiteInfo {
+            web_name: Some("blog".into()),
+            web_title: Some("相信记录的力量".into()),
+            ..SiteInfo::default()
+        });
+    Ok(Json(site))
 }
 
-#[derive(Serialize, sqlx::FromRow)]
+#[derive(Serialize)]
 pub(super) struct AdminSite {
     author_name: String,
-    web_name: Option<String>,
-    web_title: Option<String>,
-    notices: Option<String>,
-    background_image: Option<String>,
-    avatar: Option<String>,
-    random_cover: Option<String>,
-    media: sqlx::types::Json<media::SiteMedia>,
+    #[serde(flatten)]
+    site: SiteInfo,
 }
 pub(super) async fn admin_site(State(state): State<AppState>) -> ApiResult<AdminSite> {
     let mut transaction = state.pool.begin().await?;
@@ -48,9 +54,11 @@ async fn load_admin_site(
     connection: &mut sqlx::SqliteConnection,
     author_name: String,
 ) -> Result<AdminSite, AppError> {
-    Ok(sqlx::query_as::<_,AdminSite>("SELECT ? AS author_name,web_name,web_title,notices,background_image,avatar,random_cover,media FROM web_info ORDER BY id LIMIT 1")
-        .bind(&author_name)
-        .fetch_optional(connection).await?.unwrap_or(AdminSite{author_name,web_name:None,web_title:None,notices:None,background_image:None,avatar:None,random_cover:None,media:Default::default()}))
+    let site = sqlx::query_as(READ_SITE)
+        .fetch_optional(connection)
+        .await?
+        .unwrap_or_default();
+    Ok(AdminSite { author_name, site })
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

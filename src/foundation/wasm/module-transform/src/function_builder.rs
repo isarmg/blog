@@ -69,8 +69,8 @@ impl FunctionBuilder {
     /// # Example
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// let mut block = builder.dangling_instr_seq(None);
     /// let id = block.id();
@@ -108,10 +108,10 @@ impl FunctionBuilder {
     /// # Example
     ///
     /// ```
-    /// use walrus::ir::*;
+    /// use blog_wasm_module_transform::ir::*;
     ///
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// // Create an empty, dangling instruction sequemce.
     /// let mut seq = builder.dangling_instr_seq(None);
@@ -139,8 +139,8 @@ impl FunctionBuilder {
     /// # Example
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// builder
     ///     .func_body()
@@ -237,8 +237,8 @@ impl InstrSeqBuilder<'_> {
     /// # Example:
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// // Append the following WAT to the function:
     /// //
@@ -270,8 +270,8 @@ impl InstrSeqBuilder<'_> {
     /// # Example:
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// // Make the function's body be a single `unreachable` instruction.
     /// builder
@@ -309,8 +309,8 @@ impl InstrSeqBuilder<'_> {
     /// # Example
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// // Append the following WAT to the function:
     /// //
@@ -343,8 +343,8 @@ impl InstrSeqBuilder<'_> {
     /// # Example
     ///
     /// ```
-    /// let mut module = walrus::Module::default();
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut module = blog_wasm_module_transform::Module::default();
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// // Make the function's body be a single `unreachable` instruction.
     /// builder
@@ -383,14 +383,14 @@ impl InstrSeqBuilder<'_> {
     /// # Example
     ///
     /// ```
-    /// use walrus::ValType;
+    /// use blog_wasm_module_transform::ValType;
     ///
-    /// let mut module = walrus::Module::default();
+    /// let mut module = blog_wasm_module_transform::Module::default();
     ///
     /// let ty = module.types.add(&[], &[ValType::I32]);
     /// let (flip_coin, _) = module.add_import_func("flip", "coin", ty);
     ///
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     /// builder
     ///     .func_body()
     ///     // (if (call $flip_coin)
@@ -439,14 +439,14 @@ impl InstrSeqBuilder<'_> {
     /// # Example
     ///
     /// ```
-    /// use walrus::ValType;
+    /// use blog_wasm_module_transform::ValType;
     ///
-    /// let mut module = walrus::Module::default();
+    /// let mut module = blog_wasm_module_transform::Module::default();
     ///
     /// let ty = module.types.add(&[], &[ValType::I32]);
     /// let (flip_coin, _) = module.add_import_func("flip", "coin", ty);
     ///
-    /// let mut builder = walrus::FunctionBuilder::new(&mut module.types, &[], &[]);
+    /// let mut builder = blog_wasm_module_transform::FunctionBuilder::new(&mut module.types, &[], &[]);
     ///
     /// builder
     ///     .func_body()

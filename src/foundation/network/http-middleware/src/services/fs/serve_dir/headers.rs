@@ -1,5 +1,5 @@
+use http::header::date::{parse_http_date, HttpDate};
 use http::header::HeaderValue;
-use httpdate::HttpDate;
 use std::time::SystemTime;
 
 pub(super) struct LastModified(pub(super) HttpDate);
@@ -22,7 +22,7 @@ impl IfModifiedSince {
     pub(super) fn from_header_value(value: &HeaderValue) -> Option<IfModifiedSince> {
         std::str::from_utf8(value.as_bytes())
             .ok()
-            .and_then(|value| httpdate::parse_http_date(value).ok())
+            .and_then(|value| parse_http_date(value).ok())
             .map(|time| IfModifiedSince(time.into()))
     }
 }
@@ -39,7 +39,7 @@ impl IfUnmodifiedSince {
     pub(super) fn from_header_value(value: &HeaderValue) -> Option<IfUnmodifiedSince> {
         std::str::from_utf8(value.as_bytes())
             .ok()
-            .and_then(|value| httpdate::parse_http_date(value).ok())
+            .and_then(|value| parse_http_date(value).ok())
             .map(|time| IfUnmodifiedSince(time.into()))
     }
 }

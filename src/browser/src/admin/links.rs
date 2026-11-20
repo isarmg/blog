@@ -1,5 +1,5 @@
 use crate::common::{
-    Action, Check, Feedback, Field, ListState, Pager, enc, flag, load, num, rows, t, text,
+    Action, Check, Feedback, Field, ListState, Pager, enc, flag, load, num, t, text,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
@@ -427,7 +427,7 @@ pub(super) fn Links() -> impl IntoView {
                                         );
                                     }),
                                 move || {
-                                    data.value.get().map(|v| {
+                                    data.current_items().map(|items| {
                                         View::new(
                                             blog_interface::html::div()
                                                 .child(
@@ -448,7 +448,7 @@ pub(super) fn Links() -> impl IntoView {
                                                                 )),
                                                             ),
                                                             blog_interface::html::tbody().child(
-                                                                rows(&v, "items")
+                                                                items
                                                                     .into_iter()
                                                                     .map(render_row)
                                                                     .collect_view(),

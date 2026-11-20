@@ -1,13 +1,16 @@
 use super::*;
-use futures::poll;
-use std::task::Poll;
+use std::{future::poll_fn, task::Poll};
 
 #[tokio::test]
 async fn admitted_request_can_register_commit_before_drain_closes_registration() {
     let scope = WorkScope::new();
     let request = scope.enter_request().await.unwrap();
     let mut drain = Box::pin(scope.drain_requests());
-    assert!(matches!(poll!(&mut drain), Poll::Pending));
+    assert!(
+        poll_fn(|cx| Poll::Ready(drain.as_mut().poll(cx)))
+            .await
+            .is_pending()
+    );
     assert!(scope.enter_request().await.is_none());
     let (finish, pending) = tokio::sync::oneshot::channel::<()>();
     scope.commit_tasks.spawn(async {
@@ -16,7 +19,11 @@ async fn admitted_request_can_register_commit_before_drain_closes_registration()
     drop(request);
     drain.await;
     let mut commits = Box::pin(scope.drain_commits());
-    assert!(matches!(poll!(&mut commits), Poll::Pending));
+    assert!(
+        poll_fn(|cx| Poll::Ready(commits.as_mut().poll(cx)))
+            .await
+            .is_pending()
+    );
     assert!(scope.commit_tasks.try_spawn(async {}).is_err());
     assert!(scope.work_tasks.try_spawn(async {}).is_err());
     finish.send(()).unwrap();

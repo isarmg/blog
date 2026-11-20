@@ -150,8 +150,6 @@ impl<'i> ToCss for ViewTransitionRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@view-transition")?;
     dest.whitespace()?;
     dest.write_char('{')?;

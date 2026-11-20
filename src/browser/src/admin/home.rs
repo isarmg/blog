@@ -1,9 +1,8 @@
-use crate::common::{Action, Data, Feedback, list, load, load_typed, num, t, text, tr};
-use crate::models::{HomeSection, HomeSource};
+use crate::common::{Action, Data, Feedback, load_typed, t, tr};
+use crate::models::{Category, HomeSection, HomeSource};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
-use serde::Deserialize;
 use serde_json::json;
 
 #[derive(Clone)]
@@ -19,12 +18,16 @@ struct SectionForm {
     enabled: bool,
 }
 
-#[derive(Clone, Copy, Deserialize)]
-#[serde(tag = "kind", rename_all = "lowercase")]
+#[derive(Clone, Copy)]
 enum SectionSource {
     Latest,
     Recommended,
     Category { sort_id: Option<i64> },
+}
+
+fn first_category(categories: Data<Vec<Category>>) -> Option<i64> {
+    categories
+        .with_current_untracked(|value| value.and_then(|items| items.first()).map(|item| item.id))
 }
 
 impl SectionSource {
@@ -60,14 +63,14 @@ impl From<HomeSection> for SectionRow {
 pub(super) fn HomeSections() -> impl IntoView {
     let data =
         load_typed::<Vec<HomeSection>>(Signal::derive(|| "/api/v1/content/home-sections".into()));
-    let categories = load(Signal::derive(|| "/api/v1/categories".into()));
+    let categories = load_typed::<Vec<Category>>(Signal::derive(|| "/api/v1/categories".into()));
     let sections = RwSignal::new(Vec::<SectionRow>::new());
     let loaded = RwSignal::new(false);
     let next_id = RwSignal::new(-1i64);
     let save = Action::new();
     let validation = RwSignal::new(String::new());
     Effect::new(move |_| {
-        if let Some(v) = data.value.get()
+        if let Some(v) = data.current()
             && !loaded.get_untracked()
         {
             sections.set(v.into_iter().map(SectionRow::from).collect());
@@ -194,8 +197,7 @@ pub(super) fn HomeSections() -> impl IntoView {
                                                 form: ArcRwSignal::new(SectionForm {
                                                     title: t("新栏目", "New section"),
                                                     source: SectionSource::Category {
-                                                        sort_id: list(categories.value.get_untracked())
-                                                            .first().map(|category| num(category, "id")),
+                                                        sort_id: first_category(categories),
                                                     },
                                                     enabled: true,
                                                 }),
@@ -260,7 +262,7 @@ pub(super) fn HomeSections() -> impl IntoView {
 fn HomeRow(
     item: SectionRow,
     sections: RwSignal<Vec<SectionRow>>,
-    categories: Data,
+    categories: Data<Vec<Category>>,
 ) -> impl IntoView {
     let id = item.id;
     let current = RwSignal::from(item.form);
@@ -324,15 +326,15 @@ fn HomeRow(
                         ]
                     }))
                     .change(Callback::new(move |kind: String| {
-                        let source = serde_json::from_value::<SectionSource>(json!({"kind": kind}))
-                            .expect("invariant: source selector emits its declared options");
-                        let source = match source {
-                            SectionSource::Category { .. } => SectionSource::Category {
-                                sort_id: list(categories.value.get_untracked())
-                                    .first()
-                                    .map(|category| num(category, "id")),
+                        let source = match kind.as_str() {
+                            "latest" => SectionSource::Latest,
+                            "recommended" => SectionSource::Recommended,
+                            "category" => SectionSource::Category {
+                                sort_id: first_category(categories),
                             },
-                            SectionSource::Latest | SectionSource::Recommended => source,
+                            _ => unreachable!(
+                                "invariant: source selector emits its declared options"
+                            ),
                         };
                         current.update(|form| form.source = source);
                     }))
@@ -364,16 +366,17 @@ fn HomeRow(
                                 }
                             }))
                             .options(Signal::derive(move || {
-                                std::iter::once((
-                                    "0".to_string(),
-                                    t("选择分类", "Select a category"),
-                                ))
-                                .chain(
-                                    list(categories.value.get()).into_iter().map(|c| {
-                                        (num(&c, "id").to_string(), text(&c, "sort_name"))
-                                    }),
-                                )
-                                .collect()
+                                categories.with_current(|value| {
+                                    let items = value.map(Vec::as_slice).unwrap_or_default();
+                                    std::iter::once((
+                                        "0".to_string(),
+                                        t("选择分类", "Select a category"),
+                                    ))
+                                    .chain(items.iter().map(|category| {
+                                        (category.id.to_string(), category.sort_name.clone())
+                                    }))
+                                    .collect()
+                                })
                             }))
                             .change(Callback::new(move |v: String| {
                                 let id = v

@@ -43,5 +43,5 @@ simple = ["password-hash"]
 std = ["alloc", "password-hash/std"]
 
 [target."cfg(target_arch = \"x86_64\")".dependencies.cpufeatures]
-path = "../../platform/password-processor-features"
-package = "blog-platform-password-processor-features"
+path = "../../platform/processor-features"
+package = "blog-platform-processor-features"

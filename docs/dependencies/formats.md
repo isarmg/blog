@@ -4,7 +4,7 @@
 
 ## 序列化和配置
 
-`format/data-model` 提供共享序列化 trait，派生器和语法支持分别独立；`format/json`、`binary-record` 与 `json-schema` 使用这套类型。需要跨前后端共享的数据规则应在网络边界显式验证，不能把成功反序列化等同于业务合法。
+`format/data-model` 提供共享序列化 trait，派生器和语法支持分别独立。`format/json` 与 `json-schema` 使用这套类型。跨前后端的数据规则在网络边界显式验证。
 
 `format/configuration` 组合 TOML 的读取、保留格式编辑、输出和日期类型，资料在源码旁并进入 rustdoc：
 
@@ -21,4 +21,4 @@
 
 ## 字节、文本编码与压缩
 
-`encoding` 层按使用场景保留字节缓冲、搜索、Base64/十六进制、整数与浮点格式化、Unicode 解码、压缩、帧与变长整数。编码过程的容量、合法输入、溢出和错误语义以每种接口的文档为准。`checksum/fast-crc` 提供传输和归档校验；CRC 不承担密码学完整性保证。
+`encoding` 层按使用场景保留字节缓冲、搜索、Base64/十六进制、整数与浮点格式化、Unicode 解码、压缩与变长整数。编码过程的容量、合法输入、溢出和错误语义以每种接口的文档为准。`checksum/fast-crc` 提供传输和归档校验；CRC 不承担密码学完整性保证。

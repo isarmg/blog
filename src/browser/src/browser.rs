@@ -160,7 +160,7 @@ pub fn observe_sliding(viewport: &web_sys::Element) -> Option<SlidingObserver> {
         .and_then(|d| d.fonts().ready().ok())
     {
         blog_interface::task::spawn_local(async move {
-            if let Err(error) = wasm_bindgen_futures::JsFuture::from(ready).await {
+            if let Err(error) = js_sys::futures::JsFuture::from(ready).await {
                 web_sys::console::debug_2(&"Measuring title with fallback fonts".into(), &error);
             }
             measure();

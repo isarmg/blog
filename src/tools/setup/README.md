@@ -5,7 +5,7 @@
 在仓库根目录构建：
 
 ```sh
-cargo +1.99.0 build --locked --offline --release -p blog-setup
+cargo +1.100.0 build --locked --offline --release -p blog-setup
 ```
 
 先准备私有的 `ROOT/config/config.json`，以实例服务账号执行：

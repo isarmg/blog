@@ -35,14 +35,12 @@ pub(super) fn background_style(url: Option<String>) -> String {
 }
 
 pub(super) fn site_media_url(site: Data<Site>, field: fn(&Site) -> Option<&str>) -> Option<String> {
-    site.value
-        .get()
+    site.current()
         .and_then(|site| field(&site).and_then(|url| safe_url(url.trim(), false)))
 }
 
 pub(super) fn site_name(site: Data<Site>) -> String {
-    site.value
-        .get()
+    site.current()
         .and_then(|site| site.web_name.filter(|name| !name.trim().is_empty()))
         .unwrap_or_else(|| "blog".into())
 }

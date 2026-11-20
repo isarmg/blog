@@ -33,7 +33,6 @@ pub trait AsDeserializingBufferProvider {
     /// for the expected format(s):
     ///
     /// - `deserialize_json`
-    /// - `deserialize_postcard_1`
     /// - `deserialize_bincode_1`
     ///
     /// ✨ *Enabled with the `serde` Cargo feature.*
@@ -50,7 +49,6 @@ where
     /// for the expected format(s):
     ///
     /// - `deserialize_json`
-    /// - `deserialize_postcard_1`
     /// - `deserialize_bincode_1`
     ///
     /// ✨ *Enabled with the `serde` Cargo feature.*
@@ -85,12 +83,6 @@ where
             Ok(Deserialize::deserialize(&mut d)?)
         }
 
-        #[cfg(feature = "deserialize_postcard_1")]
-        BufferFormat::Postcard1 => {
-            let mut d = postcard::Deserializer::from_bytes(bytes);
-            Ok(Deserialize::deserialize(&mut d)?)
-        }
-
         // Allowed for cases in which all features are enabled
         #[allow(unreachable_patterns)]
         _ => {
@@ -108,7 +100,6 @@ impl DataPayload<BufferMarker> {
     /// for the expected format(s):
     ///
     /// - `deserialize_json`
-    /// - `deserialize_postcard_1`
     /// - `deserialize_bincode_1`
     ///
     /// This function takes the buffer format as an argument. When a buffer payload is returned
@@ -158,7 +149,6 @@ where
     /// for the expected format(s):
     ///
     /// - `deserialize_json`
-    /// - `deserialize_postcard_1`
     /// - `deserialize_bincode_1`
     ///
     /// ✨ *Enabled with the `serde` Cargo feature.*
@@ -210,7 +200,6 @@ where
     /// for the expected format(s):
     ///
     /// - `deserialize_json`
-    /// - `deserialize_postcard_1`
     /// - `deserialize_bincode_1`
     ///
     /// ✨ *Enabled with the `serde` Cargo feature.*
@@ -244,15 +233,6 @@ impl From<bincode::Error> for DataError {
     fn from(e: bincode::Error) -> Self {
         DataErrorKind::Deserialize
             .with_str_context("bincode")
-            .with_display_context(&e)
-    }
-}
-
-#[cfg(feature = "deserialize_postcard_1")]
-impl From<postcard::Error> for DataError {
-    fn from(e: postcard::Error) -> Self {
-        DataErrorKind::Deserialize
-            .with_str_context("postcard")
             .with_display_context(&e)
     }
 }

@@ -18,9 +18,6 @@
 #![deny(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[cfg(any())]
-#[cfg_attr(docsrs, doc(cfg(any())))]
-pub mod bundler;
 mod compat;
 mod context;
 pub mod css_modules;
@@ -44,9 +41,6 @@ pub mod vendor_prefix;
 #[cfg(all())]
 #[cfg_attr(docsrs, doc(cfg(all())))]
 pub mod visitor;
-
-#[cfg(any())]
-mod serialization;
 
 #[path = "../../../../../../../test/foundation/assets/style-compiler/unit/parts/style_optimizer/src/test_helpers.rs"]
 #[cfg(test)]

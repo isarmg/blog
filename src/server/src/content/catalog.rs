@@ -67,17 +67,13 @@ pub(super) async fn create_category(
         return Err(invalid("分类名称无效"));
     }
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let id = sqlx::query("INSERT INTO sort(sort_name,sort_description,priority) VALUES(?,?,?)")
-        .bind(input.name.trim())
-        .bind(input.description)
-        .bind(input.priority.unwrap_or(0))
-        .execute(&mut *transaction)
-        .await?
-        .last_insert_rowid();
     let category = sqlx::query_as(
-        "SELECT id,sort_name,sort_description,priority,0 AS article_count FROM sort WHERE id=?",
+        "INSERT INTO sort(sort_name,sort_description,priority) VALUES(?,?,?)
+         RETURNING id,sort_name,sort_description,priority,0 AS article_count",
     )
-    .bind(id)
+    .bind(input.name.trim())
+    .bind(input.description)
+    .bind(input.priority.unwrap_or(0))
     .fetch_one(&mut *transaction)
     .await?;
     transaction.commit().await?;
@@ -93,21 +89,19 @@ pub(super) async fn update_category(
         return Err(invalid("分类名称无效"));
     }
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed =
-        sqlx::query("UPDATE sort SET sort_name=?,sort_description=?,priority=? WHERE id=?")
-            .bind(input.name.trim())
-            .bind(input.description)
-            .bind(input.priority.unwrap_or(0))
-            .bind(id)
-            .execute(&mut *transaction)
-            .await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    let category = sqlx::query_as("SELECT id,sort_name,sort_description,priority,(SELECT COUNT(*) FROM article a WHERE a.sort_id=sort.id AND a.deleted=0 AND (a.view_status=1 OR a.password IS NOT NULL)) AS article_count FROM sort WHERE id=?")
-        .bind(id)
-        .fetch_one(&mut *transaction)
-        .await?;
+    let category = sqlx::query_as(
+        "UPDATE sort SET sort_name=?,sort_description=?,priority=? WHERE id=?
+         RETURNING id,sort_name,sort_description,priority,
+         (SELECT COUNT(*) FROM article a WHERE a.sort_id=sort.id AND a.deleted=0
+            AND (a.view_status=1 OR a.password IS NOT NULL)) AS article_count",
+    )
+    .bind(input.name.trim())
+    .bind(input.description)
+    .bind(input.priority.unwrap_or(0))
+    .bind(id)
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(absent)?;
     transaction.commit().await?;
     Ok(Json(category))
 }
@@ -117,12 +111,12 @@ pub(super) async fn delete_category(
     Path(id): Path<i64>,
 ) -> ApiResult<serde_json::Value> {
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let used: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE sort_id=? AND deleted=0")
+    let used: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM article WHERE sort_id=? AND deleted=0)")
             .bind(id)
             .fetch_one(&mut *transaction)
             .await?;
-    if used > 0 {
+    if used {
         return Err(AppError::Public(HttpStatus::Conflict, "分类中还有文章"));
     }
     let removes_last_section: i64 = sqlx::query_scalar(
@@ -194,18 +188,15 @@ pub(super) async fn create_label(
     if exists.is_none() {
         return Err(invalid("分类不存在"));
     }
-    let id = sqlx::query("INSERT INTO label(sort_id,label_name,label_description) VALUES(?,?,?)")
-        .bind(input.sort_id)
-        .bind(input.name.trim())
-        .bind(input.description)
-        .execute(&mut *transaction)
-        .await?
-        .last_insert_rowid();
-    let label =
-        sqlx::query_as("SELECT id,sort_id,label_name,label_description FROM label WHERE id=?")
-            .bind(id)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let label = sqlx::query_as(
+        "INSERT INTO label(sort_id,label_name,label_description) VALUES(?,?,?)
+         RETURNING id,sort_id,label_name,label_description",
+    )
+    .bind(input.sort_id)
+    .bind(input.name.trim())
+    .bind(input.description)
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
     Ok(Json(label))
 }
@@ -245,18 +236,16 @@ pub(super) async fn update_label(
     if category.is_none() {
         return Err(invalid("分类不存在"));
     }
-    sqlx::query("UPDATE label SET sort_id=?,label_name=?,label_description=? WHERE id=?")
-        .bind(input.sort_id)
-        .bind(input.name.trim())
-        .bind(input.description)
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
-    let label =
-        sqlx::query_as("SELECT id,sort_id,label_name,label_description FROM label WHERE id=?")
-            .bind(id)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let label = sqlx::query_as(
+        "UPDATE label SET sort_id=?,label_name=?,label_description=? WHERE id=?
+         RETURNING id,sort_id,label_name,label_description",
+    )
+    .bind(input.sort_id)
+    .bind(input.name.trim())
+    .bind(input.description)
+    .bind(id)
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
     Ok(Json(label))
 }
@@ -266,12 +255,12 @@ pub(super) async fn delete_label(
     Path(id): Path<i64>,
 ) -> ApiResult<serde_json::Value> {
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let used: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM article WHERE label_id=? AND deleted=0")
+    let used: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM article WHERE label_id=? AND deleted=0)")
             .bind(id)
             .fetch_one(&mut *transaction)
             .await?;
-    if used > 0 {
+    if used {
         return Err(AppError::Public(HttpStatus::Conflict, "标签中还有文章"));
     }
     let changed = sqlx::query("DELETE FROM label WHERE id=?")

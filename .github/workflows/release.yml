@@ -8,7 +8,7 @@ on:
 permissions: {}
 
 env:
-  RUSTUP_TOOLCHAIN: 1.99.0
+  RUSTUP_TOOLCHAIN: 1.100.0
 
 jobs:
   release:
@@ -32,7 +32,7 @@ jobs:
 
       - name: Install exact Rust toolchain
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
 
       - name: Install exact supply-chain tools
         run: |
@@ -149,5 +149,5 @@ jobs:
             dist/*.tar.gz \
             dist/SHA256SUMS \
             --verify-tag \
-            --generate-notes \
+            --notes-from-tag \
             --title "Blog ${GITHUB_REF_NAME}"

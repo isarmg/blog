@@ -1,11 +1,8 @@
 //! Functions within a wasm module.
 
 use std::cmp;
-use std::collections::BTreeMap;
-use std::ops::Range;
 
 use anyhow::{bail, Context};
-use wasm_encoder::Encode;
 use wasmparser::{FuncValidator, FunctionBody, ValidatorResources};
 
 #[cfg(feature = "parallel")]
@@ -151,9 +148,6 @@ pub struct ImportedFunction {
 pub struct ModuleFunctions {
     /// The arena containing this module's functions.
     arena: TombstoneArena<Function>,
-
-    /// Original code section offset.
-    pub(crate) code_section_offset: usize,
 }
 
 impl ModuleFunctions {
@@ -649,19 +643,6 @@ fn used_local_functions<'a>(cx: &mut EmitContext<'a>) -> Vec<(FunctionId, &'a Lo
     functions
 }
 
-fn collect_non_default_code_offsets(
-    code_transform: &mut BTreeMap<InstrLocId, usize>,
-    code_offset: usize,
-    map: Vec<(InstrLocId, usize)>,
-) {
-    for (src, dst) in map {
-        let dst = dst + code_offset;
-        if !src.is_default() {
-            code_transform.insert(src, dst);
-        }
-    }
-}
-
 impl Emit for ModuleFunctions {
     fn emit(&self, cx: &mut EmitContext) {
         log::debug!("emit code section");
@@ -671,76 +652,28 @@ impl Emit for ModuleFunctions {
         }
 
         let mut wasm_code_section = wasm_encoder::CodeSection::new();
-        let generate_map = cx.module.config.preserve_code_transform;
 
         // Functions can typically take awhile to serialize, so serialize
         // everything in parallel. Afterwards we'll actually place all the
         // functions together.
-        let bytes = maybe_parallel!(functions.(into_iter | into_par_iter))
+        let encoded = maybe_parallel!(functions.(into_iter | into_par_iter))
             .map(|(id, func, _size)| {
                 log::debug!("emit function {:?} {:?}", id, cx.module.funcs.get(id).name);
-                let mut wasm = Vec::new();
-                let mut map = if generate_map { Some(Vec::new()) } else { None };
-
                 let (locals_types, used_locals, local_indices) =
                     func.emit_locals(cx.module, cx.indices);
                 let mut wasm_function = wasm_encoder::Function::new(locals_types);
-                func.emit_instructions(
-                    cx.indices,
-                    &local_indices,
-                    &mut wasm_function,
-                    map.as_mut(),
-                );
-                wasm_function.encode(&mut wasm);
-                (
-                    wasm,
-                    wasm_function.byte_len(),
-                    id,
-                    used_locals,
-                    local_indices,
-                    map,
-                )
+                func.emit_instructions(cx.indices, &local_indices, &mut wasm_function);
+                (wasm_function, id, used_locals, local_indices)
             })
             .collect::<Vec<_>>();
 
-        let mut instruction_map = BTreeMap::new();
-        cx.indices.locals.reserve(bytes.len());
-
-        let mut offset_data = Vec::new();
-        for (wasm, byte_len, id, used_locals, local_indices, map) in bytes {
-            let leb_len = wasm.len() - byte_len;
-            wasm_code_section.raw(&wasm[leb_len..]);
+        cx.indices.locals.reserve(encoded.len());
+        for (wasm_function, id, used_locals, local_indices) in encoded {
+            wasm_code_section.function(&wasm_function);
             cx.indices.locals.insert(id, local_indices);
             cx.locals.insert(id, used_locals);
-            offset_data.push((byte_len, id, map, leb_len));
         }
         cx.wasm_module.section(&wasm_code_section);
-
-        let code_section_start_offset =
-            cx.wasm_module.as_slice().len() - wasm_code_section.byte_len();
-        let mut cur_offset = code_section_start_offset;
-
-        // update the map afterwards based on final offset differences
-        for (byte_len, id, map, leb_len) in offset_data {
-            // (this assumes the leb encodes the same)
-            let code_start_offset = cur_offset + leb_len;
-            cur_offset += leb_len + byte_len;
-            if let Some(map) = map {
-                collect_non_default_code_offsets(&mut instruction_map, code_start_offset, map);
-            }
-            cx.code_transform.function_ranges.push((
-                id,
-                Range {
-                    // inclusive leb part
-                    start: code_start_offset - leb_len,
-                    end: cur_offset,
-                },
-            ));
-        }
-        cx.code_transform.function_ranges.sort_by_key(|i| i.0);
-        // FIXME: code section start in DWARF debug information expects 2 bytes before actual code section start.
-        cx.code_transform.code_section_start = code_section_start_offset - 2;
-        cx.code_transform.instruction_map = instruction_map.into_iter().collect();
     }
 }
 

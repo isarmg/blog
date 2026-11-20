@@ -34,8 +34,6 @@ impl<'i> ToCss for UnknownAtRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_char('@')?;
     dest.write_str(&self.name)?;
 

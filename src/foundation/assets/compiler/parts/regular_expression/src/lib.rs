@@ -15,10 +15,7 @@ mod generated {
 
 pub mod ast;
 pub use crate::regular_expression::{
-    ast_impl::support::{
-        RegexUnsupportedFlags, RegexUnsupportedPatterns, has_unsupported_regular_expression_flags,
-        has_unsupported_regular_expression_pattern,
-    },
+    ast_impl::support::is_regexp_syntax_supported,
     ast_impl::visit,
     options::Options,
     parser::{ConstructorParser, LiteralParser},

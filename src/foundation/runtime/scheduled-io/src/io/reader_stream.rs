@@ -10,8 +10,7 @@ const DEFAULT_CAPACITY: usize = 4096;
 pin_project! {
     /// Convert an [`AsyncRead`] into a [`Stream`] of byte chunks.
     ///
-    /// This stream is fused. It performs the inverse operation of
-    /// [`StreamReader`].
+    /// This stream is fused.
     ///
     /// # Example
     ///
@@ -39,7 +38,6 @@ pin_project! {
     /// ```
     ///
     /// [`AsyncRead`]: tokio::io::AsyncRead
-    /// [`StreamReader`]: crate::io::StreamReader
     /// [`Stream`]: futures::Stream
     #[derive(Debug)]
     pub struct ReaderStream<R> {

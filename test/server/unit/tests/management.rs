@@ -576,6 +576,11 @@ async fn site_author_name_updates_business_content_but_not_credentials() {
     let mut site = body_json(response).await;
     assert_eq!(site["author_name"], "site-author");
     assert!(site.get("footer").is_none());
+    assert_eq!(site.get("web_name"), Some(&serde_json::Value::Null));
+    let public_defaults = public(&app, "/api/v1/site").await;
+    assert_eq!(public_defaults["web_name"], "blog");
+    assert_eq!(public_defaults["web_title"], "相信记录的力量");
+    assert_eq!(public_defaults["media"], site["media"]);
     assert_eq!(
         sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM web_info")
             .fetch_one(&pool)

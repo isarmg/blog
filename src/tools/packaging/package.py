@@ -12,6 +12,7 @@ MANIFEST = 'share/package.json'
 CHECKSUM = 'share/package.sha256'
 MAX_FILES = 8192
 MAX_BYTES = 2 * 1024 * 1024 * 1024
+MAX_METADATA_BYTES = 16 * 1024 * 1024
 
 
 RUNTIME_OVERRIDE_ENV = (
@@ -117,7 +118,7 @@ def trusted_directory(path):
     return Path(path)
 
 
-def read_regular(path, maximum=16 * 1024 * 1024, *, allow_hardlinks=False):
+def read_regular(path, maximum=MAX_METADATA_BYTES, *, allow_hardlinks=False):
     path = Path(path)
     parent = open_directory(path.parent)
     try:
@@ -197,12 +198,15 @@ def write_manifest(root, identity, kind, source_tree_sha256, source_dirty):
     manifest = {'format': 'blog-package-v1', 'kind': kind, 'identity': identity,
                 'source_tree_sha256': source_tree_sha256, 'source_dirty': source_dirty,
                 'files': inventory(root)}
+    validate_manifest(manifest)
+    verify_contents(root, manifest)
     value = (json.dumps(manifest, sort_keys=True, indent=2) + '\n').encode()
+    if len(value) > MAX_METADATA_BYTES:
+        raise ValueError('package manifest exceeds its bound')
     (root / MANIFEST).write_bytes(value)
     (root / MANIFEST).chmod(0o644)
     (root / CHECKSUM).write_text(hashlib.sha256(value).hexdigest() + '\n', encoding='ascii')
     (root / CHECKSUM).chmod(0o644)
-    verify(root)
 
 
 def verify_build_material(root, manifest):
@@ -252,13 +256,7 @@ def verify_build_material(root, manifest):
         require_compiled_identity(binary, identity, encoded, receipt.get('identity_sha256'))
 
 
-def verify(root):
-    root = Path(root)
-    value = read_regular(root / MANIFEST)
-    expected = read_regular(root / CHECKSUM, 65)
-    if expected != (hashlib.sha256(value).hexdigest() + '\n').encode('ascii'):
-        raise ValueError('package manifest checksum differs')
-    manifest = loads(value)
+def validate_manifest(manifest):
     if (not isinstance(manifest, dict) or manifest.get('format') != 'blog-package-v1'
             or manifest.get('kind') not in ('candidate', 'release')
             or type(manifest.get('source_dirty')) is not bool
@@ -270,8 +268,9 @@ def verify(root):
         raise ValueError('invalid Blog package identity')
     if manifest['kind'] == 'release' and manifest['source_dirty']:
         raise ValueError('a formal release cannot contain dirty source')
-    if manifest.get('files') != inventory(root):
-        raise ValueError('package contents differ from the exact manifest')
+
+
+def verify_contents(root, manifest):
     required = {'bin/blog', 'libexec/blog-setup', 'libexec/package.py',
                 'libexec/install.py', 'libexec/maintenance.py',
                 'install.sh', 'maintenance.sh', 'share/config/config.json.example',
@@ -282,6 +281,19 @@ def verify(root):
     if not required <= {entry['path'] for entry in manifest['files']}:
         raise ValueError('package is missing required runtime or installation material')
     verify_build_material(root, manifest)
+
+
+def verify(root):
+    root = Path(root)
+    value = read_regular(root / MANIFEST)
+    expected = read_regular(root / CHECKSUM, 65)
+    if expected != (hashlib.sha256(value).hexdigest() + '\n').encode('ascii'):
+        raise ValueError('package manifest checksum differs')
+    manifest = loads(value)
+    validate_manifest(manifest)
+    if manifest.get('files') != inventory(root):
+        raise ValueError('package contents differ from the exact manifest')
+    verify_contents(root, manifest)
     for name in (MANIFEST, CHECKSUM):
         if stat.S_IMODE((root / name).lstat().st_mode) != 0o644:
             raise ValueError('manifest files must be mode 0644')

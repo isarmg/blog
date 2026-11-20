@@ -42,7 +42,7 @@ pub enum BufferFormat {
     Json,
     /// Buffers encoded in the bincode version 1 format.
     Bincode1,
-    /// Buffers encoded in the Postcard version 1 format.
+    /// Buffers encoded in the Postcard version 1 format. This format is recognized for metadata.
     Postcard1,
 }
 
@@ -60,10 +60,8 @@ impl BufferFormat {
             #[cfg(not(feature = "deserialize_bincode_1"))]
             BufferFormat::Bincode1 => Err(DataErrorKind::Deserialize.with_str_context("deserializing `BufferFormat::Bincode1` requires the `deserialize_bincode_1` Cargo feature")),
 
-            #[cfg(feature = "deserialize_postcard_1")]
-            BufferFormat::Postcard1 => Ok(()),
-            #[cfg(not(feature = "deserialize_postcard_1"))]
-            BufferFormat::Postcard1 => Err(DataErrorKind::Deserialize.with_str_context("deserializing `BufferFormat::Postcard1` requires the `deserialize_postcard_1` Cargo feature")),
+            BufferFormat::Postcard1 => Err(DataErrorKind::Deserialize
+                .with_str_context("Postcard buffer decoding is unavailable")),
         }
     }
 }

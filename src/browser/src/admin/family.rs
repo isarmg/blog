@@ -34,7 +34,7 @@ pub(super) fn FamilySettings() -> impl IntoView {
     let editing = RwSignal::new(None::<i64>);
     let save = Action::new();
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
+        if let Some(v) = data.current() {
             if let Some(item) = v.as_array().and_then(|a| a.first()) {
                 editing.set(Some(num(item, "id")));
                 form.set(family_form(item));
@@ -202,7 +202,7 @@ pub(super) fn FamilySettings() -> impl IntoView {
                             .class("editor-form blog-frame blog-frame--padded blog-stack")
                             .on(blog_interface::ev::submit, move |ev| {
                                 ev.prevent_default();
-                                if data.value.get_untracked().is_none() {
+                                if data.with_current_untracked(|value| value.is_none()) {
                                     return;
                                 }
                                 let mut payload = form.get_untracked();
@@ -242,7 +242,9 @@ pub(super) fn FamilySettings() -> impl IntoView {
                             }),
                     )
                     .class("blog-fieldset blog-stack")
-                    .disabled(move || save.busy.get() || data.value.get().is_none()),
+                    .disabled(move || {
+                        save.busy.get() || data.with_current(|value| value.is_none())
+                    }),
             ))
             .class("blog-content-stack blog-stack"),
     )

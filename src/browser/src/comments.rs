@@ -221,7 +221,7 @@ pub(crate) fn Comments(
                     move || {
                         format!(
                             "{} {}",
-                            data.previous.get().map(|v| num(&v, "total")).unwrap_or(0),
+                            data.with_latest(|v| v.map_or(0, |v| num(v, "total"))),
                             t("条评论", "comments")
                         )
                     },
@@ -259,12 +259,7 @@ pub(crate) fn Comments(
                     })
                 },
                 For(component_props_builder(&For)
-                    .each(move || {
-                        data.value
-                            .get()
-                            .map(|v| rows(&v, "items"))
-                            .unwrap_or_default()
-                    })
+                    .each(move || data.current_items().unwrap_or_default())
                     .key(|v| (num(v, "id"), num(v, "reply_count")))
                     .children(move |item| {
                         View::new(
@@ -290,10 +285,8 @@ pub(crate) fn Comments(
                     })
                     .build()),
                 move || {
-                    data.value
-                        .get()
-                        .filter(|v| rows(v, "items").is_empty())
-                        .map(|_| {
+                    data.with_current(|v| v.is_some_and(|v| page_items(v).is_empty()))
+                        .then(|| {
                             View::new(
                                 blog_interface::html::p()
                                     .child(t("还没有评论。", "No comments yet."))
@@ -562,13 +555,10 @@ fn Replies(
     let data = load(path);
     let items = RwSignal::new(Vec::<Value>::new());
     let expandable = Memo::new(move |_| {
-        data.previous
-            .get()
-            .is_some_and(|value| num(&value, "total") > num(&value, "size"))
+        data.with_latest(|v| v.is_some_and(|v| num(v, "total") > num(v, "size")))
     });
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
-            let next = rows(&v, "items");
+        if let Some(next) = data.current_items() {
             items.update(|current| {
                 if page.get_untracked() == 1 {
                     *current = next;
@@ -612,8 +602,8 @@ fn Replies(
                             blog_interface::html::button()
                                 .child(move || {
                                     let total =
-                                        data.previous.get().map(|v| num(&v, "total")).unwrap_or(0);
-                                    let remaining = (total - items.get().len() as i64).max(0);
+                                        data.with_latest(|v| v.map_or(0, |v| num(v, "total")));
+                                    let remaining = (total - items.with(Vec::len) as i64).max(0);
                                     if remaining == 0 {
                                         t("已展开全部回复", "All replies shown")
                                     } else {
@@ -629,17 +619,20 @@ fn Replies(
                                 .r#type("button")
                                 .aria_disabled(move || {
                                     (data.busy.get()
-                                        || data.value.get().is_none()
-                                        || data.previous.get().is_none_or(|v| {
-                                            items.get().len() as i64 >= num(&v, "total")
+                                        || data.with_current(|v| {
+                                            v.is_none_or(|v| {
+                                                items.with(Vec::len) as i64 >= num(v, "total")
+                                            })
                                         }))
                                     .to_string()
                                 })
                                 .on(blog_interface::ev::click, move |_| {
                                     if !data.busy.get_untracked()
-                                        && data.value.get_untracked().is_some()
-                                        && data.previous.get_untracked().is_some_and(|v| {
-                                            (items.get_untracked().len() as i64) < num(&v, "total")
+                                        && data.with_current_untracked(|v| {
+                                            v.is_some_and(|v| {
+                                                (items.with_untracked(Vec::len) as i64)
+                                                    < num(v, "total")
+                                            })
                                         })
                                     {
                                         page.update(|p| *p += 1)

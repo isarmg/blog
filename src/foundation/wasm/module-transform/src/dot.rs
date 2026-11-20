@@ -15,9 +15,9 @@ impl Module {
     /// First, generate a `.dot` file with this method:
     ///
     /// ```
-    /// # fn foo() -> walrus::Result<()> {
+    /// # fn foo() -> blog_wasm_module_transform::Result<()> {
     /// # let get_module_from_somewhere = || unimplemented!();
-    /// let my_module: walrus::Module = get_module_from_somewhere();
+    /// let my_module: blog_wasm_module_transform::Module = get_module_from_somewhere();
     /// my_module.write_graphviz_dot("my_module.dot")?;
     /// # Ok(())
     /// # }

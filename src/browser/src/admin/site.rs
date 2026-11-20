@@ -81,8 +81,7 @@ fn SiteMediaField(
                                 }
                                 let previous = value.get_untracked();
                                 let name = file.name();
-                                let done = move |response: Value| {
-                                    let path = text(&response, "path");
+                                let done = move |path: String| {
                                     form.update(|form| {
                                         if media_field_value(form, key, nested) == previous {
                                             set_media_field(form, key, nested, Some(path));
@@ -274,7 +273,7 @@ pub(super) fn SiteSettings() -> impl IntoView {
     let validation = RwSignal::new(String::new());
     let ready = Memo::new(move |_| !form.get().is_null());
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
+        if let Some(v) = data.current() {
             upload.abort();
             validation.set(String::new());
             form.set(v);

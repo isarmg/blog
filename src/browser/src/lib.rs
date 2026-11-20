@@ -11,7 +11,7 @@ mod public;
 mod select;
 use blog_interface::prelude::*;
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
-pub fn start() {
+pub fn start() -> Result<(), wasm_bindgen::JsValue> {
     browser::install_document_policies();
     let management = common::pathname().starts_with("/admin");
     let app = move || {
@@ -21,5 +21,5 @@ pub fn start() {
             View::new(public::Public()).into_any()
         }
     };
-    blog_interface::mount_server("root", app, include_str!("corner_surfaces.txt"));
+    blog_interface::mount_server("root", app, include_str!("corner_surfaces.txt"))
 }

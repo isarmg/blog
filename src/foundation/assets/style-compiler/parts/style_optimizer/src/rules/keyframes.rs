@@ -219,8 +219,6 @@ impl<'i> ToCss for KeyframesRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     let mut first_rule = true;
     macro_rules! write_prefix {
       ($prefix: ident) => {

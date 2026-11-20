@@ -1,6 +1,5 @@
 use crate::syntax_arena::{GetAllocator, ReplaceWith};
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::{ESFeature, EngineTargets};
 use crate::language_semantics::{
     GlobalContext,
     constant_evaluation::{
@@ -81,10 +80,6 @@ impl<'a> GlobalContext<'a> for &mut TraverseCtx<'a, MinifierState<'a>> {
 }
 
 impl<'a> MayHaveSideEffectsContext<'a> for TraverseCtx<'a, MinifierState<'a>> {
-    fn engine_targets(&self) -> Option<&EngineTargets> {
-        Some(&self.options().target)
-    }
-
     fn annotations(&self) -> bool {
         self.options().treeshake.annotations
     }
@@ -111,10 +106,6 @@ impl<'a> MayHaveSideEffectsContext<'a> for TraverseCtx<'a, MinifierState<'a>> {
 }
 
 impl<'a> MayHaveSideEffectsContext<'a> for &TraverseCtx<'a, MinifierState<'a>> {
-    fn engine_targets(&self) -> Option<&EngineTargets> {
-        MayHaveSideEffectsContext::engine_targets(*self)
-    }
-
     fn annotations(&self) -> bool {
         (*self).annotations()
     }
@@ -137,10 +128,6 @@ impl<'a> MayHaveSideEffectsContext<'a> for &TraverseCtx<'a, MinifierState<'a>> {
 }
 
 impl<'a> MayHaveSideEffectsContext<'a> for &mut TraverseCtx<'a, MinifierState<'a>> {
-    fn engine_targets(&self) -> Option<&EngineTargets> {
-        MayHaveSideEffectsContext::engine_targets(&**self)
-    }
-
     fn annotations(&self) -> bool {
         (**self).annotations()
     }
@@ -167,14 +154,6 @@ impl<'a> ConstantEvaluationCtx<'a> for TraverseCtx<'a, MinifierState<'a>> {}
 impl<'a> TraverseCtx<'a, MinifierState<'a>> {
     pub fn options(&self) -> &CompressOptions {
         self.state.options()
-    }
-
-    /// Loosely check whether target engines support a feature for syntax generation.
-    ///
-    /// This follows [`crate::browser_compatibility::EngineTargets::has_feature`] semantics. Side-effect analysis uses
-    /// the stricter [`crate::browser_compatibility::EngineTargets::supports_es_feature`] capability query instead.
-    pub fn supports_feature(&self, feature: ESFeature) -> bool {
-        !self.options().target.has_feature(feature)
     }
 
     pub fn source_type(&self) -> SourceType {

@@ -34,7 +34,7 @@ timers is exposed.
 
 /*!
 use blog_dom::timers::future::TimeoutFuture;
-use wasm_bindgen_futures::spawn_local;
+use js_sys::futures::spawn_local;
 
 // Spawn the `timeout` future on the local thread. If we just dropped it, then
 // the timeout would be cancelled with `clearTimeout`.

@@ -9,7 +9,7 @@ use crate::codec::inflate::core::{decompress, inflate_flags, DecompressorOxide, 
 use crate::codec::inflate::TINFLStatus;
 use crate::codec::{DataFormat, MZError, MZFlush, MZResult, MZStatus, StreamResult};
 
-/// Tag that determines reset policy of [InflateState](struct.InflateState.html)
+/// Tag that determines reset policy of [InflateState]
 pub trait ResetPolicy {
     /// Performs reset
     fn reset(&self, state: &mut InflateState);

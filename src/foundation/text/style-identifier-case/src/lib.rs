@@ -3,7 +3,7 @@
 //! # Rust Library
 //!
 //! Provides a [`Case`](enum.Case.html) enum which defines a variety of cases to convert into.
-//! Strings have implemented the [`Casing`](trait.Casing.html) trait, which adds methods for
+//! Strings have implemented the [`Casing`] trait, which adds methods for
 //! case conversion.
 //!
 //! You can convert strings into a case using the [`to_case`](Casing::to_case) method.

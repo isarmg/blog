@@ -45,7 +45,7 @@ class SourceBoundary(unittest.TestCase):
             + package + '\n[workspace]\n' + tail)
 
     def graph(self):
-        subprocess.run(['cargo', '+1.99.0', 'generate-lockfile', '--offline', '--manifest-path',
+        subprocess.run(['cargo', '+1.100.0', 'generate-lockfile', '--offline', '--manifest-path',
                         str(self.root / 'Cargo.toml')], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return guard.check_graph('Cargo.toml', 'x86_64-unknown-linux-gnu')
 
@@ -184,7 +184,7 @@ class PlatformContract(unittest.TestCase):
 
     def cargo(self, *arguments):
         return subprocess.run(
-            ['cargo', '+1.99.0', *arguments, '--offline', '--manifest-path', str(self.root / 'Cargo.toml')],
+            ['cargo', '+1.100.0', *arguments, '--offline', '--manifest-path', str(self.root / 'Cargo.toml')],
             cwd=self.root, env={**os.environ, 'CARGO_TARGET_DIR': str(self.root / 'target')},
             text=True, capture_output=True)
 
@@ -220,6 +220,7 @@ class PlatformContract(unittest.TestCase):
 
     def test_cross_package_shared_guard_is_tracked_by_cargo(self):
         shared = self.root / 'platform_contract.rs'
+        (self.root / 'Cargo.toml').write_text('[workspace]\nmembers = ["consumer"]\nresolver = "3"\n')
         self.root /= 'consumer'
         (self.root / 'src').mkdir(parents=True)
         (self.root / 'src/lib.rs').write_text('#![no_std]\npub fn supported() {}\n')
@@ -229,10 +230,9 @@ class PlatformContract(unittest.TestCase):
             'fn main() { platform_contract::check(); }\n')
         result = self.cargo('check')
         self.assertEqual(result.returncode, 0, result.stderr)
-        output = next((self.root / 'target/debug/build').glob('blog-application-*/output')).read_text()
-        watched = next(line.split('=', 1)[1] for line in output.splitlines()
-                       if line.startswith('cargo:rerun-if-changed='))
-        self.assertEqual(Path(watched).resolve(), shared.resolve())
+        result = self.cargo('check', '-v')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Fresh blog-application', result.stderr)
         shared.write_text(shared.read_text() + '\ncompile_error!("shared guard change was rebuilt");\n')
         result = self.cargo('check')
         self.assertNotEqual(result.returncode, 0)
@@ -240,7 +240,7 @@ class PlatformContract(unittest.TestCase):
 
     def test_standalone_guard_covers_unsupported_build_hosts_without_product_dependencies(self):
         binary = self.root / 'platform-contract-tests'
-        subprocess.run(['rustc', '+1.99.0', '--edition=2024', '--test', str(self.source), '-o', str(binary)],
+        subprocess.run(['rustc', '+1.100.0', '--edition=2024', '--test', str(self.source), '-o', str(binary)],
                        cwd=self.root, check=True, capture_output=True, text=True)
         result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
         self.assertIn('4 passed', result.stdout)

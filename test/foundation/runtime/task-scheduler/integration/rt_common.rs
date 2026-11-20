@@ -996,26 +996,25 @@ rt_test! {
         drop(rt);
     }
 
-    #[cfg(not(target_os="wasi"))] // Wasi doesn't support UDP or bind()
-    #[cfg_attr(miri, ignore)] // No UDP sockets in miri.
+    #[cfg(not(target_os="wasi"))]
+    #[cfg_attr(miri, ignore)] // No sockets in miri.
     #[test]
     fn io_notify_while_shutting_down() {
-        use tokio::net::UdpSocket;
-        use std::sync::Arc;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::{TcpListener, TcpStream};
 
         for _ in 1..10 {
             let runtime = rt();
 
             runtime.block_on(async {
-                let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-                let addr = socket.local_addr().unwrap();
-                let send_half = Arc::new(socket);
-                let recv_half = send_half.clone();
+                let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+                let mut sender = TcpStream::connect(listener.local_addr().unwrap()).await.unwrap();
+                let (mut receiver, _) = listener.accept().await.unwrap();
 
                 tokio::spawn(async move {
                     let mut buf = [0];
                     loop {
-                        recv_half.recv_from(&mut buf).await.unwrap();
+                        receiver.read_exact(&mut buf).await.unwrap();
                         std::thread::sleep(Duration::from_millis(2));
                     }
                 });
@@ -1023,7 +1022,7 @@ rt_test! {
                 tokio::spawn(async move {
                     let buf = [0];
                     loop {
-                        send_half.send_to(&buf, &addr).await.unwrap();
+                        sender.write_all(&buf).await.unwrap();
                         tokio::time::sleep(Duration::from_millis(1)).await;
                     }
                 });

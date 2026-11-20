@@ -11,55 +11,13 @@
 ))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-//! Utilities for working with Tokio.
-//!
-//! This crate is not versioned in lockstep with the core
-//! [`tokio`] crate. However, `tokio-util` _will_ respect Rust's
-//! semantic versioning policy, especially with regard to breaking changes.
-
-#[macro_use]
-mod cfg;
+//! Runtime utilities for HTTP file streaming and graceful task shutdown.
 
 mod loom;
-
-cfg_codec! {
-    #[macro_use]
-    mod tracing;
-
-    pub mod codec;
-}
-
-cfg_net! {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub mod udp;
-    pub mod net;
-}
-
-cfg_compat! {
-    pub mod compat;
-}
-
-cfg_io! {
-    pub mod io;
-}
-
-cfg_rt! {
-    pub mod context;
-}
-
-#[cfg(feature = "rt")]
-pub mod task;
-
-cfg_time! {
-    pub mod time;
-}
-
-pub mod sync;
-
-pub mod either;
-
-pub use bytes;
-
 mod util;
 
-pub mod future;
+#[cfg(feature = "io")]
+pub mod io;
+pub mod sync;
+#[cfg(feature = "rt")]
+pub mod task;

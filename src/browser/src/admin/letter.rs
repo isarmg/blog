@@ -15,7 +15,7 @@ pub(super) fn LetterSettings() -> impl IntoView {
     let validation = RwSignal::new(String::new());
     let ready = Memo::new(move |_| !form.get().is_null());
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
+        if let Some(v) = data.current() {
             form.set(v.clone());
             original.set(v);
             validation.set(String::new());

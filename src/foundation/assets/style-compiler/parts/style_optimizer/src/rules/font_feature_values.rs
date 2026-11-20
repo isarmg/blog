@@ -156,8 +156,6 @@ impl<'i> ToCss for FontFeatureValuesRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@font-feature-values ")?;
     self.name.to_css(dest)?;
     dest.whitespace()?;
@@ -244,8 +242,6 @@ impl<'i> ToCss for FontFeatureSubrule<'i> {
   where
     W: Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_char('@')?;
     self.name.to_css(dest)?;
     dest.write_char('{')?;

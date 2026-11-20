@@ -3,8 +3,8 @@ use std::{
     hash::{Hash, Hasher},
 };
 
+use crate::implements;
 use crate::syntax_arena::{Allocator, CloneIn, Dummy};
-use oxc_data_structures::types::implements;
 
 use crate::compiler_strings::{Ident, JSChar, JSStr, JSStrBuilder, Str};
 

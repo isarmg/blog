@@ -1,5 +1,5 @@
 //! Visible read, empty and error states with product-specific message policy.
-use super::{ApiError, ApiErrorCode, Data, LocalErrorCode, rows, t};
+use super::{ApiError, ApiErrorCode, Data, LocalErrorCode, page_items, t};
 use blog_interface::prelude::*;
 
 pub(crate) fn public_error(e: &ApiError, fallback: &str) -> String {
@@ -122,11 +122,7 @@ pub(crate) fn Feedback(
 }
 
 #[component]
-pub(crate) fn ListState(
-    data: Data,
-    empty: String,
-    #[prop(default = false)] array: bool,
-) -> impl IntoView {
+pub(crate) fn ListState(data: Data, empty: String) -> impl IntoView {
     move || {
         if data.busy.get() {
             View::new(
@@ -136,13 +132,8 @@ pub(crate) fn ListState(
                     .role("status"),
             )
             .into_any()
-        } else if data.value.get().is_some_and(|v| {
-            if array {
-                v.as_array().is_some_and(|a| a.is_empty())
-            } else {
-                rows(&v, "items").is_empty()
-            }
-        }) {
+        } else if data.with_current(|value| value.is_some_and(|value| page_items(value).is_empty()))
+        {
             View::new(
                 blog_interface::html::div()
                     .child(empty.clone())

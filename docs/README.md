@@ -29,4 +29,4 @@
 | [Cargo 依赖关系](RUST_SOURCE_ARCHITECTURE.md) | 从当前 manifest 生成的构建入口和直接消费者 |
 | [第三方源码清单](THIRD_PARTY_RUST_SOURCES.md) | 当前实现与原始名称、版本、许可证的映射 |
 
-项目入口见[仓库首页](../README.md)，许可证见 [LICENSE](../LICENSE)。版本发布说明由 [GitHub Releases](https://github.com/isarmg/xocs/releases) 提供。
+项目入口见[仓库首页](../README.md)，许可证见 [LICENSE](../LICENSE)。版本发布说明由 [GitHub Releases](https://github.com/isarmg/blog/releases) 提供。

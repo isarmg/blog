@@ -113,7 +113,6 @@ macro_rules! attrgen {
             (start, false, Start(Span)),
             (wasm_bindgen, false, WasmBindgen(Span, syn::Path)),
             (js_sys, false, JsSys(Span, syn::Path)),
-            (wasm_bindgen_futures, false, WasmBindgenFutures(Span, syn::Path)),
             (skip, false, Skip(Span)),
             (slice_to_array, false, SliceToArray(Span)),
             (typescript_type, false, TypeScriptType(Span, String, Span)),
@@ -1261,7 +1260,6 @@ impl<'a>
             shim: Ident::new(&shim, Span::call_site()),
             doc_comment,
             wasm_bindgen: program.wasm_bindgen.clone(),
-            wasm_bindgen_futures: program.wasm_bindgen_futures.clone(),
             js_sys: program.js_sys.clone(),
             generics: self.sig.generics,
             generic_per_mono,
@@ -1958,9 +1956,6 @@ impl<'a> MacroParse<(Option<BindgenAttrs>, &'a mut TokenStream)> for syn::Item {
                 if let Some(path) = opts.js_sys() {
                     program.js_sys = path.clone();
                 }
-                if let Some(path) = opts.wasm_bindgen_futures() {
-                    program.wasm_bindgen_futures = path.clone();
-                }
 
                 if opts.main().is_some() {
                     opts.check_used();
@@ -2027,7 +2022,6 @@ impl<'a> MacroParse<(Option<BindgenAttrs>, &'a mut TokenStream)> for syn::Item {
                     rust_name,
                     start,
                     wasm_bindgen: program.wasm_bindgen.clone(),
-                    wasm_bindgen_futures: program.wasm_bindgen_futures.clone(),
                     js_sys: program.js_sys.clone(),
                 });
             }
@@ -2040,9 +2034,6 @@ impl<'a> MacroParse<(Option<BindgenAttrs>, &'a mut TokenStream)> for syn::Item {
                 }
                 if let Some(path) = opts.js_sys() {
                     program.js_sys = path.clone();
-                }
-                if let Some(path) = opts.wasm_bindgen_futures() {
-                    program.wasm_bindgen_futures = path.clone();
                 }
                 (&mut i).macro_parse(program, opts)?;
                 i.to_tokens(tokens);
@@ -2214,7 +2205,6 @@ fn prepare_for_impl_recursion(
     };
 
     let wasm_bindgen = &program.wasm_bindgen;
-    let wasm_bindgen_futures = &program.wasm_bindgen_futures;
     let js_sys = &program.js_sys;
     method.attrs.insert(
         0,
@@ -2222,7 +2212,7 @@ fn prepare_for_impl_recursion(
             pound_token: Default::default(),
             style: syn::AttrStyle::Outer,
             bracket_token: Default::default(),
-            meta: syn::parse_quote! { #wasm_bindgen::prelude::__wasm_bindgen_class_marker(#class = #js_class #js_namespace_tokens, wasm_bindgen = #wasm_bindgen, wasm_bindgen_futures = #wasm_bindgen_futures, js_sys = #js_sys) },
+            meta: syn::parse_quote! { #wasm_bindgen::prelude::__wasm_bindgen_class_marker(#class = #js_class #js_namespace_tokens, wasm_bindgen = #wasm_bindgen, js_sys = #js_sys) },
         },
     );
 
@@ -2238,12 +2228,10 @@ impl MacroParse<&ClassMarker> for &mut syn::ImplItemFn {
             js_class,
             js_namespace,
             wasm_bindgen,
-            wasm_bindgen_futures,
             js_sys,
         }: &ClassMarker,
     ) -> Result<(), Diagnostic> {
         program.wasm_bindgen = wasm_bindgen.clone();
-        program.wasm_bindgen_futures = wasm_bindgen_futures.clone();
         program.js_sys = js_sys.clone();
 
         match self.vis {
@@ -2345,7 +2333,6 @@ impl MacroParse<&ClassMarker> for &mut syn::ImplItemFn {
             rust_name: self.sig.ident.clone(),
             start: ast::StartKind::None,
             wasm_bindgen: program.wasm_bindgen.clone(),
-            wasm_bindgen_futures: program.wasm_bindgen_futures.clone(),
             js_sys: program.js_sys.clone(),
         });
         opts.check_used();
@@ -3044,10 +3031,6 @@ pub fn module_from_opts(
         program.js_sys = path.clone();
     }
 
-    if let Some(path) = opts.wasm_bindgen_futures() {
-        program.wasm_bindgen_futures = path.clone();
-    }
-
     let mut errors = Vec::new();
     let module = if let Some((name, span)) = opts.module() {
         if opts.inline_js().is_some() {
@@ -3375,19 +3358,13 @@ fn main(program: &ast::Program, mut f: ItemFn, tokens: &mut TokenStream) -> Resu
     let body = f.block.as_ref();
 
     let wasm_bindgen = &program.wasm_bindgen;
-    let wasm_bindgen_futures = &program.wasm_bindgen_futures;
     let js_sys = &program.js_sys;
-    let futures = if ast::use_js_sys_futures() {
-        quote::quote! { #js_sys::futures }
-    } else {
-        quote::quote! { #wasm_bindgen_futures }
-    };
 
     if f.sig.asyncness.take().is_some() {
         *f.block = syn::parse2(quote::quote! {
                 {
                     async fn __wasm_bindgen_generated_main() #r#return #body
-                    #futures::spawn_local(
+                    #js_sys::futures::spawn_local(
                         async move {
                             use #wasm_bindgen::__rt::Main;
                             let __ret = __wasm_bindgen_generated_main();

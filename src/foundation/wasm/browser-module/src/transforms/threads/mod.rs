@@ -451,7 +451,3 @@ fn with_temp_stack(
         .atomic_notify(memory, ATOMIC_MEM_ARG)
         .drop();
 }
-
-#[path = "../../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/threads/tests/mod.rs"]
-#[cfg(test)]
-mod tests;

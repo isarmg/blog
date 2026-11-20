@@ -1,6 +1,6 @@
 
+    use crate::parser::Parser;
     use crate::syntax_arena::Allocator;
-    use oxc_parser::Parser;
     use crate::scope_analysis::{SemanticBuilder, SymbolId};
     use crate::source_location::SourceType;
     use rustc_hash::FxHashSet;

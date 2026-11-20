@@ -1,52 +1,4 @@
-//! `rustix` provides efficient memory-safe and [I/O-safe] wrappers to
-//! POSIX-like, Unix-like, Linux, and Winsock syscall-like APIs, with
-//! configurable backends.
-//!
-//! With rustix, you can write code like this:
-//!
-//! ```
-//! # #[cfg(feature = "net")]
-//! # fn read(sock: std::net::TcpStream, buf: &mut [u8]) -> std::io::Result<()> {
-//! # use rustix::net::RecvFlags;
-//! let (nread, _received) = rustix::net::recv(&sock, buf, RecvFlags::PEEK)?;
-//! # let _ = nread;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! instead of like this:
-//!
-//! ```
-//! # #[cfg(feature = "net")]
-//! # fn read(sock: std::net::TcpStream, buf: &mut [u8]) -> std::io::Result<()> {
-//! # #[cfg(unix)]
-//! # use std::os::unix::io::AsRawFd;
-//! # #[cfg(target_os = "wasi")]
-//! # use std::os::wasi::io::AsRawFd;
-//! # #[cfg(windows)]
-//! # use windows_sys::Win32::Networking::WinSock as libc;
-//! # #[cfg(windows)]
-//! # use std::os::windows::io::AsRawSocket;
-//! # const MSG_PEEK: i32 = libc::MSG_PEEK;
-//! let nread = unsafe {
-//!     #[cfg(any(unix, target_os = "wasi"))]
-//!     let raw = sock.as_raw_fd();
-//!     #[cfg(windows)]
-//!     let raw = sock.as_raw_socket();
-//!     match libc::recv(
-//!         raw as _,
-//!         buf.as_mut_ptr().cast(),
-//!         buf.len().try_into().unwrap_or(i32::MAX as _),
-//!         MSG_PEEK,
-//!     ) {
-//!         -1 => return Err(std::io::Error::last_os_error()),
-//!         nread => nread as usize,
-//!     }
-//! };
-//! # let _ = nread;
-//! # Ok(())
-//! # }
-//! ```
+//! Memory-safe and [I/O-safe] wrappers for Linux AMD64 syscalls.
 //!
 //! rustix's APIs perform the following tasks:
 //!  - Error values are translated to [`Result`]s.
@@ -143,7 +95,7 @@
     all(
         target_os = "wasi",
         target_env = "p2",
-        any(feature = "fs", feature = "mount", feature = "net"),
+        any(feature = "fs", feature = "mount"),
         wasip2,
     ),
     feature(wasip2)
@@ -217,10 +169,6 @@ pub mod ffi;
 #[cfg_attr(docsrs, doc(cfg(feature = "fs")))]
 pub mod fs;
 pub mod io;
-#[cfg(all(linux_kernel, not(target_os = "android")))]
-#[cfg(feature = "io_uring")]
-#[cfg_attr(docsrs, doc(cfg(feature = "io_uring")))]
-pub mod io_uring;
 pub mod ioctl;
 #[cfg(not(any(
     windows,
@@ -236,19 +184,15 @@ pub mod mm;
 #[cfg(feature = "mount")]
 #[cfg_attr(docsrs, doc(cfg(feature = "mount")))]
 pub mod mount;
-#[cfg(not(target_os = "wasi"))]
-#[cfg(feature = "net")]
-#[cfg_attr(docsrs, doc(cfg(feature = "net")))]
-pub mod net;
 #[cfg(not(any(windows, target_os = "espidf")))]
 #[cfg(feature = "param")]
 #[cfg_attr(docsrs, doc(cfg(feature = "param")))]
 pub mod param;
 #[cfg(not(windows))]
-#[cfg(any(feature = "fs", feature = "mount", feature = "net"))]
+#[cfg(any(feature = "fs", feature = "mount"))]
 #[cfg_attr(
     docsrs,
-    doc(cfg(any(feature = "fs", feature = "mount", feature = "net")))
+    doc(cfg(any(feature = "fs", feature = "mount")))
 )]
 pub mod path;
 #[cfg(feature = "pipe")]
@@ -338,7 +282,7 @@ pub(crate) mod fs;
 
 // Similarly, declare `path` as a non-public module if needed.
 #[cfg(not(windows))]
-#[cfg(not(any(feature = "fs", feature = "mount", feature = "net")))]
+#[cfg(not(any(feature = "fs", feature = "mount")))]
 #[cfg(all(
     linux_raw,
     not(feature = "use-libc-auxv"),
@@ -358,7 +302,7 @@ pub(crate) mod path;
 #[cfg(any(feature = "thread", feature = "time"))]
 mod clockid;
 #[cfg(linux_kernel)]
-#[cfg(any(feature = "io_uring", feature = "runtime"))]
+#[cfg(feature = "runtime")]
 mod kernel_sigset;
 #[cfg(not(any(windows, target_os = "wasi")))]
 #[cfg(any(
@@ -366,8 +310,7 @@ mod kernel_sigset;
     feature = "runtime",
     feature = "termios",
     feature = "thread",
-    all(bsd, feature = "event"),
-    all(linux_kernel, feature = "net")
+    all(bsd, feature = "event")
 ))]
 mod pid;
 #[cfg(any(feature = "process", feature = "thread"))]
@@ -375,7 +318,6 @@ mod pid;
 mod prctl;
 #[cfg(not(any(windows, target_os = "espidf", target_os = "wasi")))]
 #[cfg(any(
-    feature = "io_uring",
     feature = "process",
     feature = "runtime",
     all(bsd, feature = "event")
@@ -418,8 +360,7 @@ mod timespec;
             feature = "time",
             target_arch = "x86",
         )
-    ),
-    all(linux_kernel, feature = "net")
+    )
 ))]
 mod ugid;
 

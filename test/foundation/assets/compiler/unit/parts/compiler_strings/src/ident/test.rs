@@ -1,8 +1,8 @@
 
     use std::hash::BuildHasher;
 
+    use crate::implements;
     use crate::syntax_arena::Allocator;
-    use oxc_data_structures::types::implements;
 
     use super::*;
 

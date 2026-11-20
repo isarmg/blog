@@ -42,26 +42,6 @@ impl Listener for TcpListener {
     }
 }
 
-#[cfg(unix)]
-impl Listener for tokio::net::UnixListener {
-    type Io = tokio::net::UnixStream;
-    type Addr = tokio::net::unix::SocketAddr;
-
-    async fn accept(&mut self) -> (Self::Io, Self::Addr) {
-        loop {
-            match Self::accept(self).await {
-                Ok(tup) => return tup,
-                Err(e) => handle_accept_error(e).await,
-            }
-        }
-    }
-
-    #[inline]
-    fn local_addr(&self) -> io::Result<Self::Addr> {
-        Self::local_addr(self)
-    }
-}
-
 /// Extensions to [`Listener`].
 pub trait ListenerExt: Listener + Sized {
     /// Run a mutable closure on every accepted `Io`.

@@ -552,11 +552,8 @@ pub fn build(options: &crate::Options, request: BuildRequest<'_>) -> Result<Path
         return Ok(dist);
     }
     let receipt_directory = private_receipt_directory()?;
-    let mut command = Command::new("cargo");
+    let mut command = crate::cargo_command(root, &manifest, "build");
     command
-        .arg(format!("+{}", crate::RUST))
-        .args(["build", "--locked", "--offline", "--manifest-path"])
-        .arg(&manifest)
         .args([
             "--package",
             &config.rust.package,
@@ -566,7 +563,6 @@ pub fn build(options: &crate::Options, request: BuildRequest<'_>) -> Result<Path
             TARGET,
             "--message-format=json-render-diagnostics",
         ])
-        .current_dir(root)
         .env("BLOG_WEB_DIST", &dist)
         .env(variable, &source)
         .env("BLOG_BUILD_METADATA_DIR", receipt_directory.path())

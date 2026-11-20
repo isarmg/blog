@@ -145,8 +145,6 @@ impl<'i> ToCss for PageMarginRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_char('@')?;
     self.margin_box.to_css(dest)?;
     self.declarations.to_css_block(dest)
@@ -213,8 +211,6 @@ impl<'i> ToCss for PageRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@page")?;
     if let Some(first) = self.selectors.first() {
       // Space is only required if the first selector has a name.

@@ -384,7 +384,7 @@ pub fn AdminShell(
         },
     ));
     on_cleanup(move || drop(listener));
-    wasm_bindgen_futures::spawn_local(async {
+    js_sys::futures::spawn_local(async {
         if let Err(error) = api::restore().await {
             // The shared authentication snapshot renders the failure to the user.
             web_sys::console::debug_1(&format!("Session restore: {}", error.code.as_str()).into());
@@ -534,7 +534,7 @@ pub fn AdminShell(
                 .on(
                     blog_interface::ev::click,
                     move |_| {
-                        wasm_bindgen_futures::spawn_local(async {
+                        js_sys::futures::spawn_local(async {
                             if let Err(error) = api::logout().await {
                                 // The shared authentication snapshot retains the revocation warning.
                                 web_sys::console::debug_1(&format!("Session logout: {}", error.code.as_str()).into());
@@ -606,7 +606,7 @@ pub fn AdminShell(
                 .on(
                     blog_interface::ev::click,
                     move |_| {
-                        wasm_bindgen_futures::spawn_local(async {
+                        js_sys::futures::spawn_local(async {
                             if let Err(error) = api::restore().await {
             // The shared authentication snapshot renders the failure to the user.
             web_sys::console::debug_1(&format!("Session restore: {}", error.code.as_str()).into());
@@ -782,7 +782,7 @@ pub fn AdminShell(
                                             return;
                                         }
                                         pending_logout.set(true);
-                                        wasm_bindgen_futures::spawn_local(async move {
+                                        js_sys::futures::spawn_local(async move {
                                             if let Err(error) = api::logout().await {
                                 // The shared authentication snapshot retains the revocation warning.
                                 web_sys::console::debug_1(&format!("Session logout: {}", error.code.as_str()).into());
@@ -1116,7 +1116,7 @@ pub fn LoginPage(#[prop(optional)] landing: &'static str) -> impl IntoView {
                 }
                 pending.set(true);
                 failure.set(None);
-                wasm_bindgen_futures::spawn_local(async move {
+                js_sys::futures::spawn_local(async move {
                     match api::login(&name.value(), &secret.value()).await {
                         Ok(_) => {
                             if !landing.is_empty()
@@ -1423,7 +1423,7 @@ pub fn AccountPage() -> impl IntoView {
                                         }
                                         pending.set(true);
                                         failure.set(None);
-                                        wasm_bindgen_futures::spawn_local(async move {
+                                        js_sys::futures::spawn_local(async move {
                                             if let Err(error) = api::update_account(input).await {
                                                 let message = match &error.code {
                                                     ApiErrorCode::Remote(RemoteErrorCode::CurrentPasswordInvalid) => {

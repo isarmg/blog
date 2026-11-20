@@ -405,7 +405,7 @@ impl EventListener {
     ///
     /// # Options
     ///
-    /// See the documentation for [`EventListenerOptions`](struct.EventListenerOptions.html) for more details.
+    /// See the documentation for [`EventListenerOptions`] for more details.
     ///
     /// # Examples
     ///

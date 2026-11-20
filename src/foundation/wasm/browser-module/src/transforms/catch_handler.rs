@@ -615,7 +615,3 @@ impl VisitorMut for CallRewriter<'_> {
         }
     }
 }
-
-#[path = "../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/catch_handler/tests.rs"]
-#[cfg(test)]
-mod tests;

@@ -1,9 +1,3 @@
-#[cfg(any())]
-mod compiler;
-
-#[cfg(any())]
-pub use compiler::{Compiler, CompilerInterface};
-
 pub mod allocator {
     //! Memory arena allocator used by all other submodules.
     //!

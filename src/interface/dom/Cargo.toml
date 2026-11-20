@@ -1,7 +1,7 @@
 [package]
 name = "blog-dom"
 edition = "2021"
-rust-version = "1.99"
+rust-version.workspace = true
 license = "MIT AND Zlib"
 publish = false
 build = "../../tools/assets/src/platform_contract.rs"
@@ -21,11 +21,6 @@ crate-type = ["cdylib"]
 default = ["csr"]
 csr = ["blog_component_macros/csr"]
 shadow-dom = ["web-sys/ShadowRoot", "web-sys/ShadowRootInit", "web-sys/ShadowRootMode"]
-
-[dependencies.async-trait]
-package = "blog-syntax-async-trait"
-path = "../../foundation/syntax/async-trait"
-default-features = true
 
 [dependencies.blog_component_macros]
 package = "blog-component-macros"
@@ -82,11 +77,6 @@ default-features = true
 [dependencies.wasm-bindgen]
 package = "blog-wasm-browser-bridge"
 path = "../../foundation/wasm/browser-bridge"
-default-features = true
-
-[dependencies.wasm-bindgen-futures]
-package = "blog-wasm-browser-futures"
-path = "../../foundation/wasm/browser-futures"
 default-features = true
 
 [dependencies.web-sys]

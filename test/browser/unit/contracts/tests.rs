@@ -4,6 +4,8 @@ use serde_json::json;
 fn invalid_pages_and_missing_nulls_rejected() {
     assert!(!page(
         &json!({"items":[],"page":1,"size":0,"total":0}),
+        "",
+        50,
         comment
     ));
     assert!(!site(&json!({"web_name":"blog"})));
@@ -53,8 +55,20 @@ fn site_contract_uses_the_typed_required_nullable_shape_and_object_containers() 
 #[test]
 fn read_page_identity_and_nullable_fields() {
     let v = json!({"items":[],"page":2,"size":20,"total":21});
-    assert!(matches_page("/api/v1/content/notes?page=2&size=20", &v));
-    assert!(!matches_page("/api/v1/content/notes?page=1&size=20", &v));
+    for (query, valid) in [
+        ("page=2&size=20", true),
+        ("size=20&page=2&f=0", true),
+        ("page=2&page=1&size=20", true),
+        ("page=1&size=20", false),
+        ("page=2&size=21", false),
+        ("page=invalid&size=20", false),
+    ] {
+        assert_eq!(
+            validate(&format!("/api/v1/content/notes?{query}"), "GET", &v),
+            valid,
+            "{query}"
+        );
+    }
     assert!(!category(
         &json!({"id":1,"sort_name":"A","article_count":0})
     ));
@@ -130,10 +144,7 @@ fn consumed_read_models_reject_malformed_fields() {
             page(bad_link),
         ),
     ] {
-        assert!(
-            validate(path, "GET", &valid) && matches_page(path, &valid),
-            "{path}"
-        );
+        assert!(validate(path, "GET", &valid), "{path}");
         assert!(!validate(path, "GET", &invalid), "{path}");
     }
     assert!(validate("/api/v1/letter", "GET", &Value::Null));
@@ -146,28 +157,35 @@ fn consumed_read_models_reject_malformed_fields() {
 }
 #[test]
 fn upload_path_and_size() {
+    assert!(UploadKind::Image.accepts(10. * 1024. * 1024., "image/png"));
+    assert!(!UploadKind::Image.accepts(10. * 1024. * 1024. + 1., "image/png"));
+    assert!(!UploadKind::Image.accepts(0., "image/png"));
+    assert!(!UploadKind::Image.accepts(1., "video/mp4"));
     let mut v = json!({"id":1,"path":format!("/media/{}.png","a".repeat(64)),"mime_type":"image/png","size":1});
-    assert!(upload(&v));
+    assert_eq!(UploadKind::Image.uploaded_path(&v), v["path"].as_str());
     v["size"] = json!(10 * 1024 * 1024 + 1);
-    assert!(!upload(&v));
+    assert!(UploadKind::Image.uploaded_path(&v).is_none());
 }
 
 #[test]
 fn video_upload_requires_matching_content_type_path_and_bounded_size() {
     for (extension, mime) in [("mp4", "video/mp4"), ("webm", "video/webm")] {
         let mut uploaded = json!({"id":1,"path":format!("/media/{}.{extension}","a".repeat(64)),"mime_type":mime,"size":50*1024*1024});
-        assert!(upload_video(&uploaded));
+        assert_eq!(
+            UploadKind::Video.uploaded_path(&uploaded),
+            uploaded["path"].as_str()
+        );
         assert!(validate("/api/v1/content/upload-video", "POST", &uploaded));
-        assert!(!upload(&uploaded));
+        assert!(UploadKind::Image.uploaded_path(&uploaded).is_none());
         uploaded["size"] = json!(50 * 1024 * 1024 + 1);
-        assert!(!upload_video(&uploaded));
+        assert!(UploadKind::Video.uploaded_path(&uploaded).is_none());
         uploaded["size"] = json!(1);
         uploaded["mime_type"] = json!("image/png");
-        assert!(!upload_video(&uploaded));
+        assert!(UploadKind::Video.uploaded_path(&uploaded).is_none());
         uploaded["mime_type"] = json!(mime);
         uploaded["path"] = json!(format!("/media/{}.png", "a".repeat(64)));
-        assert!(!upload_video(&uploaded));
+        assert!(UploadKind::Video.uploaded_path(&uploaded).is_none());
     }
     let image = json!({"id":1,"path":format!("/media/{}.png","a".repeat(64)),"mime_type":"image/jpeg","size":1});
-    assert!(!upload(&image));
+    assert!(UploadKind::Image.uploaded_path(&image).is_none());
 }

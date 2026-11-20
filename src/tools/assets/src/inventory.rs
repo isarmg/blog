@@ -440,6 +440,13 @@ pub fn snapshot(root: &Path) -> Result<Value> {
         },
     )?;
     let foundation_inputs = foundation_inputs_with(root, &mut hashes)?;
+    let lock_path = root.join("Cargo.lock");
+    let lock_bytes = hashes
+        .read(&lock_path)
+        .map_err(|source| InventoryError::Read {
+            path: lock_path.clone(),
+            source,
+        })?;
     let mut workspace_inputs = Files::new();
     for name in ["Cargo.toml", "Cargo.lock", ".cargo/config.toml"] {
         let path = root.join(name);
@@ -491,13 +498,6 @@ pub fn snapshot(root: &Path) -> Result<Value> {
             }
         }
     }
-    let lock_path = root.join("Cargo.lock");
-    let lock_bytes = hashes
-        .read(&lock_path)
-        .map_err(|source| InventoryError::Read {
-            path: lock_path.clone(),
-            source,
-        })?;
     let lock = parse_manifest(&lock_path, lock_bytes)?;
     let packages = lock
         .get("package")

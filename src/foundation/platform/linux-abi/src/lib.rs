@@ -14,66 +14,13 @@ this behavior. We can simply silence these warnings.
 )))]
 compile_error!("blog-platform-linux-abi requires Linux amd64");
 
-#[cfg(feature = "std")]
-pub use std::os::raw as ctypes;
-
-#[cfg(all(not(feature = "std"), feature = "no_std"))]
+/// C primitive types for the Linux AMD64 ABI.
+#[cfg(any(feature = "std", feature = "no_std"))]
 pub mod ctypes {
-    // The signedness of `char` is platform-specific, and we have to match
-    // what Rust's `CStr` uses.
-    #[cfg(any(
-        target_arch = "aarch64",
-        target_arch = "arm",
-        target_arch = "msp430",
-        target_arch = "powerpc",
-        target_arch = "powerpc64",
-        target_arch = "riscv32",
-        target_arch = "riscv64",
-        target_arch = "s390x",
-    ))]
-    pub type c_char = c_uchar;
-    #[cfg(any(
-        target_arch = "loongarch64",
-        target_arch = "m68k",
-        target_arch = "mips",
-        target_arch = "mips64",
-        target_arch = "mips32r6",
-        target_arch = "mips64r6",
-        target_arch = "sparc",
-        target_arch = "sparc64",
-        target_arch = "x86",
-        target_arch = "x86_64",
-        target_arch = "xtensa",
-    ))]
-    pub type c_char = c_schar;
-
-    // The following assumes that Linux is always either ILP32 or LP64,
-    // and char is always 8-bit.
-    //
-    // In theory, `c_long` and `c_ulong` could be `isize` and `usize`
-    // respectively, however in practice Linux doesn't use them in that way
-    // consistently. So stick with the convention followed by `libc` and
-    // others and use the fixed-width types.
-    pub type c_schar = i8;
-    pub type c_uchar = u8;
-    pub type c_short = i16;
-    pub type c_ushort = u16;
-    pub type c_int = i32;
-    pub type c_uint = u32;
-    #[cfg(target_pointer_width = "32")]
-    pub type c_long = i32;
-    #[cfg(target_pointer_width = "32")]
-    pub type c_ulong = u32;
-    #[cfg(target_pointer_width = "64")]
-    pub type c_long = i64;
-    #[cfg(target_pointer_width = "64")]
-    pub type c_ulong = u64;
-    pub type c_longlong = i64;
-    pub type c_ulonglong = u64;
-    pub type c_float = f32;
-    pub type c_double = f64;
-
-    pub use core::ffi::c_void;
+    pub use core::ffi::{
+        c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
+        c_ulong, c_ulonglong, c_ushort, c_void,
+    };
 }
 
 // Confirm that our type definitions above match the actual type definitions.
@@ -98,61 +45,6 @@ impl PartialEq for general::__kernel_timespec {
 }
 #[cfg(feature = "general")]
 impl Eq for general::__kernel_timespec {}
-
-#[cfg(feature = "net")]
-pub mod cmsg_macros {
-    use crate::ctypes::{c_long, c_uchar, c_uint};
-    use crate::net::{cmsghdr, msghdr};
-    use core::mem::size_of;
-    use core::ptr;
-
-    pub const unsafe fn CMSG_ALIGN(len: c_uint) -> c_uint {
-        let c_long_size = size_of::<c_long>() as c_uint;
-        (len + c_long_size - 1) & !(c_long_size - 1)
-    }
-
-    pub const unsafe fn CMSG_DATA(cmsg: *const cmsghdr) -> *mut c_uchar {
-        (cmsg as *mut c_uchar).add(size_of::<cmsghdr>())
-    }
-
-    pub const unsafe fn CMSG_SPACE(len: c_uint) -> c_uint {
-        size_of::<cmsghdr>() as c_uint + CMSG_ALIGN(len)
-    }
-
-    pub const unsafe fn CMSG_LEN(len: c_uint) -> c_uint {
-        size_of::<cmsghdr>() as c_uint + len
-    }
-
-    pub const unsafe fn CMSG_FIRSTHDR(mhdr: *const msghdr) -> *mut cmsghdr {
-        if (*mhdr).msg_controllen < size_of::<cmsghdr>() as _ {
-            return ptr::null_mut();
-        }
-
-        (*mhdr).msg_control as *mut cmsghdr
-    }
-
-    pub unsafe fn CMSG_NXTHDR(mhdr: *const msghdr, cmsg: *const cmsghdr) -> *mut cmsghdr {
-        // We convert from raw pointers to usize here, which may not be sound in a
-        // future version of Rust. Once the provenance rules are set in stone,
-        // it will be a good idea to give this function a once-over.
-
-        let cmsg_len = (*cmsg).cmsg_len;
-        let next_cmsg = (cmsg as *mut u8).add(CMSG_ALIGN(cmsg_len as _) as usize) as *mut cmsghdr;
-        let max = ((*mhdr).msg_control as usize) + ((*mhdr).msg_controllen as usize);
-
-        if cmsg_len < size_of::<cmsghdr>() as _ {
-            return ptr::null_mut();
-        }
-
-        if next_cmsg.add(1) as usize > max
-            || next_cmsg as usize + CMSG_ALIGN((*next_cmsg).cmsg_len as _) as usize > max
-        {
-            return ptr::null_mut();
-        }
-
-        next_cmsg
-    }
-}
 
 #[cfg(feature = "general")]
 pub mod select_macros {
@@ -214,69 +106,18 @@ pub mod elf;
 #[cfg(feature = "auxvec")]
 #[path = "x86_64/auxvec.rs"]
 pub mod auxvec;
-#[cfg(feature = "bootparam")]
-#[path = "x86_64/bootparam.rs"]
-pub mod bootparam;
-#[cfg(feature = "btrfs")]
-#[path = "x86_64/btrfs.rs"]
-pub mod btrfs;
-#[cfg(feature = "elf_uapi")]
-#[path = "x86_64/elf_uapi.rs"]
-pub mod elf_uapi;
 #[cfg(feature = "errno")]
 #[path = "x86_64/errno.rs"]
 pub mod errno;
 #[cfg(feature = "general")]
 #[path = "x86_64/general.rs"]
 pub mod general;
-#[cfg(feature = "if_arp")]
-#[path = "x86_64/if_arp.rs"]
-pub mod if_arp;
-#[cfg(feature = "if_ether")]
-#[path = "x86_64/if_ether.rs"]
-pub mod if_ether;
-#[cfg(feature = "if_packet")]
-#[path = "x86_64/if_packet.rs"]
-pub mod if_packet;
-#[cfg(feature = "if_tun")]
-#[path = "x86_64/if_tun.rs"]
-pub mod if_tun;
-#[cfg(feature = "image")]
-#[path = "x86_64/image.rs"]
-pub mod image;
-#[cfg(feature = "io_uring")]
-#[path = "x86_64/io_uring.rs"]
-pub mod io_uring;
 #[cfg(feature = "ioctl")]
 #[path = "x86_64/ioctl.rs"]
 pub mod ioctl;
-#[cfg(feature = "landlock")]
-#[path = "x86_64/landlock.rs"]
-pub mod landlock;
-#[cfg(feature = "loop_device")]
-#[path = "x86_64/loop_device.rs"]
-pub mod loop_device;
-#[cfg(feature = "mempolicy")]
-#[path = "x86_64/mempolicy.rs"]
-pub mod mempolicy;
-#[cfg(feature = "net")]
-#[path = "x86_64/net.rs"]
-pub mod net;
-#[cfg(feature = "netlink")]
-#[path = "x86_64/netlink.rs"]
-pub mod netlink;
 #[cfg(feature = "prctl")]
 #[path = "x86_64/prctl.rs"]
 pub mod prctl;
-#[cfg(feature = "ptrace")]
-#[path = "x86_64/ptrace.rs"]
-pub mod ptrace;
 #[cfg(feature = "system")]
 #[path = "x86_64/system.rs"]
 pub mod system;
-#[cfg(feature = "vm_sockets")]
-#[path = "x86_64/vm_sockets.rs"]
-pub mod vm_sockets;
-#[cfg(feature = "xdp")]
-#[path = "x86_64/xdp.rs"]
-pub mod xdp;

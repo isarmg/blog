@@ -3,7 +3,6 @@
 mod config;
 mod custom;
 mod data;
-mod debug;
 mod elements;
 mod exports;
 mod functions;
@@ -24,7 +23,6 @@ pub use crate::module::custom::{
     UntypedCustomSectionId,
 };
 pub use crate::module::data::{Data, DataId, DataKind, ModuleData};
-pub use crate::module::debug::ModuleDebugData;
 pub use crate::module::elements::{Element, ElementId, ModuleElements};
 pub use crate::module::elements::{ElementItems, ElementKind};
 pub use crate::module::exports::{Export, ExportId, ExportItem, ModuleExports};
@@ -41,11 +39,9 @@ pub use crate::module::tags::{ModuleTags, Tag, TagId, TagKind};
 pub use crate::module::types::ModuleTypes;
 use crate::parse::IndicesToIds;
 use anyhow::{bail, Context};
-use id_arena::Id;
 use log::warn;
 use std::fs;
 use std::mem;
-use std::ops::Range;
 use std::path::Path;
 use wasmparser::{BinaryReader, Parser, Payload, Validator};
 
@@ -75,30 +71,10 @@ pub struct Module {
     pub producers: ModuleProducers,
     /// Custom sections found in this module.
     pub customs: ModuleCustomSections,
-    /// Dwarf debug data.
-    pub debug: ModuleDebugData,
     /// The name of this module, used for debugging purposes in the `name`
     /// custom section.
     pub name: Option<String>,
     pub(crate) config: ModuleConfig,
-}
-
-/// Code transformation records, which is used to transform DWARF debug entries.
-#[derive(Debug, Default)]
-pub struct CodeTransform {
-    /// Maps from an offset of an instruction in the input Wasm to its offset in the
-    /// output Wasm.
-    ///
-    /// Note that an input offset may be mapped to multiple output offsets, and vice
-    /// versa, due to transformations like function inlinining or constant
-    /// propagation.
-    pub instruction_map: Vec<(InstrLocId, usize)>,
-
-    /// Offset of code section from the front of Wasm binary
-    pub code_section_start: usize,
-
-    /// Emitted binary ranges of functions
-    pub function_ranges: Vec<(Id<Function>, Range<usize>)>,
 }
 
 impl Module {
@@ -153,7 +129,6 @@ impl Module {
         let mut validator = Validator::new_with_features(wasm_features);
 
         let mut local_functions = Vec::new();
-        let mut debug_sections = Vec::new();
 
         let mut parser = Parser::new(0);
         parser.set_features(wasm_features);
@@ -231,7 +206,6 @@ impl Module {
                 }
                 Payload::CodeSectionStart { range, .. } => {
                     validator.code_section_start(&range)?;
-                    ret.funcs.code_section_offset = range.start;
                 }
                 Payload::CodeSectionEntry(body) => {
                     let validator = validator
@@ -257,12 +231,7 @@ impl Module {
                         }
                         name => {
                             log::debug!("parsing custom section `{}`", name);
-                            if name.starts_with(".debug") {
-                                debug_sections.push(RawCustomSection {
-                                    name: name.to_string(),
-                                    data: s.data().to_vec(),
-                                });
-                            } else {
+                            if !name.starts_with(".debug") {
                                 ret.customs.add(RawCustomSection {
                                     name: name.to_string(),
                                     data: s.data().to_vec(),
@@ -305,9 +274,6 @@ impl Module {
             config.on_instr_loc.as_ref().map(|f| f.as_ref()),
         )
         .context("failed to parse code section")?;
-
-        ret.parse_debug_sections(debug_sections)
-            .context("failed to parse debug data section")?;
 
         ret.producers
             .add_processed_by("walrus", env!("CARGO_PKG_VERSION"));
@@ -451,14 +417,13 @@ impl Module {
 
         let indices = &mut IdsToIndices::default();
 
-        let mut customs = mem::take(&mut self.customs);
+        let customs = mem::take(&mut self.customs);
 
         let mut cx = EmitContext {
             module: self,
             indices,
             wasm_module: wasm_encoder::Module::new(),
             locals: Default::default(),
-            code_transform: Default::default(),
         };
         // The dynamic-linking ABI requires this metadata before every standard
         // section. Its payload contains allocation requirements and symbol names,
@@ -497,15 +462,9 @@ impl Module {
             self.producers.emit(&mut cx);
         }
 
-        if self.config.generate_dwarf {
-            self.debug.emit(&mut cx);
-        } else {
-            log::debug!("skipping DWARF custom section");
-        }
-
         let indices = std::mem::take(cx.indices);
 
-        for (_id, section) in customs.iter_mut() {
+        for (_, section) in customs.iter() {
             if section.name().starts_with(".debug")
                 || matches!(section.name(), "dylink" | "dylink.0")
             {
@@ -513,10 +472,6 @@ impl Module {
             }
 
             log::debug!("emitting custom section {}", section.name());
-
-            if self.config.preserve_code_transform {
-                section.apply_code_transform(&cx.code_transform);
-            }
 
             cx.wasm_module.section(&wasm_encoder::CustomSection {
                 name: section.name().into(),

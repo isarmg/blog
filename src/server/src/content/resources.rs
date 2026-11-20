@@ -1,4 +1,4 @@
-use super::{AdminPageQuery, PageResult};
+use super::{PageQuery, PageResult};
 use crate::{ApiResult, AppState};
 use axum::{Json, extract::State};
 use blog_application::server_cli::ContractQuery as Query;
@@ -16,20 +16,15 @@ pub(super) struct Resource {
 }
 pub(super) async fn resources(
     State(state): State<AppState>,
-    Query(query): Query<AdminPageQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<Resource>> {
-    let (page, size) = query.bounds();
+    let pagination = query.admin_bounds();
     let mut transaction = state.pool.begin().await?;
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM resource")
         .fetch_one(&mut *transaction)
         .await?;
     let items=sqlx::query_as::<_,Resource>("SELECT id,original_name,path,type AS resource_type,size,status,create_time FROM resource ORDER BY id DESC LIMIT ? OFFSET ?")
-        .bind(size).bind((page-1)*size).fetch_all(&mut *transaction).await?;
+        .bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }

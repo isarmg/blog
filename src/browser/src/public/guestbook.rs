@@ -18,7 +18,7 @@ pub(super) fn Message() -> impl IntoView {
     let posts = RwSignal::new(Vec::<Value>::new());
     let action = Action::new();
     Effect::new(move |_| {
-        if let Some(v) = data.value.get() {
+        if let Some(v) = data.current() {
             posts.update(|current| {
                 for item in v.as_array().cloned().unwrap_or_default() {
                     if !current.iter().any(|v| v["id"] == item["id"]) {

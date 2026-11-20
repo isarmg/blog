@@ -463,7 +463,7 @@ impl CompressorOxide {
         self.params.adler32
     }
 
-    /// Get the return status of the previous [`compress`](fn.compress.html)
+    /// Get the return status of the previous [`compress`]
     /// call with this compressor.
     pub const fn prev_return_status(&self) -> TDEFLStatus {
         self.params.prev_return_status

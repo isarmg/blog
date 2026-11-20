@@ -14,7 +14,7 @@
 //! The `tokio::fs` module should only be used for ordinary files. Trying to use
 //! it with e.g., a named pipe on Linux can result in surprising behavior,
 //! such as hangs during runtime shutdown. For special files, you should use a
-//! dedicated type such as [`tokio::net::unix::pipe`] or [`AsyncFd`] instead.
+//! dedicated type such as [`AsyncFd`] instead.
 //!
 //! Currently, Tokio will always use [`spawn_blocking`] on all platforms, but it
 //! may be changed to use asynchronous file system APIs such as io_uring in the
@@ -209,7 +209,6 @@
 //! [`AsyncWrite`]: trait@crate::io::AsyncWrite
 //! [`BufReader`]: struct@crate::io::BufReader
 //! [`BufWriter`]: struct@crate::io::BufWriter
-//! [`tokio::net::unix::pipe`]: crate::net::unix::pipe
 //! [`AsyncFd`]: crate::io::unix::AsyncFd
 //! [`flush`]: crate::io::AsyncWriteExt::flush
 //! [`tokio::fs::read`]: fn@crate::fs::read

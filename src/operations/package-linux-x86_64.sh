@@ -67,7 +67,7 @@ export BLOG_SOURCE_REVISION="$source_revision"
 export BLOG_WEB_DIST="$source_root/src/web/dist"
 export BLOG_BUILD_METADATA_DIR="$work/metadata"
 export BLOG_FRONTEND_METADATA_FILE="$work/metadata/frontend.json"
-builder=(cargo +1.99.0 run --quiet --locked --offline --manifest-path "$source_root/Cargo.toml" -p blog-assets -- server --product-root "$source_root" --offline)
+builder=(cargo +1.100.0 run --quiet --locked --offline --manifest-path "$source_root/Cargo.toml" -p blog-assets -- server --product-root "$source_root" --offline)
 "${builder[@]}" --config blog-assets.json --mode release --source-revision "$source_revision" > "$work/build.log"
 server_binary="$(tail -n 1 "$work/build.log")"
 [[ "$server_binary" = /* && -f "$server_binary" && ! -L "$server_binary" && -x "$server_binary" ]] || { echo 'Builder did not return a physical executable.' >&2; exit 1; }

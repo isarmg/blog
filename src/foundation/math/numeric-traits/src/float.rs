@@ -2296,31 +2296,17 @@ pub trait TotalOrder {
     fn total_cmp(&self, other: &Self) -> Ordering;
 }
 macro_rules! totalorder_impl {
-    ($T:ident, $I:ident, $U:ident, $bits:expr) => {
-        impl TotalOrder for $T {
+    ($float:ty) => {
+        impl TotalOrder for $float {
             #[inline]
-            #[cfg(has_total_cmp)]
             fn total_cmp(&self, other: &Self) -> Ordering {
-                // Forward to the core implementation
-                Self::total_cmp(&self, other)
-            }
-            #[inline]
-            #[cfg(not(has_total_cmp))]
-            fn total_cmp(&self, other: &Self) -> Ordering {
-                // Backport the core implementation (since 1.62)
-                let mut left = self.to_bits() as $I;
-                let mut right = other.to_bits() as $I;
-
-                left ^= (((left >> ($bits - 1)) as $U) >> 1) as $I;
-                right ^= (((right >> ($bits - 1)) as $U) >> 1) as $I;
-
-                left.cmp(&right)
+                <$float>::total_cmp(self, other)
             }
         }
     };
 }
-totalorder_impl!(f64, i64, u64, 64);
-totalorder_impl!(f32, i32, u32, 32);
+totalorder_impl!(f64);
+totalorder_impl!(f32);
 
 #[path = "../../../../../test/foundation/math/numeric-traits/unit/src/float/tests.rs"]
 #[cfg(test)]

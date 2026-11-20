@@ -3,7 +3,7 @@ use std::fmt::{self, Write};
 use std::str;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use httpdate::HttpDate;
+use http::header::date::HttpDate;
 
 // "Sun, 06 Nov 1994 08:49:37 GMT".len()
 pub(crate) const DATE_VALUE_LENGTH: usize = 29;

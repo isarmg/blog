@@ -1,4 +1,3 @@
-#[cfg(feature = "export")]
 #[test]
 fn test_iter() {
     use crate::IterableDataProvider;

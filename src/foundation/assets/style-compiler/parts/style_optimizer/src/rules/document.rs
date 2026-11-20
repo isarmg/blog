@@ -38,8 +38,6 @@ impl<'i, T: ToCss> ToCss for MozDocumentRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@-moz-document url-prefix()")?;
     dest.whitespace()?;
     dest.write_char('{')?;

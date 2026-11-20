@@ -2,7 +2,8 @@
 use super::appearance::{background_style, site_media_url};
 use super::shell::{Chrome, site_data};
 use crate::common::{
-    BrowsePager, Feedback, browse, load, page_number, param, rows, safe_url, search_signal, t, text,
+    BrowsePager, Feedback, browse, load, page_items, page_number, param, safe_url, search_signal,
+    t, text,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -156,22 +157,17 @@ pub(super) fn Toolbox() -> impl IntoView {
                                 ),
                                 move || {
                                     if tab.get() == "music" {
-                                        data.value
-                                            .get()
-                                            .map(|v| {
+                                        data.current_items()
+                                            .map(|items| {
                                                 View::new(Music(
                                                     component_props_builder(&Music)
-                                                        .items(rows(&v, "items"))
+                                                        .items(items)
                                                         .build(),
                                                 ))
                                             })
                                             .into_any()
                                     } else {
-                                        let items = data
-                                            .value
-                                            .get()
-                                            .map(|v| rows(&v, "items"))
-                                            .unwrap_or_default();
+                                        let items = data.current_items().unwrap_or_default();
                                         let mut grouped =
                                             std::collections::BTreeMap::<String, Vec<Value>>::new();
                                         for item in items {
@@ -212,7 +208,7 @@ pub(super) fn Toolbox() -> impl IntoView {
                     .child( t("网站名称",
                     "Site name")),
                     html::span()
-                    .child( site.value.get()
+                    .child( site.current()
                     .map(| v | v.web_name.unwrap_or_default())
                     .unwrap_or("blog".into())),)),
                     html::p()
@@ -221,7 +217,7 @@ pub(super) fn Toolbox() -> impl IntoView {
                     html::a()
                     .child( web_sys::window().expect("invariant: the application is mounted in a browser window").location().origin().unwrap_or_default())
                     .href(web_sys::window().expect("invariant: the application is mounted in a browser window").location().origin().unwrap_or_default()),)),
-                    site.value.get().and_then(| v | safe_url(& v.avatar
+                    site.current().and_then(| v | safe_url(& v.avatar
                     .unwrap_or_default(), false)).map(| u | View::new(
     html::p()
         .child(
@@ -242,7 +238,7 @@ pub(super) fn Toolbox() -> impl IntoView {
                     .child( t("描述",
                     "Description")),
                     html::span()
-                    .child( site.value.get()
+                    .child( site.current()
                     .map(| v | v.web_title.unwrap_or_default())
                     .unwrap_or(t("有诗意地记录生活",
                     "Record life through poetry"))),)),)),))
@@ -272,10 +268,9 @@ pub(super) fn Toolbox() -> impl IntoView {
                                                         ))
                                                     })
                                                     .collect_view(),
-                                                (data.value.get().is_some()
-                                                    && data.value.get().is_some_and(|v| {
-                                                        rows(&v, "items").is_empty()
-                                                    }))
+                                                data.with_current(|v| {
+                                                    v.is_some_and(|v| page_items(v).is_empty())
+                                                })
                                                 .then(|| {
                                                     View::new(
                                                         html::p()

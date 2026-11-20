@@ -55,8 +55,6 @@ impl<'a, 'i, T: ToCss> ToCss for MediaRule<'i, T> {
       return Ok(());
     }
 
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@media ")?;
     self.query.to_css(dest)?;
     dest.whitespace()?;

@@ -15,13 +15,11 @@ type OnInstrLocFn = Box<dyn Fn(&usize) -> InstrLocId + Sync + Send + 'static>;
 /// Configuration for a `Module` which currently affects parsing.
 #[derive(Default)]
 pub struct ModuleConfig {
-    pub(crate) generate_dwarf: bool,
     pub(crate) generate_synthetic_names_for_anonymous_items: bool,
     pub(crate) only_stable_features: bool,
     pub(crate) skip_strict_validate: bool,
     pub(crate) skip_producers_section: bool,
     pub(crate) skip_name_section: bool,
-    pub(crate) preserve_code_transform: bool,
     pub(crate) on_parse: Option<OnParseFn>,
     pub(crate) on_instr_loc: Option<OnInstrLocFn>,
 }
@@ -30,14 +28,12 @@ impl Clone for ModuleConfig {
     fn clone(&self) -> ModuleConfig {
         ModuleConfig {
             // These are all cloned...
-            generate_dwarf: self.generate_dwarf,
             generate_synthetic_names_for_anonymous_items: self
                 .generate_synthetic_names_for_anonymous_items,
             only_stable_features: self.only_stable_features,
             skip_strict_validate: self.skip_strict_validate,
             skip_producers_section: self.skip_producers_section,
             skip_name_section: self.skip_name_section,
-            preserve_code_transform: self.preserve_code_transform,
 
             // ... and this is left empty.
             on_parse: None,
@@ -51,19 +47,16 @@ impl fmt::Debug for ModuleConfig {
         // Destructure `self` so that we get compilation errors if we forget to
         // add new fields to the debug here.
         let ModuleConfig {
-            ref generate_dwarf,
             ref generate_synthetic_names_for_anonymous_items,
             ref only_stable_features,
             ref skip_strict_validate,
             ref skip_producers_section,
             ref skip_name_section,
-            ref preserve_code_transform,
             ref on_parse,
             ref on_instr_loc,
         } = self;
 
         f.debug_struct("ModuleConfig")
-            .field("generate_dwarf", generate_dwarf)
             .field(
                 "generate_synthetic_names_for_anonymous_items",
                 generate_synthetic_names_for_anonymous_items,
@@ -72,7 +65,6 @@ impl fmt::Debug for ModuleConfig {
             .field("skip_strict_validate", skip_strict_validate)
             .field("skip_producers_section", skip_producers_section)
             .field("skip_name_section", skip_name_section)
-            .field("preserve_code_transform", preserve_code_transform)
             .field("on_parse", &on_parse.as_ref().map(|_| ".."))
             .field("on_instr_loc", &on_instr_loc.as_ref().map(|_| ".."))
             .finish()
@@ -83,19 +75,6 @@ impl ModuleConfig {
     /// Creates a fresh new configuration with default settings.
     pub fn new() -> ModuleConfig {
         ModuleConfig::default()
-    }
-
-    /// Sets a flag to whether DWARF debug sections are generated for this
-    /// module.
-    ///
-    /// By default this flag is `false`. Note that any emitted DWARF is
-    /// currently wildly incorrect and buggy, and is also larger than the wasm
-    /// itself!
-    pub fn generate_dwarf(&mut self, generate: bool) -> &mut ModuleConfig {
-        self.generate_dwarf = generate;
-        // generate_dwarf implies preserve_code_transform
-        self.preserve_code_transform = generate || self.preserve_code_transform;
-        self
     }
 
     /// Sets a flag to whether the custom "name" section is generated for this
@@ -219,14 +198,6 @@ impl ModuleConfig {
         F: Fn(&usize) -> InstrLocId + Send + Sync + 'static,
     {
         self.on_instr_loc = Some(Box::new(f) as _);
-        self
-    }
-
-    /// Sets a flag to whether code transform is preverved during parsing.
-    ///
-    /// By default this flag is `false`.
-    pub fn preserve_code_transform(&mut self, preserve: bool) -> &mut ModuleConfig {
-        self.preserve_code_transform = preserve;
         self
     }
 

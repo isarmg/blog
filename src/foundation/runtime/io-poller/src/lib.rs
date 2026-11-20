@@ -76,14 +76,6 @@ pub use waker::Waker;
 pub mod unix {
     //! Unix only extensions.
 
-    pub mod pipe {
-        //! Unix pipe.
-        //!
-        //! See the [`new`] function for documentation.
-
-        pub use crate::sys::pipe::{new, Receiver, Sender};
-    }
-
     pub use crate::sys::SourceFd;
 }
 
@@ -104,7 +96,7 @@ pub mod features {
     #![cfg_attr(feature = "os-ext", doc = "## `os-ext` (enabled)")]
     #![cfg_attr(not(feature = "os-ext"), doc = "## `os-ext` (disabled)")]
     //!
-    //! `os-ext` enables file-descriptor registration and pipes in the `unix` module.
+    //! `os-ext` enables file-descriptor registration in the `unix` module.
     //!
     #![cfg_attr(feature = "net", doc = "## Network types (enabled)")]
     #![cfg_attr(not(feature = "net"), doc = "## Network types (disabled)")]

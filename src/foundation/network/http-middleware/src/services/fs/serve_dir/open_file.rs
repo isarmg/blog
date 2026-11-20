@@ -4,9 +4,9 @@ use super::{
 };
 use crate::content_encoding::{Encoding, QValue};
 use bytes::Bytes;
+use http::header::byte_ranges::{parse_range_header, RangeUnsatisfiableError};
 use http::{header, HeaderValue, Method, Request, Uri};
 use http_body::Empty;
-use http_range_header::RangeUnsatisfiableError;
 use std::{
     ffi::OsStr,
     fs::Metadata,
@@ -296,8 +296,7 @@ fn try_parse_range(
     file_size: u64,
 ) -> Option<Result<Vec<RangeInclusive<u64>>, RangeUnsatisfiableError>> {
     maybe_range_ref.map(|header_value| {
-        http_range_header::parse_range_header(header_value)
-            .and_then(|first_pass| first_pass.validate(file_size))
+        parse_range_header(header_value).and_then(|first_pass| first_pass.validate(file_size))
     })
 }
 

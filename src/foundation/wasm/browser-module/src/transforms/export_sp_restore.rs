@@ -208,7 +208,3 @@ fn emit_legacy_eh(
     });
     body.unreachable();
 }
-
-#[path = "../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/export_sp_restore/tests.rs"]
-#[cfg(test)]
-mod tests;

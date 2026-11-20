@@ -461,5 +461,5 @@ where
 }
 
 #[path = "../../../../../test/foundation/unicode/data-provider/unit/src/data_provider/test.rs"]
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test;

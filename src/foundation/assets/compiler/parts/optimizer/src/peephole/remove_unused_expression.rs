@@ -5,7 +5,6 @@ use crate::optimizer::{
 };
 use crate::syntax_arena::{ArenaVec, TakeIn};
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     ToPrimitive,
     side_effects::{MayHaveSideEffects, MayHaveSideEffectsContext},
@@ -149,8 +148,6 @@ impl<'a> PeepholeOptimizations {
         }
 
         // try optional chaining and nullish coalescing
-        if ctx.supports_feature(ESFeature::ES2020OptionalChaining)
-            || ctx.supports_feature(ESFeature::ES2020NullishCoalescingOperator)
         {
             let LogicalExpression {
                 span: logical_span,
@@ -164,8 +161,7 @@ impl<'a> PeepholeOptimizations {
                     // "a != null && a.b()" => "a?.b()"
                     // "a == null || a.b()" => "a?.b()"
                     (LogicalOperator::And, BinaryOperator::Inequality)
-                    | (LogicalOperator::Or, BinaryOperator::Equality)
-                        if ctx.supports_feature(ESFeature::ES2020OptionalChaining) =>
+                    | (LogicalOperator::Or, BinaryOperator::Equality) =>
                     {
                         let name_and_id = if let Expression::Identifier(id) = &binary_expr.left {
                             (!ctx.is_global_reference(id) && binary_expr.right.is_null())
@@ -194,8 +190,7 @@ impl<'a> PeepholeOptimizations {
                     // "a == null && (a = b)" => "a ??= b"
                     // "a != null || (a = b)" => "a ??= b"
                     (LogicalOperator::And, BinaryOperator::Equality)
-                    | (LogicalOperator::Or, BinaryOperator::Inequality)
-                        if ctx.supports_feature(ESFeature::ES2020NullishCoalescingOperator) =>
+                    | (LogicalOperator::Or, BinaryOperator::Inequality) =>
                     {
                         let new_left_hand_expr = if binary_expr.right.is_null() {
                             Some(&mut binary_expr.left)
@@ -205,8 +200,7 @@ impl<'a> PeepholeOptimizations {
                             None
                         };
                         if let Some(new_left_hand_expr) = new_left_hand_expr {
-                            if ctx.supports_feature(ESFeature::ES2021LogicalAssignmentOperators)
-                                && let Expression::AssignmentExpression(assignment_expr) =
+                            if let Expression::AssignmentExpression(assignment_expr) =
                                     logical_right
                                 && assignment_expr.operator == AssignmentOperator::Assign
                                 && Self::can_compress_to_logical_assignment(

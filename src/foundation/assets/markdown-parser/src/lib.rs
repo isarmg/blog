@@ -19,12 +19,12 @@
 // THE SOFTWARE.
 
 //! Pull parser for [CommonMark](https://commonmark.org). This crate provides a [Parser](struct.Parser.html) struct
-//! which is an iterator over [Event](enum.Event.html)s. This iterator can be used
+//! which is an iterator over [Event]s. This iterator can be used
 //! directly, or to output HTML using the [HTML module](html/index.html).
 //!
 //! By default, only CommonMark features are enabled. To use extensions like tables,
 //! footnotes or task lists, enable them by setting the corresponding flags in the
-//! [Options](struct.Options.html) struct.
+//! [Options] struct.
 //!
 //! # Example
 //! ```rust

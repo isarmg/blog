@@ -10,7 +10,6 @@ pub(crate) fn run(
     indices: &IdsToIndices,
     local_indices: &IdHashMap<Local, u32>,
     encoder: &mut wasm_encoder::Function,
-    map: Option<&mut Vec<(InstrLocId, usize)>>,
 ) {
     let v = &mut Emit {
         indices,
@@ -18,7 +17,6 @@ pub(crate) fn run(
         block_kinds: vec![BlockKind::FunctionEntry],
         encoder,
         local_indices,
-        map,
         try_table_catches: IdHashMap::default(),
         legacy_catches: IdHashMap::default(),
         catch_parent: IdHashMap::default(),
@@ -47,9 +45,6 @@ struct Emit<'a, 'instr> {
 
     // The instruction sequence we are building up to emit.
     encoder: &'a mut wasm_encoder::Function,
-
-    // Encoded ExprId -> offset map.
-    map: Option<&'a mut Vec<(InstrLocId, usize)>>,
 
     // Store TryTable catches for emission
     try_table_catches: IdHashMap<InstrSeq, &'instr [TryTableCatch]>,
@@ -163,12 +158,6 @@ impl<'instr> Visitor<'instr> for Emit<'_, 'instr> {
 
         debug_assert_eq!(self.blocks.len(), self.block_kinds.len());
 
-        if let Some(map) = self.map.as_mut() {
-            let pos = self.encoder.byte_len();
-            // Save the encoded_at position for the specified ExprId.
-            map.push((seq.end, pos));
-        }
-
         match popped_kind {
             BlockKind::If => {
                 // We're about to visit the `else` block, so push its kind.
@@ -246,14 +235,8 @@ impl<'instr> Visitor<'instr> for Emit<'_, 'instr> {
         }
     }
 
-    fn visit_instr(&mut self, instr: &'instr Instr, instr_loc: &'instr InstrLocId) {
+    fn visit_instr(&mut self, instr: &'instr Instr, _instr_loc: &'instr InstrLocId) {
         use self::Instr::*;
-
-        if let Some(map) = self.map.as_mut() {
-            let pos = self.encoder.byte_len();
-            // Save the encoded_at position for the specified ExprId.
-            map.push((*instr_loc, pos));
-        }
 
         let is_block = match instr {
             Block(_) => {

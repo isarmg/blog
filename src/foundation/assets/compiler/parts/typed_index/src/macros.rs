@@ -166,7 +166,7 @@ macro_rules! define_index_type {
             @derives [#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]]
             @decl [$v struct $type ($raw)]
             @debug_fmt ["{}"]
-            @max [(<$raw>::max_value() as usize)]
+            @max [(<$raw>::MAX as usize)]
             @no_check_max [false]
         }
     };

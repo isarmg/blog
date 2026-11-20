@@ -1,16 +1,21 @@
 //! Compile the repository's SQLite source for the supported native product.
-use std::{env, path::PathBuf};
+use std::env;
+
+#[path = "build/compiler.rs"]
+mod compiler;
 
 fn main() {
-    assert_eq!(
-        env::var("TARGET").as_deref(),
-        Ok("x86_64-unknown-linux-gnu"),
-        "SQLite is a Linux amd64 GNU service dependency, not a browser dependency"
-    );
+    for platform in ["HOST", "TARGET"] {
+        assert_eq!(
+            env::var(platform).as_deref(),
+            Ok(compiler::PLATFORM),
+            "SQLite requires Linux amd64 GNU for {platform}"
+        );
+    }
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=build/compiler.rs");
+    println!("cargo:rerun-if-changed=build/rustflags.rs");
     println!("cargo:rerun-if-changed=sqlite3/sqlite3.c");
-    println!("cargo:rerun-if-changed=sqlite3/sqlite3.h");
-    println!("cargo:rerun-if-changed=sqlite3/bindgen_bundled_version.rs");
     println!("cargo:rerun-if-env-changed=LIBSQLITE3_SYS_USE_PKG_CONFIG");
     assert!(
         !env::var_os("LIBSQLITE3_SYS_USE_PKG_CONFIG").is_some_and(|value| value != "0"),
@@ -32,17 +37,8 @@ fn main() {
         );
     }
 
-    let out_dir = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo sets OUT_DIR"));
-    std::fs::copy(
-        "sqlite3/bindgen_bundled_version.rs",
-        out_dir.join("bindgen.rs"),
-    )
-    .expect("copy bundled SQLite bindings");
-
-    let mut build = cc::Build::new();
-    build.file("sqlite3/sqlite3.c").warnings(false);
     // Preserve the existing product's compiled SQLite behavior.
-    for option in [
+    let mut definitions = [
         "SQLITE_CORE",
         "SQLITE_DEFAULT_FOREIGN_KEYS=1",
         "SQLITE_ENABLE_API_ARMOR",
@@ -63,12 +59,10 @@ fn main() {
         "HAVE_ISNAN",
         "_POSIX_THREAD_SAFE_FUNCTIONS",
         "HAVE_LOCALTIME_R",
-    ] {
-        build.flag(format!("-D{option}"));
-    }
-    if cfg!(feature = "with-asan") {
-        build.flag("-fsanitize=address");
-    }
+    ]
+    .into_iter()
+    .map(|option| format!("-D{option}"))
+    .collect::<Vec<_>>();
     for name in [
         "SQLITE_MAX_VARIABLE_NUMBER",
         "SQLITE_MAX_EXPR_DEPTH",
@@ -79,22 +73,23 @@ fn main() {
             let limit: u32 = limit
                 .parse()
                 .unwrap_or_else(|_| panic!("{name} must be an unsigned integer"));
-            build.flag(format!("-D{name}={limit}"));
+            definitions.push(format!("-D{name}={limit}"));
         }
     }
     println!("cargo:rerun-if-env-changed=LIBSQLITE3_FLAGS");
     if let Ok(flags) = env::var("LIBSQLITE3_FLAGS") {
         for flag in flags.split_whitespace() {
             if flag.starts_with("-D") || flag.starts_with("-U") {
-                build.flag(flag);
+                definitions.push(flag.to_owned());
             } else if flag.starts_with("SQLITE_") {
-                build.flag(format!("-D{flag}"));
+                definitions.push(format!("-D{flag}"));
             } else {
                 panic!("unsupported SQLite preprocessor flag: {flag}");
             }
         }
     }
-    build.compile("sqlite3");
-    println!("cargo:include={}/sqlite3", env!("CARGO_MANIFEST_DIR"));
-    println!("cargo:lib_dir={}", out_dir.display());
+    if let Err(error) = compiler::build_sqlite(&definitions) {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
 }

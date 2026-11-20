@@ -87,8 +87,8 @@ features = []
 default-features = true
 
 [dependencies.phf]
-package = "blog-lookup-style-table"
-path = "../../lookup/style-table"
+package = "blog-lookup-script-table"
+path = "../../lookup/script-table"
 features = ["macros"]
 default-features = true
 

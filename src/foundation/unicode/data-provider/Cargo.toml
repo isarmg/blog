@@ -50,7 +50,6 @@ bench = false
 
 [dependencies]
 log = { optional = true, default-features = false, path = "../../diagnostics/event-facade",package = "blog-diagnostics-event-facade"}
-postcard = { optional = true, default-features = false, path = "../../format/binary-record",package = "blog-format-binary-record"}
 serde_json = { optional = true, path = "../../format/json",package = "blog-format-json"}
 
 [dependencies.displaydoc]
@@ -150,4 +149,4 @@ unused_qualifications = "warn"
 [lints.rust.unexpected_cfgs]
 level = "warn"
 priority = 0
-check-cfg = ["cfg(icu4c_enable_renaming)", "cfg(needs_alloc_error_handler)", "cfg(icu4x_nightly_tests)", "cfg(icu4x_run_size_tests)", "cfg(icu4x_unstable_fast_trie_only)", "cfg(feature, values(\"deserialize_bincode_1\", \"deserialize_json\", \"deserialize_postcard_1\", \"export\", \"logging\"))"]
+check-cfg = ["cfg(icu4c_enable_renaming)", "cfg(needs_alloc_error_handler)", "cfg(icu4x_nightly_tests)", "cfg(icu4x_run_size_tests)", "cfg(icu4x_unstable_fast_trie_only)", "cfg(feature, values(\"deserialize_bincode_1\", \"deserialize_json\", \"logging\"))"]

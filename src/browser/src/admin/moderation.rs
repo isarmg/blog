@@ -1,6 +1,6 @@
 use crate::common::{
-    Action, Feedback, FilePicker, Lightbox, ListState, Pager, load, nullable_num, num, rows,
-    safe_url, t, table_time, text, tr,
+    Action, Feedback, FilePicker, Lightbox, ListState, Pager, load, nullable_num, num, safe_url, t,
+    table_time, text, tr,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
@@ -231,8 +231,8 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
             .class("inline-form blog-frame blog-frame--padded blog-flow blog-form-flow").on(blog_interface::ev::submit, move | ev
             | { ev.prevent_default(); let file = chosen.with_value(| f | f.as_ref()
             .cloned()); if let Some(file) = file { upload
-            .upload(blog_interface::thread_bound::SendWrapper::new(file), move | v | { uploaded
-            .set(text(& v, "path")); filename.set(String::new()); chosen
+            .upload(blog_interface::thread_bound::SendWrapper::new(file), move | path | { uploaded
+            .set(path); filename.set(String::new()); chosen
             .set_value(blog_interface::thread_bound::SendWrapper::new(None)); data.reload();
             notify(t("图片已上传", "Image uploaded")); }) } }))
             .class("blog-fieldset blog-stack")
@@ -250,7 +250,7 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
 ))
         ,),
 )),
-                    move | | data.value.get().map(| v | View::new(
+                    move | | data.current_items().map(| items | View::new(
     blog_interface::html::div()
         .child(
 
@@ -276,8 +276,7 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
         ),
 )).collect_view())),
                                 blog_interface::html::tbody()
-                                .child( rows(& v,
-                                "items").into_iter().map(render_row).collect_view())
+                                .child( items.into_iter().map(render_row).collect_view())
                             ,),
                     )
                     .class("blog-table")

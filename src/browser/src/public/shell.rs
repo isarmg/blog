@@ -40,8 +40,7 @@ pub(super) fn Chrome(
     });
     let random_cover = Memo::new(move |_| {
         let covers = site
-            .value
-            .get()
+            .current()
             .map(|v| notices(&v.random_cover.unwrap_or_default()))
             .unwrap_or_default();
         covers
@@ -218,7 +217,7 @@ pub(super) fn Chrome(
             (
                     html::div()
                     .child((html::h1()
-                    .child( move | | if home { let value = site.value.get().map(| v | v
+                    .child( move | | if home { let value = site.current().map(| v | v
                     .web_title.unwrap_or_default()).unwrap_or_default(); if
                     value.is_empty() { t("相信记录的力量",
                     "Believe in the power of stories") } else { value } } else {
@@ -278,7 +277,7 @@ pub(super) fn Chrome(
         .style(
             move || {
                 let requested = cover.get();
-                let info = site.value.get();
+                let info = site.current();
                 let image = if requested.is_empty() && inherit_background {
                     let background = info
                         .and_then(|info| info.background_image)

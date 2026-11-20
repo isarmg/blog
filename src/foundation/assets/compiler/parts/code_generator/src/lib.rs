@@ -3,8 +3,6 @@
 //! Code adapted from
 //! * [esbuild](https://github.com/evanw/esbuild/blob/v0.24.0/internal/js_printer/js_printer.go)
 
-#[cfg(not(all()))]
-use std::marker::PhantomData;
 use std::{borrow::Cow, cmp, slice};
 
 use crate::syntax_tree::ast::*;
@@ -29,15 +27,11 @@ mod context;
 mod r#gen;
 mod operator;
 mod options;
-#[cfg(all())]
-mod sourcemap_builder;
 mod str;
 
 use binary_expr_visitor::BinaryExpressionVisitor;
 use comment::CommentsMap;
 use operator::Operator;
-#[cfg(all())]
-use sourcemap_builder::SourcemapBuilder;
 use str::{Quote, cold_branch, is_script_close_tag};
 
 pub use context::Context;
@@ -49,18 +43,9 @@ pub use crate::compiler_collections::code_buffer::IndentChar;
 
 /// Output from [`Codegen::build`]
 #[non_exhaustive]
-pub struct CodegenReturn<'a> {
+pub struct CodegenReturn {
     /// The generated source code.
     pub code: String,
-
-    /// The source map from the input source code to the generated source code.
-    ///
-    /// You must set [`CodegenOptions::source_map_path`] for this to be [`Some`].
-    #[cfg(all())]
-    pub map: Option<crate::source_map::SourceMap<'a>>,
-
-    #[cfg(not(all()))]
-    _source_map_lifetime: PhantomData<&'a ()>,
 
     /// All the legal comments returned from [LegalComment::Linked] or [LegalComment::External].
     pub legal_comments: Vec<Comment>,
@@ -145,9 +130,6 @@ pub struct Codegen<'a> {
     /// removed anchor. Lets `print_orphan_comments_before` flush via
     /// `partition_point` + `drain`.
     orphan_comment_keys: Vec<u32>,
-
-    #[cfg(all())]
-    sourcemap_builder: Option<SourcemapBuilder<'a>>,
 }
 
 /// How [`Codegen::print_non_ascii_escaped`] escapes a non-ASCII character, by the grammar
@@ -217,8 +199,6 @@ impl<'a> Codegen<'a> {
             has_property_key_annotations: false,
             annotation_comments: FxHashMap::default(),
             orphan_comment_keys: Vec::new(),
-            #[cfg(all())]
-            sourcemap_builder: None,
         }
     }
 
@@ -268,37 +248,23 @@ impl<'a> Codegen<'a> {
     }
 
     /// Print a [`Program`] into a string of source code.
-    ///
-    /// A source map will be generated if [`CodegenOptions::source_map_path`] is set.
     #[must_use]
-    pub fn build(mut self, program: &Program<'a>) -> CodegenReturn<'a> {
+    pub fn build(mut self, program: &Program<'a>) -> CodegenReturn {
         self.quote = if self.options.single_quote { Quote::Single } else { Quote::Double };
         self.source_text = Some(program.source_text);
         self.indent = self.options.initial_indent;
         self.code.reserve(program.source_text.len());
         self.build_comments(&program.comments);
-        #[cfg(all())]
-        if let Some(path) = &self.options.source_map_path {
-            self.sourcemap_builder = Some(SourcemapBuilder::new(path, program.source_text));
-        }
         program.print(&mut self, Context::default());
         let legal_comments = self.handle_eof_linked_or_external_comments(program);
         let code = self.code.into_string();
-        #[cfg(all())]
-        let map = self.sourcemap_builder.map(SourcemapBuilder::into_sourcemap);
         CodegenReturn {
             code,
-            #[cfg(all())]
-            map,
-            #[cfg(not(all()))]
-            _source_map_lifetime: PhantomData,
             legal_comments,
         }
     }
 
-    /// Turn what's been built so far into a string. Like [`build`],
-    /// this fininishes a print and returns the generated source code. Unlike
-    /// [`build`], no source map is generated.
+    /// Return the generated source code.
     ///
     /// This is more useful for cases that progressively build code using [`print_expression`].
     ///
@@ -816,8 +782,7 @@ impl<'a> Codegen<'a> {
         self.print_ascii_byte(b'=');
     }
 
-    fn print_curly_braces<F: FnOnce(&mut Self)>(&mut self, span: Span, single_line: bool, op: F) {
-        self.add_source_mapping(span);
+    fn print_curly_braces<F: FnOnce(&mut Self)>(&mut self, single_line: bool, op: F) {
         self.print_ascii_byte(b'{');
         if !single_line {
             self.print_soft_newline();
@@ -828,21 +793,18 @@ impl<'a> Codegen<'a> {
             self.dedent();
             self.print_indent();
         }
-        self.add_source_mapping_end(span);
         self.print_ascii_byte(b'}');
     }
 
-    fn print_block_start(&mut self, span: Span) {
-        self.add_source_mapping(span);
+    fn print_block_start(&mut self) {
         self.print_ascii_byte(b'{');
         self.print_soft_newline();
         self.indent();
     }
 
-    fn print_block_end(&mut self, span: Span) {
+    fn print_block_end(&mut self) {
         self.dedent();
         self.print_indent();
-        self.add_source_mapping_end(span);
         self.print_ascii_byte(b'}');
     }
 
@@ -870,7 +832,7 @@ impl<'a> Codegen<'a> {
 
     fn print_block_statement(&mut self, stmt: &BlockStatement<'_>, ctx: Context) {
         let single_line = stmt.body.is_empty() && !self.has_orphan_comments_before(stmt.span.end);
-        self.print_curly_braces(stmt.span, single_line, |p| {
+        self.print_curly_braces(single_line, |p| {
             p.print_stmts_with_orphan_flush(&stmt.body, stmt.span.end, ctx);
         });
         self.needs_semicolon = false;
@@ -933,7 +895,6 @@ impl<'a> Codegen<'a> {
             self.print_comments_at(stmt.span.start);
             if self.indent > 0 || self.print_next_indent_as_space {
                 self.print_indent();
-                self.add_source_mapping(stmt.span);
             }
             if self.options.minify {
                 self.print_string_literal_as_template(string);
@@ -998,9 +959,6 @@ impl<'a> Codegen<'a> {
         } else {
             self.print_list(arguments, ctx);
         }
-        // End mapping at the gen position OF `)`, not past it. Matches
-        // esbuild/Babel and avoids shadowing the next AST node's start.
-        self.add_source_mapping_end(span);
         self.print_ascii_byte(b')');
     }
 
@@ -1032,7 +990,6 @@ impl<'a> Codegen<'a> {
     /// printed verbatim even under `ascii_only`.
     fn print_jsx_identifier_reference(&mut self, ident: &IdentifierReference<'_>) {
         let name = self.get_identifier_reference_name(ident);
-        self.add_source_mapping_for_name(ident.span, name);
         self.print_str(name);
     }
 
@@ -1119,108 +1076,4 @@ impl<'a> Codegen<'a> {
             self.print_space_before_identifier();
         }
     }
-
-    #[cfg(all())]
-    fn add_source_mapping(&mut self, span: Span) {
-        if let Some(sourcemap_builder) = self.sourcemap_builder.as_mut()
-            && !span.is_empty()
-        {
-            sourcemap_builder.add_source_mapping(self.code.as_bytes(), span.start, None);
-        }
-    }
-
-    #[cfg(not(all()))]
-    #[inline]
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
-    fn add_source_mapping(&mut self, _span: Span) {}
-
-    #[cfg(all())]
-    fn add_source_mapping_end(&mut self, span: Span) {
-        if let Some(sourcemap_builder) = self.sourcemap_builder.as_mut()
-            && !span.is_empty()
-        {
-            // Map the last source character in the span, not its exclusive end.
-            // Skip the mapping if the emitted closing delimiter has no corresponding source byte.
-            let end = span.end - 1;
-            if let Some(source_text) = self.source_text {
-                #[expect(clippy::cast_possible_truncation)]
-                if end >= source_text.len() as u32 {
-                    return;
-                }
-            }
-            sourcemap_builder.add_source_mapping(self.code.as_bytes(), end, None);
-        }
-    }
-
-    #[cfg(not(all()))]
-    #[inline]
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
-    fn add_source_mapping_end(&mut self, _span: Span) {}
-
-    /// A postfix operand ending in `)` or `]` (a call or index result) leaves no
-    /// trailing identifier for a source-map consumer to anchor on, so the chain
-    /// punctuation after it (`.`/`[`/`(`/`` ` ``) would be unmapped and V8 would
-    /// resolve the stack frame one column too far left — the off-by-one in
-    /// `f(a)(b)` and `expect(x).resolves`. Map that punctuation back to the
-    /// operand's `span.end`. Called from `print_expr`, mirroring how Babel and TSC
-    /// give every node a trailing end-mapping. Synthesized nodes whose `span.end`
-    /// has no source byte are skipped.
-    #[cfg(all())]
-    #[inline]
-    fn add_source_mapping_after_postfix(&mut self, span: Span, precedence: Precedence) {
-        #[inline(never)]
-        fn add_mapping(
-            sourcemap_builder: &mut SourcemapBuilder<'_>,
-            output: &[u8],
-            source_text: Option<&str>,
-            span: Span,
-        ) {
-            if !span.is_empty()
-                && matches!(output.last(), Some(b')' | b']'))
-                && source_text.is_none_or(|src| (span.end as usize) < src.len())
-            {
-                sourcemap_builder.add_source_mapping(output, span.end, None);
-            }
-        }
-
-        if precedence == Precedence::Postfix
-            && let Some(sourcemap_builder) = self.sourcemap_builder.as_mut()
-        {
-            add_mapping(sourcemap_builder, self.code.as_bytes(), self.source_text, span);
-        }
-    }
-
-    #[cfg(not(all()))]
-    #[inline]
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
-    fn add_source_mapping_after_postfix(&mut self, _span: Span, _precedence: Precedence) {}
-
-    #[cfg(all())]
-    fn add_source_mapping_for_name(&mut self, span: Span, name: &str) {
-        if let Some(sourcemap_builder) = self.sourcemap_builder.as_mut()
-            && !span.is_empty()
-        {
-            sourcemap_builder.add_source_mapping_for_name(self.code.as_bytes(), span, name);
-        }
-    }
-
-    #[cfg(not(all()))]
-    #[inline]
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
-    fn add_source_mapping_for_name(&mut self, _span: Span, _name: &str) {}
-
-    /// Add a mapping for a private identifier, printed as `#` followed by `name`.
-    #[cfg(all())]
-    fn add_source_mapping_for_private_name(&mut self, span: Span, name: &str) {
-        if let Some(sourcemap_builder) = self.sourcemap_builder.as_mut()
-            && !span.is_empty()
-        {
-            sourcemap_builder.add_source_mapping_for_private_name(self.code.as_bytes(), span, name);
-        }
-    }
-
-    #[cfg(not(all()))]
-    #[inline]
-    #[expect(clippy::needless_pass_by_ref_mut, clippy::unused_self)]
-    fn add_source_mapping_for_private_name(&mut self, _span: Span, _name: &str) {}
 }

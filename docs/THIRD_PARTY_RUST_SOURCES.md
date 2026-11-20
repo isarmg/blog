@@ -11,8 +11,8 @@
 | --- | --- | --- | --- |
 | src/application | blog-application | 项目实现或已有独立来源记录 | 沿用组件独立法律材料 |
 | src/browser | blog-browser | 项目实现或已有独立来源记录 | 沿用组件独立法律材料 |
-| src/foundation/assets/compiler | blog-assets-compiler | bytecount@0.6.9, cow-utils@0.1.3, json-escape-simd@3.1.2, nonmax@0.5.5, oxc-browserslist@5.0.1, oxc@0.153.0, oxc_allocator@0.153.0, oxc_ast@0.153.0, oxc_ast_visit@0.153.0, oxc_codegen@0.153.0, oxc_compat@0.153.0, oxc_data_structures@0.153.0, oxc_diagnostics@0.153.0, oxc_ecmascript@0.153.0, oxc_estree@0.153.0, oxc_index@5.0.0, oxc_mangler@0.153.0, oxc_minifier@0.153.0, oxc_parser@0.153.0, oxc_regular_expression@0.153.0, oxc_semantic@0.153.0, oxc_sourcemap@9.0.0, oxc_span@0.153.0, oxc_str@0.153.0, oxc_syntax@0.153.0, oxc_traverse@0.153.0, unicode-id-start@1.5.0 | bytecount@0.6.9: Apache-2.0/MIT; cow-utils@0.1.3: MIT; json-escape-simd@3.1.2: MIT；发布包无独立许可文本，待复核; nonmax@0.5.5: MIT OR Apache-2.0; oxc-browserslist@5.0.1: MIT；发布包无独立许可文本，待复核; oxc@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_allocator@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ast@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ast_visit@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_codegen@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_compat@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_data_structures@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_diagnostics@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ecmascript@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_estree@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_index@5.0.0: MIT；发布包无独立许可文本，待复核; oxc_mangler@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_minifier@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_parser@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_regular_expression@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_semantic@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_sourcemap@9.0.0: BSD-3-Clause; oxc_span@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_str@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_syntax@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_traverse@0.153.0: MIT；发布包无独立许可文本，待复核; unicode-id-start@1.5.0: (MIT OR Apache-2.0) AND Unicode-3.0 |
-| src/foundation/assets/markdown-parser | blog-assets-markdown-parser | linkify@0.11.0, pulldown-cmark-escape@0.11.0, pulldown-cmark@0.13.4 | linkify@0.11.0: MIT OR Apache-2.0; pulldown-cmark-escape@0.11.0: MIT; pulldown-cmark@0.13.4: MIT |
+| src/foundation/assets/compiler | blog-assets-compiler | bytecount@0.6.9, cow-utils@0.1.3, nonmax@0.5.5, oxc@0.153.0, oxc_allocator@0.153.0, oxc_ast@0.153.0, oxc_ast_visit@0.153.0, oxc_codegen@0.153.0, oxc_data_structures@0.153.0, oxc_diagnostics@0.153.0, oxc_ecmascript@0.153.0, oxc_estree@0.153.0, oxc_index@5.0.0, oxc_mangler@0.153.0, oxc_minifier@0.153.0, oxc_parser@0.153.0, oxc_regular_expression@0.153.0, oxc_semantic@0.153.0, oxc_span@0.153.0, oxc_str@0.153.0, oxc_syntax@0.153.0, oxc_traverse@0.153.0, unicode-id-start@1.5.0 | bytecount@0.6.9: Apache-2.0/MIT; cow-utils@0.1.3: MIT; nonmax@0.5.5: MIT OR Apache-2.0; oxc@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_allocator@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ast@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ast_visit@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_codegen@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_data_structures@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_diagnostics@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_ecmascript@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_estree@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_index@5.0.0: MIT；发布包无独立许可文本，待复核; oxc_mangler@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_minifier@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_parser@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_regular_expression@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_semantic@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_span@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_str@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_syntax@0.153.0: MIT；发布包无独立许可文本，待复核; oxc_traverse@0.153.0: MIT；发布包无独立许可文本，待复核; unicode-id-start@1.5.0: (MIT OR Apache-2.0) AND Unicode-3.0 |
+| src/foundation/assets/markdown-parser | blog-assets-markdown-parser | linkify@0.11.0, pulldown-cmark-escape@0.11.0, pulldown-cmark@0.13.6 | linkify@0.11.0: MIT OR Apache-2.0; pulldown-cmark-escape@0.11.0: MIT; pulldown-cmark@0.13.6: MIT |
 | src/foundation/assets/style-compiler | blog-assets-style-compiler | cssparser-color@0.1.0, cssparser@0.33.0, dtoa-short@0.3.5, dtoa@1.0.11, lightningcss@1.0.0-alpha.71, parcel_selectors@0.28.2, pathdiff@0.2.3, precomputed-hash@0.1.1 | cssparser-color@0.1.0: MPL-2.0；发布包无独立许可文本，待复核; cssparser@0.33.0: MPL-2.0; dtoa-short@0.3.5: MPL-2.0; dtoa@1.0.11: MIT OR Apache-2.0; lightningcss@1.0.0-alpha.71: MPL-2.0; parcel_selectors@0.28.2: MPL-2.0; pathdiff@0.2.3: MIT/Apache-2.0; precomputed-hash@0.1.1: MIT |
 | src/foundation/assets/style-token-macros | blog-assets-style-token-macros | cssparser-macros@0.6.1 | cssparser-macros@0.6.1: MPL-2.0 |
 | src/foundation/assets/style-value-derive | blog-assets-style-value-derive | lightningcss-derive@1.0.0-alpha.43 | lightningcss-derive@1.0.0-alpha.43: MPL-2.0；发布包无独立许可文本，待复核 |
@@ -64,7 +64,6 @@
 | src/foundation/encoding/compression | blog-encoding-compression | adler2@2.0.1, flate2@1.1.10, miniz_oxide@0.9.1, simd-adler32@0.3.10 | adler2@2.0.1: 0BSD OR MIT OR Apache-2.0; flate2@1.1.10: MIT OR Apache-2.0; miniz_oxide@0.9.1: MIT OR Zlib OR Apache-2.0; simd-adler32@0.3.10: MIT |
 | src/foundation/encoding/constant-time-base-encoding | blog-encoding-constant-time-base-encoding | base64ct@1.8.3 | base64ct@1.8.3: Apache-2.0 OR MIT |
 | src/foundation/encoding/decimal-float-format | blog-encoding-decimal-float-format | zmij@1.0.23 | zmij@1.0.23: MIT |
-| src/foundation/encoding/framing | blog-encoding-framing | cobs@0.3.0 | cobs@0.3.0: MIT OR Apache-2.0 |
 | src/foundation/encoding/hex-codec | blog-encoding-hex-codec | hex@0.4.3 | hex@0.4.3: MIT OR Apache-2.0 |
 | src/foundation/encoding/integer-format | blog-encoding-integer-format | itoa@1.0.18 | itoa@1.0.18: MIT OR Apache-2.0 |
 | src/foundation/encoding/radix-codecs | blog-encoding-radix-codecs | data-encoding@2.11.1 | data-encoding@2.11.1: MIT |
@@ -75,11 +74,7 @@
 | src/foundation/encoding/unicode-decoder | blog-encoding-unicode-decoder | utf8parse@0.2.2 | utf8parse@0.2.2: Apache-2.0 OR MIT |
 | src/foundation/encoding/unicode-iterator | blog-encoding-unicode-iterator | utf8_iter@1.0.4 | utf8_iter@1.0.4: Apache-2.0 OR MIT |
 | src/foundation/encoding/variable-integer-writer | blog-encoding-variable-integer-writer | leb128fmt@0.1.0 | leb128fmt@0.1.0: MIT OR Apache-2.0 |
-| src/foundation/encoding/vector-base-encoding | blog-encoding-vector-base-encoding | base64-simd@0.8.0 | base64-simd@0.8.0: MIT；发布包无独立许可文本，待复核 |
-| src/foundation/encoding/vector-escaping | blog-encoding-vector-escaping | escape-simd@0.1.0 | escape-simd@0.1.0: MIT；发布包无独立许可文本，待复核 |
-| src/foundation/encoding/vector-primitives | blog-encoding-vector-primitives | vsimd@0.8.0 | vsimd@0.8.0: MIT；发布包无独立许可文本，待复核 |
 | src/foundation/filesystem/temporary-storage | blog-filesystem-temporary-storage | tempfile@3.27.0 | tempfile@3.27.0: MIT OR Apache-2.0 |
-| src/foundation/format/binary-record | blog-format-binary-record | postcard@1.1.3 | postcard@1.1.3: MIT OR Apache-2.0 |
 | src/foundation/format/configuration | blog-format-configuration | serde_spanned@0.6.9, toml@0.8.23, toml_datetime@0.6.11, toml_edit@0.22.27, toml_write@0.1.2 | serde_spanned@0.6.9: MIT OR Apache-2.0; toml@0.8.23: MIT OR Apache-2.0; toml_datetime@0.6.11: MIT OR Apache-2.0; toml_edit@0.22.27: MIT OR Apache-2.0; toml_write@0.1.2: MIT OR Apache-2.0 |
 | src/foundation/format/data-model | blog-format-data-model | serde@1.0.229, serde_core@1.0.229, serde_path_to_error@0.1.20 | serde@1.0.229: MIT OR Apache-2.0; serde_core@1.0.229: MIT OR Apache-2.0; serde_path_to_error@0.1.20: MIT OR Apache-2.0 |
 | src/foundation/format/data-model-derive | blog-format-data-model-derive | serde_derive@1.0.229 | serde_derive@1.0.229: MIT OR Apache-2.0 |
@@ -97,16 +92,11 @@
 | src/foundation/lookup/script-table-generator | blog-lookup-script-table-generator | phf_generator@0.14.0 | phf_generator@0.14.0: MIT |
 | src/foundation/lookup/script-table-hashing | blog-lookup-script-table-hashing | phf_shared@0.14.0 | phf_shared@0.14.0: MIT |
 | src/foundation/lookup/script-table-macros | blog-lookup-script-table-macros | phf_macros@0.14.0 | phf_macros@0.14.0: MIT |
-| src/foundation/lookup/style-table | blog-lookup-style-table | phf@0.11.3 | phf@0.11.3: MIT |
-| src/foundation/lookup/style-table-generator | blog-lookup-style-table-generator | phf_generator@0.11.3 | phf_generator@0.11.3: MIT |
-| src/foundation/lookup/style-table-hashing | blog-lookup-style-table-hashing | phf_shared@0.11.3 | phf_shared@0.11.3: MIT |
-| src/foundation/lookup/style-table-macros | blog-lookup-style-table-macros | phf_macros@0.11.3 | phf_macros@0.11.3: MIT |
 | src/foundation/math/constant-array | blog-math-constant-array | hybrid-array@0.4.15 | hybrid-array@0.4.15: MIT OR Apache-2.0 |
 | src/foundation/math/fast-random | blog-math-fast-random | fastrand@2.5.0 | fastrand@2.5.0: Apache-2.0 OR MIT |
 | src/foundation/math/integer-traits | blog-math-integer-traits | num-integer@0.1.47 | num-integer@0.1.47: MIT OR Apache-2.0 |
 | src/foundation/math/keyed-fingerprint | blog-math-keyed-fingerprint | siphasher@1.0.4 | siphasher@1.0.4: MIT OR Apache-2.0 |
 | src/foundation/math/large-integer | blog-math-large-integer | num-bigint@0.5.1 | num-bigint@0.5.1: MIT OR Apache-2.0 |
-| src/foundation/math/lookup-random-generator | blog-math-lookup-random-generator | rand@0.8.8 | rand@0.8.8: MIT OR Apache-2.0 |
 | src/foundation/math/numeric-traits | blog-math-numeric-traits | num-traits@0.2.19 | num-traits@0.2.19: MIT OR Apache-2.0 |
 | src/foundation/math/password-random-traits | blog-math-password-random-traits | rand_core@0.6.4 | rand_core@0.6.4: MIT OR Apache-2.0 |
 | src/foundation/math/type-integers | blog-math-type-integers | typenum@1.20.1 | typenum@1.20.1: MIT OR Apache-2.0 |
@@ -115,21 +105,15 @@
 | src/foundation/memory/arena | blog-memory-arena | bumpalo@3.20.3 | bumpalo@3.20.3: MIT OR Apache-2.0 |
 | src/foundation/memory/byte-layout | blog-memory-byte-layout | zerocopy@0.8.63 | zerocopy@0.8.63: BSD-2-Clause OR Apache-2.0 OR MIT |
 | src/foundation/memory/indexed-arena | blog-memory-indexed-arena | id-arena@2.3.0 | id-arena@2.3.0: MIT/Apache-2.0 |
-| src/foundation/memory/output-reference | blog-memory-output-reference | outref@0.5.2 | outref@0.5.2: MIT |
 | src/foundation/memory/owned-borrow | blog-memory-owned-borrow | self_cell@1.3.0 | self_cell@1.3.0: Apache-2.0 OR GPL-2.0-only |
 | src/foundation/memory/reference-cast | blog-memory-reference-cast | ref-cast@1.0.27 | ref-cast@1.0.27: MIT OR Apache-2.0 |
 | src/foundation/memory/reference-cast-derive | blog-memory-reference-cast-derive | ref-cast-impl@1.0.27 | ref-cast-impl@1.0.27: MIT OR Apache-2.0 |
 | src/foundation/memory/stable-address | blog-memory-stable-address | stable_deref_trait@1.2.1 | stable_deref_trait@1.2.1: MIT OR Apache-2.0 |
 | src/foundation/memory/type-specialization | blog-memory-type-specialization | castaway@0.2.4 | castaway@0.2.4: MIT |
-| src/foundation/native/c-compiler | blog-native-c-compiler | cc@1.6.0 | cc@1.6.0: MIT OR Apache-2.0 |
-| src/foundation/native/compiler-capabilities | blog-native-compiler-capabilities | autocfg@1.5.1 | autocfg@1.5.1: Apache-2.0 OR MIT |
-| src/foundation/native/compiler-conditions | blog-native-compiler-conditions | rustversion@1.0.23 | rustversion@1.0.23: MIT OR Apache-2.0 |
 | src/foundation/native/target-conditions | blog-native-target-conditions | cfg-if@1.0.5 | cfg-if@1.0.5: MIT OR Apache-2.0 |
 | src/foundation/network/body-stream | blog-network-body-stream | http-body-util@0.1.5, http-body@1.1.0 | http-body-util@0.1.5: MIT; http-body@1.1.0: MIT |
-| src/foundation/network/byte-ranges | blog-network-byte-ranges | http-range-header@0.4.2 | http-range-header@0.4.2: MIT |
 | src/foundation/network/form-data | blog-network-form-data | serde_urlencoded@0.7.1 | serde_urlencoded@0.7.1: MIT/Apache-2.0 |
-| src/foundation/network/http-date | blog-network-http-date | httpdate@1.0.3 | httpdate@1.0.3: MIT OR Apache-2.0 |
-| src/foundation/network/http-message | blog-network-http-message | http@1.5.0 | http@1.5.0: MIT OR Apache-2.0 |
+| src/foundation/network/http-message | blog-network-http-message | http-range-header@0.4.2, http@1.5.0, httpdate@1.0.3 | http-range-header@0.4.2: MIT; http@1.5.0: MIT OR Apache-2.0; httpdate@1.0.3: MIT OR Apache-2.0 |
 | src/foundation/network/http-middleware | blog-network-http-middleware | tower-http@0.6.11 | tower-http@0.6.11: MIT |
 | src/foundation/network/http-parser | blog-network-http-parser | httparse@1.10.1 | httparse@1.10.1: MIT OR Apache-2.0 |
 | src/foundation/network/http-transport | blog-network-http-transport | hyper-util@0.1.21, hyper@1.12.0 | hyper-util@0.1.21: MIT; hyper@1.12.0: MIT |
@@ -142,7 +126,6 @@
 | src/foundation/platform/error-code | blog-platform-error-code | errno@0.3.14 | errno@0.3.14: MIT OR Apache-2.0 |
 | src/foundation/platform/linux-abi | blog-platform-linux-abi | linux-raw-sys@0.12.1 | linux-raw-sys@0.12.1: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | src/foundation/platform/local-time-zone | blog-platform-local-time-zone | iana-time-zone@0.1.65 | iana-time-zone@0.1.65: MIT OR Apache-2.0 |
-| src/foundation/platform/password-processor-features | blog-platform-password-processor-features | cpufeatures@0.2.17 | cpufeatures@0.2.17: MIT OR Apache-2.0 |
 | src/foundation/platform/processor-features | blog-platform-processor-features | cpufeatures@0.3.1 | cpufeatures@0.3.1: MIT OR Apache-2.0 |
 | src/foundation/platform/socket-options | blog-platform-socket-options | socket2@0.6.5 | socket2@0.6.5: MIT OR Apache-2.0 |
 | src/foundation/platform/system-abi | blog-platform-system-abi | libc@0.2.190, libc@0.2.191 | libc@0.2.190: MIT OR Apache-2.0; libc@0.2.191: MIT OR Apache-2.0 |
@@ -157,12 +140,10 @@
 | src/foundation/runtime/signal-registry | blog-runtime-signal-registry | signal-hook-registry@1.4.8 | signal-hook-registry@1.4.8: MIT OR Apache-2.0 |
 | src/foundation/runtime/task-entry | blog-runtime-task-entry | tokio-macros@2.7.2 | tokio-macros@2.7.2: MIT |
 | src/foundation/runtime/task-scheduler | blog-runtime-task-scheduler | tokio@1.53.2 | tokio@1.53.2: MIT |
-| src/foundation/runtime/task-waker | blog-runtime-task-waker | atomic-waker@1.1.2 | atomic-waker@1.1.2: Apache-2.0 OR MIT |
 | src/foundation/runtime/worker-pool | blog-runtime-worker-pool | rayon-core@1.13.0 | rayon-core@1.13.0: MIT OR Apache-2.0 |
-| src/foundation/storage/fallible-rows | blog-storage-fallible-rows | fallible-iterator@0.3.0 | fallible-iterator@0.3.0: MIT/Apache-2.0 |
 | src/foundation/storage/record-derive | blog-storage-record-derive | sqlx-macros-core@0.9.0, sqlx-macros@0.9.0 | sqlx-macros-core@0.9.0: MIT OR Apache-2.0; sqlx-macros@0.9.0: MIT OR Apache-2.0 |
 | src/foundation/storage/sqlite-access | blog-storage-sqlite-access | sqlx-core@0.9.0, sqlx-sqlite@0.9.0, sqlx@0.9.0 | sqlx-core@0.9.0: MIT OR Apache-2.0; sqlx-sqlite@0.9.0: MIT OR Apache-2.0; sqlx@0.9.0: MIT OR Apache-2.0 |
-| src/foundation/storage/sqlite-native | blog-storage-sqlite-native | libsqlite3-sys@0.37.0 | libsqlite3-sys@0.37.0: MIT |
+| src/foundation/storage/sqlite-native | blog-storage-sqlite-native | cc@1.6.0, libsqlite3-sys@0.39.1 | cc@1.6.0: MIT OR Apache-2.0; libsqlite3-sys@0.39.1: MIT |
 | src/foundation/sync/atomic-lock | blog-sync-atomic-lock | try-lock@0.2.5 | try-lock@0.2.5: MIT |
 | src/foundation/sync/concurrent-collections | blog-sync-concurrent-collections | crossbeam-deque@0.8.8, crossbeam-epoch@0.9.21, crossbeam-queue@0.3.14, crossbeam-utils@0.8.23 | crossbeam-deque@0.8.8: MIT OR Apache-2.0; crossbeam-epoch@0.9.21: MIT OR Apache-2.0; crossbeam-queue@0.3.14: MIT OR Apache-2.0; crossbeam-utils@0.8.23: MIT OR Apache-2.0 |
 | src/foundation/sync/exclusive-value | blog-sync-exclusive-value | sync_wrapper@1.0.2 | sync_wrapper@1.0.2: Apache-2.0 |
@@ -192,8 +173,6 @@
 | src/foundation/text/case-insensitive-text | blog-text-case-insensitive-text | unicase@2.10.0 | unicase@2.10.0: MIT OR Apache-2.0 |
 | src/foundation/text/compile-time-text | blog-text-compile-time-text | const-str@0.3.2 | const-str@0.3.2: MIT；发布包无独立许可文本，待复核 |
 | src/foundation/text/compile-time-text-macros | blog-text-compile-time-text-macros | const-str-proc-macro@0.3.2 | const-str-proc-macro@0.3.2: MIT；发布包无独立许可文本，待复核 |
-| src/foundation/text/constant-pattern | blog-text-constant-pattern | lazy-regex@3.6.2 | lazy-regex@3.6.2: MIT |
-| src/foundation/text/constant-pattern-macros | blog-text-constant-pattern-macros | lazy-regex-proc_macros@3.6.2 | lazy-regex-proc_macros@3.6.2: MIT；发布包无独立许可文本，待复核 |
 | src/foundation/text/inline-ascii | blog-text-inline-ascii | tinystr@0.8.4 | tinystr@0.8.4: Unicode-3.0 |
 | src/foundation/text/line-layout | blog-text-line-layout | textwrap@0.16.4 | textwrap@0.16.4: MIT |
 | src/foundation/text/macro-identifier-case | blog-text-macro-identifier-case | heck@0.5.0 | heck@0.5.0: MIT OR Apache-2.0 |
@@ -224,9 +203,7 @@
 | src/foundation/wasm/browser-bridge | blog-wasm-browser-bridge | wasm-bindgen@0.2.129 | wasm-bindgen@0.2.129: MIT OR Apache-2.0 |
 | src/foundation/wasm/browser-bridge-entry | blog-wasm-browser-bridge-entry | wasm-bindgen-macro-support@0.2.129, wasm-bindgen-macro@0.2.129 | wasm-bindgen-macro-support@0.2.129: MIT OR Apache-2.0; wasm-bindgen-macro@0.2.129: MIT OR Apache-2.0 |
 | src/foundation/wasm/browser-bridge-schema | blog-wasm-browser-bridge-schema | wasm-bindgen-shared@0.2.129 | wasm-bindgen-shared@0.2.129: MIT OR Apache-2.0 |
-| src/foundation/wasm/browser-futures | blog-wasm-browser-futures | wasm-bindgen-futures@0.4.79 | wasm-bindgen-futures@0.4.79: MIT OR Apache-2.0 |
 | src/foundation/wasm/browser-module | blog-wasm-browser-module | wasm-bindgen-cli-support@0.2.129 | wasm-bindgen-cli-support@0.2.129: MIT OR Apache-2.0 |
-| src/foundation/wasm/debug-information | blog-wasm-debug-information | gimli@0.32.3 | gimli@0.32.3: MIT OR Apache-2.0 |
 | src/foundation/wasm/module-decoder | blog-wasm-module-decoder | wasmparser@0.245.1 | wasmparser@0.245.1: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT；发布包无独立许可文本，待复核 |
 | src/foundation/wasm/module-encoder | blog-wasm-module-encoder | wasm-encoder@0.245.1 | wasm-encoder@0.245.1: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT；发布包无独立许可文本，待复核 |
 | src/foundation/wasm/module-transform | blog-wasm-module-transform | walrus@0.27.2 | walrus@0.27.2: MIT/Apache-2.0 |

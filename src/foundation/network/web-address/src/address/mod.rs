@@ -118,7 +118,7 @@ assert_eq!(css_url.as_str(), "http://servo.github.io/rust-url/main.css");
 
 # Feature: `serialization`
 
-If you enable the `serialization` feature, [`Url`](struct.Url.html) will implement
+If you enable the `serialization` feature, [`Url`] will implement
 [`serde::Serialize`](https://docs.rs/serde/1/serde/trait.Serialize.html) and
 [`serde::Deserialize`](https://docs.rs/serde/1/serde/trait.Deserialize.html).
 See [serde documentation](https://serde.rs) for more information.

@@ -1,7 +1,7 @@
 //! count occurrences of a given byte, or the number of UTF-8 code points, in a
 //! byte slice, fast.
 //!
-//! This crate has the [`count`](fn.count.html) method to count byte
+//! This crate has the [`count`] method to count byte
 //! occurrences (for example newlines) in a larger `&[u8]` slice.
 //!
 //! For example:
@@ -10,7 +10,7 @@
 //! assert_eq!(5, bytecount::count(b"Hello, this is the bytecount crate!", b' '));
 //! ```
 //!
-//! Also there is a [`num_chars`](fn.num_chars.html) method to count
+//! Also there is a [`num_chars`] method to count
 //! the number of UTF8 characters in a slice. It will work the same as
 //! `str::chars().count()` for byte slices of correct UTF-8 character
 //! sequences. The result will likely be off for invalid sequences,

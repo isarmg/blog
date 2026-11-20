@@ -97,8 +97,6 @@ pub mod baked;
 pub mod buf;
 pub mod constructors;
 pub mod dynutil;
-#[cfg(feature = "export")]
-pub mod export;
 #[cfg(feature = "alloc")]
 pub mod hello_world;
 
@@ -147,8 +145,6 @@ pub mod ule {
     //! See [`MaybeAsVarULE`] for details.
 
     pub use super::varule_traits::MaybeAsVarULE;
-    #[cfg(feature = "export")]
-    pub use super::varule_traits::MaybeEncodeAsVarULE;
 }
 
 /// Core selection of APIs and structures for the ICU4X data provider.

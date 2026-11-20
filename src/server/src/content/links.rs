@@ -1,4 +1,4 @@
-use super::{AdminPageQuery, PageResult};
+use super::{PageQuery, PageResult};
 use crate::{ApiResult, AppError, AppState, absent, invalid};
 use axum::{Json, extract::State};
 use blog_application::admin_core::AuthenticatedIdentity;
@@ -56,22 +56,20 @@ pub(super) async fn link_page(
     if query.classify.as_ref().is_some_and(|s| s.len() > 100) {
         return Err(invalid("资源筛选无效"));
     }
-    let page = query.page.unwrap_or(1).clamp(1, 100_000);
-    let size = query.size.unwrap_or(12).clamp(1, 100);
+    let pagination = PageQuery {
+        page: query.page,
+        size: query.size,
+    }
+    .bounds(12, 100);
     let mut transaction = state.pool.begin().await?;
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM resource_path WHERE type=? AND status=1 AND (? IS NULL OR classify=?)")
         .bind(query.kind.as_str()).bind(&query.classify).bind(&query.classify)
         .fetch_one(&mut *transaction).await?;
     let items=sqlx::query_as::<_,Link>("SELECT id,title,classify,cover,url,introduction,type AS link_type,create_time FROM resource_path WHERE type=? AND status=1 AND (? IS NULL OR classify=?) ORDER BY id DESC LIMIT ? OFFSET ?")
-        .bind(query.kind.as_str()).bind(&query.classify).bind(&query.classify).bind(size).bind((page-1)*size)
+        .bind(query.kind.as_str()).bind(&query.classify).bind(&query.classify).bind(pagination.size).bind(pagination.offset())
         .fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }
 #[derive(Serialize, sqlx::FromRow)]
 pub(super) struct LinkClass {
@@ -116,11 +114,11 @@ pub(super) async fn content_links(
     State(state): State<AppState>,
     Query(query): Query<AdminLinkQuery>,
 ) -> ApiResult<PageResult<AdminLink>> {
-    let (page, size) = AdminPageQuery {
+    let pagination = PageQuery {
         page: query.page,
         size: query.size,
     }
-    .bounds();
+    .admin_bounds();
     let kind = query.kind.map(LinkKind::as_str);
     if query.status.is_some_and(|status| !matches!(status, 0 | 1)) {
         return Err(invalid("资源状态无效"));
@@ -136,14 +134,9 @@ pub(super) async fn content_links(
     .fetch_one(&mut *transaction)
     .await?;
     let items = sqlx::query_as::<_, AdminLink>("SELECT id,title,classify,cover,url,introduction,type AS link_type,status,create_time FROM resource_path WHERE (? IS NULL OR type=?) AND (? IS NULL OR status=?) ORDER BY id DESC LIMIT ? OFFSET ?")
-        .bind(kind).bind(kind).bind(query.status).bind(query.status).bind(size).bind((page-1)*size).fetch_all(&mut *transaction).await?;
+        .bind(kind).bind(kind).bind(query.status).bind(query.status).bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -179,13 +172,6 @@ fn validate_link(input: &LinkInput) -> Result<(), AppError> {
     }
     Ok(())
 }
-async fn load_link(
-    connection: &mut sqlx::SqliteConnection,
-    id: i64,
-) -> Result<AdminLink, AppError> {
-    sqlx::query_as("SELECT id,title,classify,cover,url,introduction,type AS link_type,status,create_time FROM resource_path WHERE id=?")
-        .bind(id).fetch_optional(connection).await?.ok_or_else(absent)
-}
 pub(super) async fn create_link(
     State(state): State<AppState>,
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
@@ -193,10 +179,19 @@ pub(super) async fn create_link(
 ) -> ApiResult<AdminLink> {
     validate_link(&input)?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let id = sqlx::query("INSERT INTO resource_path(title,classify,cover,url,introduction,type,status) VALUES(?,?,?,?,?,?,?)")
-        .bind(input.title).bind(input.classify).bind(input.cover).bind(input.url).bind(input.introduction).bind(input.link_type.as_str()).bind(i64::from(input.status))
-        .execute(&mut *transaction).await?.last_insert_rowid();
-    let link = load_link(&mut transaction, id).await?;
+    let link = sqlx::query_as(
+        "INSERT INTO resource_path(title,classify,cover,url,introduction,type,status) VALUES(?,?,?,?,?,?,?)
+         RETURNING id,title,classify,cover,url,introduction,type AS link_type,status,create_time",
+    )
+    .bind(input.title)
+    .bind(input.classify)
+    .bind(input.cover)
+    .bind(input.url)
+    .bind(input.introduction)
+    .bind(input.link_type.as_str())
+    .bind(i64::from(input.status))
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
     Ok(Json(link))
 }
@@ -208,13 +203,21 @@ pub(super) async fn update_link(
 ) -> ApiResult<AdminLink> {
     validate_link(&input)?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed = sqlx::query("UPDATE resource_path SET title=?,classify=?,cover=?,url=?,introduction=?,type=?,status=? WHERE id=?")
-        .bind(input.title).bind(input.classify).bind(input.cover).bind(input.url).bind(input.introduction).bind(input.link_type.as_str()).bind(i64::from(input.status)).bind(id)
-        .execute(&mut *transaction).await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    let link = load_link(&mut transaction, id).await?;
+    let link = sqlx::query_as(
+        "UPDATE resource_path SET title=?,classify=?,cover=?,url=?,introduction=?,type=?,status=? WHERE id=?
+         RETURNING id,title,classify,cover,url,introduction,type AS link_type,status,create_time",
+    )
+    .bind(input.title)
+    .bind(input.classify)
+    .bind(input.cover)
+    .bind(input.url)
+    .bind(input.introduction)
+    .bind(input.link_type.as_str())
+    .bind(i64::from(input.status))
+    .bind(id)
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(absent)?;
     transaction.commit().await?;
     Ok(Json(link))
 }
@@ -225,15 +228,15 @@ pub(super) async fn change_link_status(
     crate::ContractJson(input): crate::ContractJson<LinkStatusInput>,
 ) -> ApiResult<AdminLink> {
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed = sqlx::query("UPDATE resource_path SET status=? WHERE id=?")
-        .bind(i64::from(input.active))
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    let link = load_link(&mut transaction, id).await?;
+    let link = sqlx::query_as(
+        "UPDATE resource_path SET status=? WHERE id=?
+         RETURNING id,title,classify,cover,url,introduction,type AS link_type,status,create_time",
+    )
+    .bind(i64::from(input.active))
+    .bind(id)
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(absent)?;
     transaction.commit().await?;
     Ok(Json(link))
 }

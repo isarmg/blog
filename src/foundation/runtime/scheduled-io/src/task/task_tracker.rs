@@ -92,7 +92,6 @@ use tokio::{
 /// ```
 /// use tokio_util::sync::CancellationToken;
 /// use tokio_util::task::TaskTracker;
-/// use tokio_util::time::FutureExt;
 ///
 /// use tokio::time::{self, Duration};
 ///
@@ -113,12 +112,7 @@ use tokio::{
 ///     for i in 0..10 {
 ///         let token = token.clone();
 ///         tracker.spawn(async move {
-///             // Use a `with_cancellation_token_owned` to kill the background task
-///             // if the token is cancelled.
-///             match background_task(i)
-///                 .with_cancellation_token_owned(token)
-///                 .await
-///             {
+///             match token.run_until_cancelled(background_task(i)).await {
 ///                 Some(()) => println!("Task {} exiting normally.", i),
 ///                 None => {
 ///                     // Do some cleanup before we really exit.

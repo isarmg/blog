@@ -17,7 +17,7 @@ pub struct AcceptedEncodings {
 /// An absent or empty `Accept-Encoding` field permits identity only. Explicit
 /// coding weights override `*`; identity is permitted unless explicitly
 /// excluded, including by `*;q=0` when identity has no explicit weight.
-/// Repeated codings across all field lines use their lowest weight. Coding and
+/// Any zero weight on a repeated coding excludes that coding. Coding and
 /// parameter names are case insensitive, and quality values use the HTTP
 /// grammar (`0` or `1` with at most three fractional digits).
 ///
@@ -37,11 +37,11 @@ pub fn accepted_encodings(headers: &HeaderMap) -> AcceptedEncodings {
             return reject;
         };
         for entry in value.split(',') {
-            let mut parts = entry.split(';');
-            let coding = parts
-                .next()
-                .expect("invariant: str::split always yields its first segment")
-                .trim();
+            let (coding, parameter) = match entry.split_once(';') {
+                Some((coding, parameter)) => (coding, Some(parameter)),
+                None => (entry, None),
+            };
+            let coding = coding.trim();
             let target = if coding.eq_ignore_ascii_case("gzip") {
                 &mut gzip
             } else if coding.eq_ignore_ascii_case("identity") {
@@ -51,50 +51,32 @@ pub fn accepted_encodings(headers: &HeaderMap) -> AcceptedEncodings {
             } else {
                 continue;
             };
-            let weight = if let Some(parameter) = parts.next() {
-                let Some((name, value)) = parameter.trim().split_once('=') else {
-                    return reject;
-                };
-                if !name.trim().eq_ignore_ascii_case("q") || parts.next().is_some() {
-                    return reject;
-                }
-                let Some(weight) = quality(value.trim()) else {
-                    return reject;
-                };
-                weight
-            } else {
-                1000
+            let Some(allowed) = parameter.map_or(Some(true), allows_coding) else {
+                return reject;
             };
-            *target = Some(target.map_or(weight, |previous: u16| previous.min(weight)));
+            *target.get_or_insert(true) &= allowed;
         }
     }
     AcceptedEncodings {
-        gzip: gzip.or(wildcard).is_some_and(|weight| weight > 0),
-        identity: identity.unwrap_or(if wildcard == Some(0) { 0 } else { 1000 }) > 0,
+        gzip: gzip.or(wildcard).unwrap_or(false),
+        identity: identity.or(wildcard).unwrap_or(true),
     }
 }
 
-fn quality(value: &str) -> Option<u16> {
-    let Some((whole, fraction)) = value.split_once('.') else {
-        return match value {
-            "0" => Some(0),
-            "1" => Some(1000),
-            _ => None,
-        };
-    };
-    if fraction.len() > 3 || !fraction.bytes().all(|byte| byte.is_ascii_digit()) {
+fn allows_coding(parameter: &str) -> Option<bool> {
+    let (name, value) = parameter.split_once('=')?;
+    if !name.trim().eq_ignore_ascii_case("q") {
+        return None;
+    }
+    let value = value.trim();
+    let (whole, fraction) = value.split_once('.').unwrap_or((value, ""));
+    if fraction.len() > 3 {
         return None;
     }
     match whole {
-        "1" => fraction.bytes().all(|byte| byte == b'0').then_some(1000),
-        "0" => {
-            let mut result = 0;
-            let mut place = 100;
-            for byte in fraction.bytes() {
-                result += u16::from(byte - b'0') * place;
-                place /= 10;
-            }
-            Some(result)
+        "1" if fraction.bytes().all(|byte| byte == b'0') => Some(true),
+        "0" if fraction.bytes().all(|byte| byte.is_ascii_digit()) => {
+            Some(fraction.bytes().any(|byte| byte != b'0'))
         }
         _ => None,
     }

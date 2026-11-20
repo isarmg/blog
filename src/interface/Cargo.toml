@@ -2,7 +2,7 @@
 autotests = false
 name = "blog-interface"
 edition = "2024"
-rust-version = "1.99"
+rust-version.workspace = true
 license = "Apache-2.0"
 description = "博客组件、浏览器 API、主题和应用挂载"
 publish = false
@@ -14,7 +14,6 @@ blog-dom = {  default-features = false, features = ["csr"], path = "dom"}
 serde = {  features = ["derive"], path = "../foundation/format/data-model",package = "blog-format-data-model"}
 serde_json = { path = "../foundation/format/json",package = "blog-format-json"}
 wasm-bindgen = { path = "../foundation/wasm/browser-bridge",package = "blog-wasm-browser-bridge"}
-wasm-bindgen-futures = { path = "../foundation/wasm/browser-futures",package = "blog-wasm-browser-futures"}
 js-sys = { path = "../foundation/interface/javascript-api",package = "blog-interface-javascript-api"}
 web-sys = {  features = [
   "AbortController", "AbortSignal", "BeforeUnloadEvent", "Blob", "BlobPropertyBag",

@@ -107,7 +107,6 @@ macro_rules! doc {
         ///  * [`tokio::sync::broadcast::Receiver::recv`](crate::sync::broadcast::Receiver::recv)
         ///  * [`tokio::sync::watch::Receiver::changed`](crate::sync::watch::Receiver::changed)
         ///  * [`tokio::net::TcpListener::accept`](crate::net::TcpListener::accept)
-        ///  * [`tokio::net::UnixListener::accept`](crate::net::UnixListener::accept)
         ///  * [`tokio::signal::unix::Signal::recv`](crate::signal::unix::Signal::recv)
         ///  * [`tokio::io::AsyncReadExt::read`](crate::io::AsyncReadExt::read) on any `AsyncRead`
         ///  * [`tokio::io::AsyncReadExt::read_buf`](crate::io::AsyncReadExt::read_buf) on any `AsyncRead`

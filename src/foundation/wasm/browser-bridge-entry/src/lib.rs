@@ -200,7 +200,6 @@ struct ClassMarker {
     js_class: String,
     js_namespace: Option<Vec<String>>,
     wasm_bindgen: syn::Path,
-    wasm_bindgen_futures: syn::Path,
     js_sys: syn::Path,
 }
 
@@ -216,7 +215,6 @@ impl Parse for ClassMarker {
 
         let mut js_namespace: Option<Vec<String>> = None;
         let mut wasm_bindgen = None;
-        let mut wasm_bindgen_futures = None;
         let mut js_sys = None;
 
         loop {
@@ -246,16 +244,6 @@ impl Parse for ClassMarker {
 
                     input.parse::<Token![=]>()?;
                     wasm_bindgen = Some(input.parse::<syn::Path>()?);
-                } else if ident == "wasm_bindgen_futures" {
-                    if wasm_bindgen_futures.is_some() {
-                        return Err(syn::Error::new(
-                            ident.span(),
-                            "found duplicate `wasm_bindgen_futures`",
-                        ));
-                    }
-
-                    input.parse::<Token![=]>()?;
-                    wasm_bindgen_futures = Some(input.parse::<syn::Path>()?);
                 } else if ident == "js_sys" {
                     if js_sys.is_some() {
                         return Err(syn::Error::new(ident.span(), "found duplicate `js_sys`"));
@@ -266,7 +254,7 @@ impl Parse for ClassMarker {
                 } else {
                     return Err(syn::Error::new(
                         ident.span(),
-                        "expected `js_namespace`, `wasm_bindgen`, `wasm_bindgen_futures`, or `js_sys`",
+                        "expected `js_namespace`, `wasm_bindgen`, or `js_sys`",
                     ));
                 }
             } else {
@@ -279,8 +267,6 @@ impl Parse for ClassMarker {
             js_class,
             js_namespace,
             wasm_bindgen: wasm_bindgen.unwrap_or_else(|| syn::parse_quote! { wasm_bindgen }),
-            wasm_bindgen_futures: wasm_bindgen_futures
-                .unwrap_or_else(|| syn::parse_quote! { wasm_bindgen_futures }),
             js_sys: js_sys.unwrap_or_else(|| syn::parse_quote! { js_sys }),
         })
     }

@@ -1,5 +1,4 @@
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     constant_evaluation::{ConstantEvaluation, ConstantValue, DetermineValueType, IsInt32OrUint32},
     side_effects::MayHaveSideEffects,
@@ -181,9 +180,7 @@ impl<'a> PeepholeOptimizations {
         expr: &mut AssignmentExpression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) {
-        if !ctx.supports_feature(ESFeature::ES2021LogicalAssignmentOperators)
-            || !matches!(expr.operator, AssignmentOperator::Assign)
-        {
+        if !matches!(expr.operator, AssignmentOperator::Assign) {
             return;
         }
 

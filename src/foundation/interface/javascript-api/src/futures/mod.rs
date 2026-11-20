@@ -60,10 +60,6 @@ use wasm_bindgen::convert::{FromWasmAbi, Upcast};
 use wasm_bindgen::sys::Promising;
 use wasm_bindgen::{prelude::*, JsError, JsGeneric};
 
-#[cfg_attr(docsrs, doc(cfg(feature = "futures-core-03-stream")))]
-#[cfg(feature = "futures-core-03-stream")]
-pub mod stream;
-
 mod queue;
 
 mod task {

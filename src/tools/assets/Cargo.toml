@@ -1,7 +1,7 @@
 [package]
 name = "blog-assets"
 edition = "2024"
-rust-version = "1.99"
+rust-version.workspace = true
 license = "Apache-2.0"
 description = "静态资源编译、源码收据和开发预览"
 publish = false

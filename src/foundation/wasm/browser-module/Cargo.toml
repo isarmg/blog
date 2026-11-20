@@ -39,10 +39,6 @@ path = "../../../../test/foundation/wasm/browser-module/integration/termination_
 path = "../../diagnostics/error-context"
 package = "blog-diagnostics-error-context"
 
-[dependencies.base64]
-path = "../../encoding/application-base-encoding"
-package = "blog-encoding-application-base-encoding"
-
 [dependencies.leb128]
 path = "../../encoding/signed-variable-integer"
 package = "blog-encoding-signed-variable-integer"

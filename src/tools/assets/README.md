@@ -7,14 +7,14 @@
 在仓库根目录执行：
 
 ```sh
-cargo +1.99.0 run --locked --offline -p blog-assets -- build --product-root . --offline
-cargo +1.99.0 run --locked --offline -p blog-assets -- test --product-root . --offline
-cargo +1.99.0 run --locked --offline -p blog-assets -- serve --product-root . --debug --bind 127.0.0.1:5173
-cargo +1.99.0 run --locked --offline -p blog-assets -- server --product-root . --mode candidate --offline
-cargo +1.99.0 run --locked --offline -p blog-assets -- source-stamp --product-root .
+cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- test --product-root . --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- serve --product-root . --debug --bind 127.0.0.1:5173
+cargo +1.100.0 run --locked --offline -p blog-assets -- server --product-root . --mode candidate --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- source-stamp --product-root .
 ```
 
-准备 Rust 1.99.0、`wasm32-unknown-unknown` target 和原生 C 编译环境。根 workspace 与 `Cargo.lock` 解析全部本地 Rust 依赖；生产资源构建直接使用 Rust 工具，不运行 npm。Node 26.7.0 用于构建器的生成代码测试，Node/Playwright 用于浏览器测试。
+准备 Rust 1.100.0、`wasm32-unknown-unknown` target 和原生 C 编译环境。根 workspace 与 `Cargo.lock` 解析全部本地 Rust 依赖；生产资源构建直接使用 Rust 工具，不运行 npm。Node 26.7.0 用于构建器的生成代码测试，Node/Playwright 用于浏览器测试。
 
 JS 编译由 `blog-assets-compiler` 提供，CSS 编译由 `blog-assets-style-compiler` 提供。浏览器绑定生成在构建器内部运行，与本地 WASM 宏共享绑定协议。浏览器正式构建使用根 `web-release` profile。实现职责和参考资料见[依赖文档](../../../docs/dependencies/README.md)。
 
@@ -48,7 +48,7 @@ JS 编译由 `blog-assets-compiler` 提供，CSS 编译由 `blog-assets-style-co
 服务端收据 `<binary>.blog-assets.json` 绑定程序字节、嵌入资源和构建身份，可独立验证：
 
 ```sh
-cargo +1.99.0 run --locked --offline -p blog-assets -- verify \
+cargo +1.100.0 run --locked --offline -p blog-assets -- verify \
   --binary /absolute/blog --receipt /absolute/blog.blog-assets.json --dist /absolute/web-dist
 ```
 

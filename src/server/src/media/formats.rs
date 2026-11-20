@@ -154,6 +154,12 @@ pub(crate) fn is_media_filename(name: &str) -> bool {
     MediaFormat::from_filename(name).is_some()
 }
 
+pub(crate) fn is_media_image_path(path: &str) -> bool {
+    path.strip_prefix("/media/")
+        .and_then(MediaFormat::from_filename)
+        .is_some_and(|format| format.kind() == MediaKind::Image)
+}
+
 fn image_type(bytes: &[u8]) -> Option<MediaFormat> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         return Some(MediaFormat::Png);

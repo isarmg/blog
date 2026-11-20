@@ -1,15 +1,7 @@
-//! Raw API bindings for Web APIs
+//! Generated Web API bindings retained for the Blog workspace.
 //!
-//! This is a procedurally generated crate from browser WebIDL which provides a
-//! binding to all APIs that browsers provide on the web.
-//!
-//! This crate by default contains very little when compiled as almost all of
-//! its exposed APIs are gated by Cargo features. The exhaustive list of
-//! features can be found in `crates/web-sys/Cargo.toml`, but the rule of thumb
-//! for `web-sys` is that each type has its own cargo feature (named after the
-//! type). Using an API requires enabling the features for all types used in the
-//! API, and APIs should mention in the documentation what features they
-//! require.
+//! Cargo features gate browser types and their dependent bindings. The package
+//! manifest lists the types used by the browser and interface crates.
 
 #![doc(html_root_url = "https://docs.rs/web-sys/0.3")]
 #![no_std]

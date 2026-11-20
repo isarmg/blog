@@ -69,28 +69,37 @@ def relative(root, path):
     return result
 
 
-def files(root, directory, *, excluded=()):
+def source_files(root, directory, *, excluded=()):
     base = safe(root, directory, allow_root=True)
     if not base.is_dir():
         raise ValueError(f'missing source directory: {directory}')
-    result = {}
+    excluded = set(excluded)
+    if directory in excluded or any(parent.as_posix() in excluded for parent in PurePosixPath(directory).parents):
+        return
     for current, children, names in os.walk(base, followlinks=False):
         parent = Path(current)
+        directories = set(children)
         for name in children + names:
             path = parent / name
-            name_relative = path.relative_to(root).as_posix()
-            if any(name_relative == item or name_relative.startswith(item + '/') for item in excluded):
-                if name in children:
+            relative_name = path.relative_to(root).as_posix()
+            if relative_name in excluded:
+                if name in directories:
                     children.remove(name)
                 continue
             if path.is_symlink():
-                raise ValueError(f'source symlink: {name_relative}')
-            if name in children:
+                raise ValueError(f'source symlink: {relative_name}')
+            if name in directories:
                 continue
             if not path.is_file():
-                raise ValueError(f'source special file: {name_relative}')
-            result[path.relative_to(base).as_posix()] = digest(path.read_bytes())
-    return dict(sorted(result.items()))
+                raise ValueError(f'source special file: {relative_name}')
+            yield relative_name, path
+
+
+def files(root, directory, *, excluded=()):
+    prefix = '' if directory == '.' else directory + '/'
+    inventory = {name.removeprefix(prefix): digest(path.read_bytes())
+                 for name, path in source_files(root, directory, excluded=excluded)}
+    return dict(sorted(inventory.items()))
 
 
 def generated_roots(documents):
@@ -107,12 +116,13 @@ def central_test_root(directory):
 
 def dependencies(root, manifest_relative, document, workspace):
     sections = [document, *document.get('target', {}).values()]
+    manifest_directory = safe(root, manifest_relative).parent
     if manifest_relative == 'Cargo.toml':
         sections.append(document['workspace'])
     for section in sections:
         for kind in ('dependencies', 'dev-dependencies', 'build-dependencies'):
             for alias, declaration in section.get(kind, {}).items():
-                base = safe(root, manifest_relative).parent
+                base = manifest_directory
                 dependency = declaration
                 if isinstance(dependency, dict) and dependency.get('workspace') is True:
                     dependency = workspace.get(alias)
@@ -601,12 +611,12 @@ def source_packages(root, policy, documents, origins, migration_state=None):
         current = {directory: identity(item) for directory, item in result.items()}
         if current != migration_state['packages']:
             raise ValueError('migration terminal identities differ from actual manifests/source mappings')
-        # Every foundation file must belong to an active package, including
-        # retained source fixtures. Layer directories cannot hide orphan code.
-        for name in files(root, policy['foundation'], excluded=outputs):
-            path = policy['foundation'] + '/' + name
-            if not any(path.startswith(directory + '/') for directory in owned):
-                raise ValueError(f'unowned foundation source file: {path}')
+        # Independently check the namespace for orphaned files. Their contents
+        # are unnecessary here; the package inventories already hash each file.
+        owners = owned.keys() - {'.'}
+        for name, _ in source_files(root, policy['foundation'], excluded=outputs):
+            if not any(parent.as_posix() in owners for parent in PurePosixPath(name).parents):
+                raise ValueError(f'unowned foundation source file: {name}')
     return result
 
 
@@ -624,10 +634,9 @@ def cargo_metadata(root, target, cargo_home):
     if Path(metadata['workspace_root']) != root:
         raise ValueError('Cargo resolved another workspace root')
     for package in metadata['packages']:
-        name = relative(root, Path(package['manifest_path']))
+        relative(root, Path(package['manifest_path']))
         if package.get('source') is not None:
             raise ValueError(f'external resolved Cargo source: {package["name"]} {package["source"]}')
-        safe(root, name)
         for item in package['targets']:
             relative(root, Path(item['src_path']))
     return metadata

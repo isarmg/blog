@@ -624,7 +624,7 @@ impl<'a> StructInfo<'a> {
             } else {
                 generics.params.push(f.generic_ty_param());
                 let generic_argument: syn::Type = f.type_ident();
-                ty_generics_tuple.elems.push(generic_argument.clone());
+                ty_generics_tuple.elems.push(generic_argument);
                 quote!(#name,).to_tokens(&mut destructuring);
             }
         }

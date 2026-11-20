@@ -10,7 +10,4 @@
 
 #[cfg(not(windows))]
 pub mod io;
-#[cfg(not(target_os = "wasi"))]
-#[cfg(feature = "net")]
-pub mod net;
 pub mod os;

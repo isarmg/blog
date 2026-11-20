@@ -64,8 +64,6 @@ impl<'a, 'i, T: ToCss> ToCss for SupportsRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@supports ")?;
     self.condition.to_css(dest)?;
     dest.whitespace()?;

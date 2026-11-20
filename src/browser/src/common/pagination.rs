@@ -36,8 +36,8 @@ fn last_page(total: i64, size: i64) -> u64 {
     (((total + size - 1) / size).max(1) as u64).min(MAX_PAGE)
 }
 
-fn page_metadata<T: PageMetadata>(value: &Option<T>) -> Option<(i64, i64)> {
-    value.as_ref().map(|value| (value.total(), value.size()))
+fn page_metadata<T: PageMetadata>(value: Option<&T>) -> Option<(i64, i64)> {
+    value.map(|value| (value.total(), value.size()))
 }
 
 #[component]
@@ -50,7 +50,7 @@ pub(crate) fn Pager<T: PageMetadata + Send + Sync + 'static>(
     #[prop(default=Signal::derive(||false))] locked: Signal<bool>,
 ) -> impl IntoView {
     Effect::new(move |_| {
-        if let Some((total, size)) = data.value.with(page_metadata) {
+        if let Some((total, size)) = data.with_current(page_metadata) {
             let last = last_page(total, size);
             if page.get_untracked() > last {
                 page.set(last);
@@ -58,13 +58,12 @@ pub(crate) fn Pager<T: PageMetadata + Send + Sync + 'static>(
         }
     });
     move || {
-        data.value
-            .with(page_metadata)
-            .or_else(|| {
-                preserve
-                    .then(|| data.previous.with(page_metadata))
-                    .flatten()
-            })
+        let metadata = if preserve {
+            data.with_latest(page_metadata)
+        } else {
+            data.with_current(page_metadata)
+        };
+        metadata
             .filter(|(total, size)| total > size || page.get() > 1)
             .map(|(total, size)| {
                 View::new(
@@ -115,7 +114,7 @@ pub(crate) fn BrowsePager<T: PageMetadata + Send + Sync + 'static>(
     #[prop(default = false)] empty: bool,
 ) -> impl IntoView {
     Effect::new(move |_| {
-        if let Some((total, size)) = data.value.with(page_metadata) {
+        if let Some((total, size)) = data.with_current(page_metadata) {
             let last = last_page(total, size);
             if untrack(move || page_number(state)) > last {
                 replace_browse(state, &[("page", (last > 1).then(|| last.to_string()))]);
@@ -123,8 +122,7 @@ pub(crate) fn BrowsePager<T: PageMetadata + Send + Sync + 'static>(
         }
     });
     move || {
-        data.value
-            .with(page_metadata)
+        data.with_current(page_metadata)
             .filter(|(total, _)| {
                 empty || *total > if always { 0 } else { size } || page_number(state) > 1
             })

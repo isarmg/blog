@@ -3,7 +3,6 @@ use std::iter::repeat_with;
 use crate::optimizer::generated::ancestor::Ancestor;
 use crate::syntax_arena::{ArenaVec, CloneIn, GetAllocator, TakeIn};
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     BoundNames, ToJsString, ToNumber,
     constant_evaluation::{ConstantEvaluation, ConstantValue, DetermineValueType},
@@ -1756,8 +1755,7 @@ impl<'a> PeepholeOptimizations {
     }
 
     pub fn substitute_catch_clause(catch: &mut CatchClause<'a>, ctx: &TraverseCtx<'a>) {
-        if ctx.supports_feature(ESFeature::ES2019OptionalCatchBinding)
-            && let Some(param) = &catch.param
+        if let Some(param) = &catch.param
             && let BindingPattern::BindingIdentifier(ident) = &param.pattern
             && (catch.body.body.is_empty() || ctx.scoping().symbol_is_unused(ident.symbol_id()))
             // Direct eval can reference the catch parameter even when static analysis sees no use.

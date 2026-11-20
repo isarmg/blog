@@ -42,19 +42,19 @@ use {alloc::string::String, alloc::vec::Vec};
 /// # Examples
 ///
 /// ```
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// use rustix::ffi::CStr;
 /// use rustix::io;
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// use rustix::path::Arg;
 ///
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// pub fn touch<P: Arg>(path: P) -> io::Result<()> {
 ///     let path = path.into_c_str()?;
 ///     _touch(&path)
 /// }
 ///
-/// # #[cfg(any(feature = "fs", feature = "net"))]
+/// # #[cfg(feature = "fs")]
 /// fn _touch(path: &CStr) -> io::Result<()> {
 ///     // implementation goes here
 ///     Ok(())

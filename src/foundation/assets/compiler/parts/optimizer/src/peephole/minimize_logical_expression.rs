@@ -1,6 +1,5 @@
 use crate::syntax_arena::TakeIn;
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::scope_analysis::ReferenceFlags;
 use crate::source_location::{ContentEq, GetSpan, SPAN};
 
@@ -230,9 +229,6 @@ impl<'a> PeepholeOptimizations {
         expr: &mut Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) {
-        if !ctx.supports_feature(ESFeature::ES2021LogicalAssignmentOperators) {
-            return;
-        }
         let Expression::LogicalExpression(e) = expr else { return };
         if let Expression::SequenceExpression(sequence_expr) = &e.right {
             let Some(Expression::AssignmentExpression(assignment_expr)) =

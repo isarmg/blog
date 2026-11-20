@@ -789,15 +789,28 @@
     assert!(parse("foo:where()").is_err());
     assert!(parse("foo:where(div, foo, .bar baz)").is_ok());
     assert!(parse("foo:where(::before)").is_err());
+  }
 
-    assert!(parse("foo::details-content").is_ok());
-    assert!(parse("foo::target-text").is_ok());
+  #[test]
+  fn test_css_pseudo_elements() {
+    use crate::style_optimizer::stylesheet::{ParserOptions, StyleSheet};
 
-    assert!(parse("select::picker").is_err());
-    assert!(parse("::picker()").is_err());
-    assert!(parse("::picker(select)").is_ok());
-    assert!(parse("select::picker-icon").is_ok());
-    assert!(parse("option::checkmark").is_ok());
+    for (selector, valid) in [
+      ("foo::details-content", true),
+      ("foo::target-text", true),
+      ("select::picker", true), // Unknown non-functional pseudo-elements are preserved.
+      ("::picker()", false),
+      ("::picker(select)", true),
+      ("select::picker-icon", true),
+      ("option::checkmark", true),
+    ] {
+      let css = format!("{selector} {{ color: red }}");
+      assert_eq!(
+        StyleSheet::parse(&css, ParserOptions::default()).is_ok(),
+        valid,
+        "{selector}",
+      );
+    }
   }
 
   #[test]

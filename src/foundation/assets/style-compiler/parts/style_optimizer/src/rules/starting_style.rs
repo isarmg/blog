@@ -40,8 +40,6 @@ impl<'i, T: ToCss> ToCss for StartingStyleRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@starting-style")?;
     dest.whitespace()?;
     dest.write_char('{')?;

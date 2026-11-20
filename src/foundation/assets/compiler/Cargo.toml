@@ -50,24 +50,11 @@ path = "../../format/data-model"
 features = ["derive"]
 default-features = true
 
-[dependencies.postcard]
-package = "blog-format-binary-record"
-path = "../../format/binary-record"
-features = ["alloc"]
-default-features = false
-
 [dependencies.thiserror]
 package = "blog-diagnostics-typed-error"
 path = "../../diagnostics/typed-error"
 features = []
 default-features = true
-
-[dependencies.libc]
-package = "blog-platform-system-abi"
-path = "../../platform/system-abi"
-features = []
-default-features = true
-
 
 [dependencies.memchr]
 package = "blog-encoding-byte-search"
@@ -129,12 +116,6 @@ path = "../../syntax/compiler-iterators"
 features = []
 default-features = true
 
-[dependencies.lazy_regex]
-package = "blog-text-constant-pattern"
-path = "../../text/constant-pattern"
-features = []
-default-features = true
-
 [dependencies.seq_macro]
 package = "blog-syntax-index-expansion"
 path = "../../syntax/index-expansion"
@@ -159,45 +140,17 @@ path = "../../memory/owned-borrow"
 features = []
 default-features = true
 
-[dependencies.base64_simd]
-package = "blog-encoding-vector-base-encoding"
-path = "../../encoding/vector-base-encoding"
-features = []
-default-features = true
-
-[dependencies.serde_json]
-package = "blog-format-json"
-path = "../../format/json"
-features = []
-default-features = true
-
 [dependencies.allocator_api2]
 package = "blog-memory-allocator"
 path = "../../memory/allocator"
 features = []
 default-features = true
 
-[dependencies.escape_simd]
-package = "blog-encoding-vector-escaping"
-path = "../../encoding/vector-escaping"
-features = ["json"]
-default-features = true
-
-[dependencies.compression]
-package = "blog-encoding-compression"
-path = "../../encoding/compression"
-features = ["codec", "alloc", "simd"]
-default-features = false
-
 [dependencies.url-encoding]
 package = "blog-network-web-address"
 path = "../../network/web-address"
 default-features = false
 features = ["std"]
-
-[[test]]
-name = "native-calendar"
-path = "../../../../test/foundation/assets/compiler/integration/native_calendar.rs"
 
 [[test]]
 name = "compiler-safety"

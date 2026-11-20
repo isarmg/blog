@@ -74,7 +74,7 @@ type_complexity = "allow"
 [lints.rust.unexpected_cfgs]
 level = "warn"
 priority = 0
-check-cfg = ["cfg(js_sys_unstable_apis)", "cfg(wasm_bindgen_unstable_jspi)", "cfg(feature, values(\"futures-core-03-stream\"))"]
+check-cfg = ["cfg(js_sys_unstable_apis)"]
 
 [dependencies.futures]
 optional = true

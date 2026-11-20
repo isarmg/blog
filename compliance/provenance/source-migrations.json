@@ -11794,6 +11794,652 @@
         }
       ],
       "retired_origins": []
+    },
+    {
+      "id": "unify-css-and-js-perfect-hash-tables",
+      "reason": "CSS and JavaScript now generate and read their perfect hash tables using the same current implementation.",
+      "from": [
+        {
+          "directory": "src/foundation/lookup/style-table",
+          "name": "blog-lookup-style-table",
+          "version": "0.0.0",
+          "origins": [
+            "phf@0.11.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/lookup/style-table-generator",
+          "name": "blog-lookup-style-table-generator",
+          "version": "0.0.0",
+          "origins": [
+            "phf_generator@0.11.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/lookup/style-table-hashing",
+          "name": "blog-lookup-style-table-hashing",
+          "version": "0.0.0",
+          "origins": [
+            "phf_shared@0.11.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/lookup/style-table-macros",
+          "name": "blog-lookup-style-table-macros",
+          "version": "0.0.0",
+          "origins": [
+            "phf_macros@0.11.3"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "phf@0.11.3",
+          "reason": "CSS now uses the maintained PHF implementation shared with JavaScript."
+        },
+        {
+          "id": "phf_generator@0.11.3",
+          "reason": "CSS now uses the maintained PHF implementation shared with JavaScript."
+        },
+        {
+          "id": "phf_macros@0.11.3",
+          "reason": "CSS now uses the maintained PHF implementation shared with JavaScript."
+        },
+        {
+          "id": "phf_shared@0.11.3",
+          "reason": "CSS now uses the maintained PHF implementation shared with JavaScript."
+        }
+      ]
+    },
+    {
+      "id": "isolate-browser-targets-and-prune-js-source-map-emission",
+      "reason": "Separate browser-target queries and feature data from JavaScript code generation. Remove source-map generation and its private serialization dependencies because the product asset contract rejects source maps.",
+      "from": [
+        {
+          "directory": "src/foundation/assets/compiler",
+          "name": "blog-assets-compiler",
+          "version": "0.0.0",
+          "origins": [
+            "bytecount@0.6.9",
+            "cow-utils@0.1.3",
+            "json-escape-simd@3.1.2",
+            "nonmax@0.5.5",
+            "oxc-browserslist@5.0.1",
+            "oxc@0.153.0",
+            "oxc_allocator@0.153.0",
+            "oxc_ast@0.153.0",
+            "oxc_ast_visit@0.153.0",
+            "oxc_codegen@0.153.0",
+            "oxc_compat@0.153.0",
+            "oxc_data_structures@0.153.0",
+            "oxc_diagnostics@0.153.0",
+            "oxc_ecmascript@0.153.0",
+            "oxc_estree@0.153.0",
+            "oxc_index@5.0.0",
+            "oxc_mangler@0.153.0",
+            "oxc_minifier@0.153.0",
+            "oxc_parser@0.153.0",
+            "oxc_regular_expression@0.153.0",
+            "oxc_semantic@0.153.0",
+            "oxc_sourcemap@9.0.0",
+            "oxc_span@0.153.0",
+            "oxc_str@0.153.0",
+            "oxc_syntax@0.153.0",
+            "oxc_traverse@0.153.0",
+            "unicode-id-start@1.5.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/encoding/vector-base-encoding",
+          "name": "blog-encoding-vector-base-encoding",
+          "version": "0.0.0",
+          "origins": [
+            "base64-simd@0.8.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/encoding/vector-escaping",
+          "name": "blog-encoding-vector-escaping",
+          "version": "0.0.0",
+          "origins": [
+            "escape-simd@0.1.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/encoding/vector-primitives",
+          "name": "blog-encoding-vector-primitives",
+          "version": "0.0.0",
+          "origins": [
+            "vsimd@0.8.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/memory/output-reference",
+          "name": "blog-memory-output-reference",
+          "version": "0.0.0",
+          "origins": [
+            "outref@0.5.2"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/assets/compiler",
+          "name": "blog-assets-compiler",
+          "version": "0.0.0",
+          "origins": [
+            "bytecount@0.6.9",
+            "cow-utils@0.1.3",
+            "nonmax@0.5.5",
+            "oxc@0.153.0",
+            "oxc_allocator@0.153.0",
+            "oxc_ast@0.153.0",
+            "oxc_ast_visit@0.153.0",
+            "oxc_codegen@0.153.0",
+            "oxc_data_structures@0.153.0",
+            "oxc_diagnostics@0.153.0",
+            "oxc_ecmascript@0.153.0",
+            "oxc_estree@0.153.0",
+            "oxc_index@5.0.0",
+            "oxc_mangler@0.153.0",
+            "oxc_minifier@0.153.0",
+            "oxc_parser@0.153.0",
+            "oxc_regular_expression@0.153.0",
+            "oxc_semantic@0.153.0",
+            "oxc_span@0.153.0",
+            "oxc_str@0.153.0",
+            "oxc_syntax@0.153.0",
+            "oxc_traverse@0.153.0",
+            "unicode-id-start@1.5.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/assets/browser-targets",
+          "name": "blog-assets-browser-targets",
+          "version": "0.0.0",
+          "origins": [
+            "oxc-browserslist@5.0.1",
+            "oxc_compat@0.153.0",
+            "oxc_syntax@0.153.0"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "base64-simd@0.8.0",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        },
+        {
+          "id": "escape-simd@0.1.0",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        },
+        {
+          "id": "json-escape-simd@3.1.2",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        },
+        {
+          "id": "outref@0.5.2",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        },
+        {
+          "id": "oxc_sourcemap@9.0.0",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        },
+        {
+          "id": "vsimd@0.8.0",
+          "reason": "The supported asset compiler emits JavaScript without source maps, and this implementation has no other consumer."
+        }
+      ]
+    },
+    {
+      "id": "retire-unused-legacy-phf-random-generator",
+      "reason": "The old CSS PHF generator was the sole consumer of the older random generator.",
+      "from": [
+        {
+          "directory": "src/foundation/math/lookup-random-generator",
+          "name": "blog-math-lookup-random-generator",
+          "version": "0.0.0",
+          "origins": [
+            "rand@0.8.8"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "rand@0.8.8",
+          "reason": "The old CSS PHF generator was the sole consumer of the older random generator."
+        }
+      ]
+    },
+    {
+      "id": "reuse-amd64-feature-detection-and-drop-version-probes",
+      "reason": "Reuse the maintained AMD64 CPU detector for password derivation and use the APIs guaranteed by Rust 1.100 instead of compiler-version probes.",
+      "from": [
+        {
+          "directory": "src/foundation/native/compiler-capabilities",
+          "name": "blog-native-compiler-capabilities",
+          "version": "0.0.0",
+          "origins": [
+            "autocfg@1.5.1"
+          ]
+        },
+        {
+          "directory": "src/foundation/native/compiler-conditions",
+          "name": "blog-native-compiler-conditions",
+          "version": "0.0.0",
+          "origins": [
+            "rustversion@1.0.23"
+          ]
+        },
+        {
+          "directory": "src/foundation/platform/password-processor-features",
+          "name": "blog-platform-password-processor-features",
+          "version": "0.0.0",
+          "origins": [
+            "cpufeatures@0.2.17"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "autocfg@1.5.1",
+          "reason": "Reuse the maintained AMD64 CPU detector for password derivation and use the APIs guaranteed by Rust 1.100 instead of compiler-version probes."
+        },
+        {
+          "id": "cpufeatures@0.2.17",
+          "reason": "Reuse the maintained AMD64 CPU detector for password derivation and use the APIs guaranteed by Rust 1.100 instead of compiler-version probes."
+        },
+        {
+          "id": "rustversion@1.0.23",
+          "reason": "Reuse the maintained AMD64 CPU detector for password derivation and use the APIs guaranteed by Rust 1.100 instead of compiler-version probes."
+        }
+      ]
+    },
+    {
+      "id": "integrate-http-date-and-range-parsing",
+      "reason": "Move HTTP date and byte-range field parsing into the message-format package, with features selected by the relevant consumers.",
+      "from": [
+        {
+          "directory": "src/foundation/network/byte-ranges",
+          "name": "blog-network-byte-ranges",
+          "version": "0.0.0",
+          "origins": [
+            "http-range-header@0.4.2"
+          ]
+        },
+        {
+          "directory": "src/foundation/network/http-date",
+          "name": "blog-network-http-date",
+          "version": "0.0.0",
+          "origins": [
+            "httpdate@1.0.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/network/http-message",
+          "name": "blog-network-http-message",
+          "version": "0.0.0",
+          "origins": [
+            "http@1.5.0"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/network/http-message",
+          "name": "blog-network-http-message",
+          "version": "0.0.0",
+          "origins": [
+            "http-range-header@0.4.2",
+            "http@1.5.0",
+            "httpdate@1.0.3"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "reuse-existing-async-task-waker",
+      "reason": "Use the async toolkit AtomicWaker for the HTTP transport instead of a separate copy.",
+      "from": [
+        {
+          "directory": "src/foundation/runtime/task-waker",
+          "name": "blog-runtime-task-waker",
+          "version": "0.0.0",
+          "origins": [
+            "atomic-waker@1.1.2"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "atomic-waker@1.1.2",
+          "reason": "Use the async toolkit AtomicWaker for the HTTP transport instead of a separate copy."
+        }
+      ]
+    },
+    {
+      "id": "use-javascript-api-futures-directly",
+      "reason": "The browser consumers and binding expansion use the existing JavaScript API futures implementation directly.",
+      "from": [
+        {
+          "directory": "src/foundation/wasm/browser-futures",
+          "name": "blog-wasm-browser-futures",
+          "version": "0.0.0",
+          "origins": [
+            "wasm-bindgen-futures@0.4.79"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "wasm-bindgen-futures@0.4.79",
+          "reason": "The browser consumers and binding expansion use the existing JavaScript API futures implementation directly."
+        }
+      ]
+    },
+    {
+      "id": "fixed-javascript-compression-contract",
+      "reason": "Use the fixed compression and conservative RegExp side-effect rules already selected by blog-assets, and remove unused target queries, browser tables, and property name mangling.",
+      "from": [
+        {
+          "directory": "src/foundation/assets/browser-targets",
+          "name": "blog-assets-browser-targets",
+          "version": "0.0.0",
+          "origins": [
+            "oxc-browserslist@5.0.1",
+            "oxc_compat@0.153.0",
+            "oxc_syntax@0.153.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/text/constant-pattern",
+          "name": "blog-text-constant-pattern",
+          "version": "0.0.0",
+          "origins": [
+            "lazy-regex@3.6.2"
+          ]
+        },
+        {
+          "directory": "src/foundation/text/constant-pattern-macros",
+          "name": "blog-text-constant-pattern-macros",
+          "version": "0.0.0",
+          "origins": [
+            "lazy-regex-proc_macros@3.6.2"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "lazy-regex-proc_macros@3.6.2",
+          "reason": "Use the fixed compression and conservative RegExp side-effect rules already selected by blog-assets, and remove unused target queries, browser tables, and property name mangling."
+        },
+        {
+          "id": "lazy-regex@3.6.2",
+          "reason": "Use the fixed compression and conservative RegExp side-effect rules already selected by blog-assets, and remove unused target queries, browser tables, and property name mangling."
+        },
+        {
+          "id": "oxc-browserslist@5.0.1",
+          "reason": "Use the fixed compression and conservative RegExp side-effect rules already selected by blog-assets, and remove unused target queries, browser tables, and property name mangling."
+        },
+        {
+          "id": "oxc_compat@0.153.0",
+          "reason": "Use the fixed compression and conservative RegExp side-effect rules already selected by blog-assets, and remove unused target queries, browser tables, and property name mangling."
+        }
+      ]
+    },
+    {
+      "id": "keep-baked-unicode-data-without-postcard",
+      "reason": "The remaining Unicode consumers use typed baked data. Remove the unused Postcard data adapter and its framing dependency.",
+      "from": [
+        {
+          "directory": "src/foundation/format/binary-record",
+          "name": "blog-format-binary-record",
+          "version": "0.0.0",
+          "origins": [
+            "postcard@1.1.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/encoding/framing",
+          "name": "blog-encoding-framing",
+          "version": "0.0.0",
+          "origins": [
+            "cobs@0.3.0"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "cobs@0.3.0",
+          "reason": "The remaining Unicode consumers use typed baked data. Remove the unused Postcard data adapter and its framing dependency."
+        },
+        {
+          "id": "postcard@1.1.3",
+          "reason": "The remaining Unicode consumers use typed baked data. Remove the unused Postcard data adapter and its framing dependency."
+        }
+      ]
+    },
+    {
+      "id": "web-wasm-bindings-without-dwarf",
+      "reason": "Browser bindings preserve Web runtime metadata and discard debug-only DWARF, removing the DWARF reader and its fallible iterator dependency.",
+      "from": [
+        {
+          "directory": "src/foundation/wasm/debug-information",
+          "name": "blog-wasm-debug-information",
+          "version": "0.0.0",
+          "origins": [
+            "gimli@0.32.3"
+          ]
+        },
+        {
+          "directory": "src/foundation/storage/fallible-rows",
+          "name": "blog-storage-fallible-rows",
+          "version": "0.0.0",
+          "origins": [
+            "fallible-iterator@0.3.0"
+          ]
+        }
+      ],
+      "to": [],
+      "retired_origins": [
+        {
+          "id": "fallible-iterator@0.3.0",
+          "reason": "Browser bindings preserve Web runtime metadata and discard debug-only DWARF, removing the DWARF reader and its fallible iterator dependency."
+        },
+        {
+          "id": "gimli@0.32.3",
+          "reason": "Browser bindings preserve Web runtime metadata and discard debug-only DWARF, removing the DWARF reader and its fallible iterator dependency."
+        }
+      ]
+    },
+    {
+      "id": "compile-sqlite-in-native-build-script",
+      "reason": "Keep the native GNU build decisions derived from cc-rs with their sole consumer, the bundled SQLite build.",
+      "from": [
+        {
+          "directory": "src/foundation/native/c-compiler",
+          "name": "blog-native-c-compiler",
+          "version": "0.0.0",
+          "origins": [
+            "cc@1.6.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/storage/sqlite-native",
+          "name": "blog-storage-sqlite-native",
+          "version": "0.0.0",
+          "origins": [
+            "libsqlite3-sys@0.37.0"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/storage/sqlite-native",
+          "name": "blog-storage-sqlite-native",
+          "version": "0.0.0",
+          "origins": [
+            "cc@1.6.0",
+            "libsqlite3-sys@0.37.0"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "blog-release-3-0-0",
+      "reason": "Version the Blog server and setup tool together for the blog-db-v5 release.",
+      "from": [
+        {
+          "directory": "src/server",
+          "name": "blog",
+          "version": "2.0.0",
+          "origins": []
+        },
+        {
+          "directory": "src/tools/setup",
+          "name": "blog-setup",
+          "version": "2.0.0",
+          "origins": []
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/server",
+          "name": "blog",
+          "version": "3.0.0",
+          "origins": []
+        },
+        {
+          "directory": "src/tools/setup",
+          "name": "blog-setup",
+          "version": "3.0.0",
+          "origins": []
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "import-fixed-pulldown-cmark-0-13-6",
+      "reason": "Record the checksum-verified upstream pulldown-cmark 0.13.6 archive.",
+      "from": [],
+      "to": [
+        {
+          "directory": "src/foundation/pulldown-cmark-0.13.6",
+          "name": "pulldown-cmark",
+          "version": "0.13.6",
+          "origins": [
+            "pulldown-cmark@0.13.6"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "replace-markdown-parser-with-patched-upstream-0-13-6",
+      "reason": "Integrate the 0.13.6 parser implementation into the maintained Markdown package and keep its linkify and escaping lineage.",
+      "from": [
+        {
+          "directory": "src/foundation/assets/markdown-parser",
+          "name": "blog-assets-markdown-parser",
+          "version": "0.0.0",
+          "origins": [
+            "linkify@0.11.0",
+            "pulldown-cmark-escape@0.11.0",
+            "pulldown-cmark@0.13.4"
+          ]
+        },
+        {
+          "directory": "src/foundation/pulldown-cmark-0.13.6",
+          "name": "pulldown-cmark",
+          "version": "0.13.6",
+          "origins": [
+            "pulldown-cmark@0.13.6"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/assets/markdown-parser",
+          "name": "blog-assets-markdown-parser",
+          "version": "0.0.0",
+          "origins": [
+            "linkify@0.11.0",
+            "pulldown-cmark-escape@0.11.0",
+            "pulldown-cmark@0.13.6"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "pulldown-cmark@0.13.4",
+          "reason": "Replace the original parser implementation with 0.13.6 to resolve RUSTSEC-2026-0414 and RUSTSEC-2026-0433."
+        }
+      ]
+    },
+    {
+      "id": "import-fixed-libsqlite3-sys-0-39-1",
+      "reason": "Record the checksum-verified upstream libsqlite3-sys 0.39.1 archive.",
+      "from": [],
+      "to": [
+        {
+          "directory": "src/foundation/libsqlite3-sys-0.39.1",
+          "name": "libsqlite3-sys",
+          "version": "0.39.1",
+          "origins": [
+            "libsqlite3-sys@0.39.1"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "update-bundled-sqlite-to-3-54-1",
+      "reason": "Use SQLite 3.54.1 and its matching Rust bindings for RUSTSEC-2026-0459, keeping the existing native build runner and cc lineage.",
+      "from": [
+        {
+          "directory": "src/foundation/storage/sqlite-native",
+          "name": "blog-storage-sqlite-native",
+          "version": "0.0.0",
+          "origins": [
+            "cc@1.6.0",
+            "libsqlite3-sys@0.37.0"
+          ]
+        },
+        {
+          "directory": "src/foundation/libsqlite3-sys-0.39.1",
+          "name": "libsqlite3-sys",
+          "version": "0.39.1",
+          "origins": [
+            "libsqlite3-sys@0.39.1"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/storage/sqlite-native",
+          "name": "blog-storage-sqlite-native",
+          "version": "0.0.0",
+          "origins": [
+            "cc@1.6.0",
+            "libsqlite3-sys@0.39.1"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "libsqlite3-sys@0.37.0",
+          "reason": "Replace the bundled SQLite implementation with the fixed upstream release 3.54.1."
+        }
+      ]
     }
   ]
 }

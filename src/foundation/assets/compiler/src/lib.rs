@@ -6,10 +6,6 @@ extern crate self as blog_assets_compiler;
 pub mod borrowed_text;
 #[path = "../parts/bounded_index/src/lib.rs"]
 pub mod bounded_index;
-#[path = "../parts/browser_compatibility/src/lib.rs"]
-pub mod browser_compatibility;
-#[path = "../parts/browser_targets/src/lib.rs"]
-pub mod browser_targets;
 #[path = "../parts/byte_count/src/lib.rs"]
 pub mod byte_count;
 #[path = "../parts/code_generator/src/lib.rs"]
@@ -20,8 +16,6 @@ pub mod compiler_collections;
 pub mod compiler_errors;
 #[path = "../parts/compiler_strings/src/lib.rs"]
 pub mod compiler_strings;
-#[path = "../parts/json_escaping/src/lib.rs"]
-pub mod json_escaping;
 #[path = "../parts/language_semantics/src/lib.rs"]
 pub mod language_semantics;
 #[path = "../parts/name_compaction/src/lib.rs"]
@@ -38,8 +32,6 @@ pub mod scope_analysis;
 pub mod script_identifiers;
 #[path = "../parts/source_location/src/lib.rs"]
 pub mod source_location;
-#[path = "../parts/source_map/src/lib.rs"]
-pub mod source_map;
 #[path = "../parts/syntax_arena/src/lib.rs"]
 pub mod syntax_arena;
 #[path = "../parts/syntax_serialization/src/lib.rs"]

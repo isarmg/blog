@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: ${{ (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch')) }}
 
 env:
-  RUSTUP_TOOLCHAIN: 1.99.0
+  RUSTUP_TOOLCHAIN: 1.100.0
 
 jobs:
   server-and-smoke:
@@ -43,7 +43,7 @@ jobs:
           python3 src/tools/check-docs.py
       - name: Install exact Rust toolchain
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
       - name: Verify repository-owned implementation
         run: |
           python3 test/tools/test-independence.py
@@ -100,7 +100,7 @@ jobs:
           check-latest: false
       - name: Install exact browser Rust tools
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
       - name: Build web from repository Rust sources
         run: cargo run --quiet --locked --offline -p blog-assets -- build --product-root . --offline
       - name: Prepare browser test dependencies
@@ -187,7 +187,7 @@ jobs:
           check-latest: false
       - name: Install exact Rust tools
         run: |
-          rustup toolchain install 1.99.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+          rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
           CARGO_NET_OFFLINE=false cargo install cargo-audit --version 0.22.2 --locked
       - name: Verify local packaging boundaries
         run: |

@@ -179,7 +179,7 @@ impl ModuleTypes {
     /// # Example
     ///
     /// ```
-    /// use walrus::*;
+    /// use blog_wasm_module_transform::*;
     ///
     /// let mut module = Module::default();
     ///
@@ -223,7 +223,7 @@ impl ModuleTypes {
     /// # Example
     ///
     /// ```
-    /// use walrus::*;
+    /// use blog_wasm_module_transform::*;
     ///
     /// let mut module = Module::default();
     ///
@@ -265,7 +265,7 @@ impl ModuleTypes {
     /// # Example
     ///
     /// ```
-    /// use walrus::*;
+    /// use blog_wasm_module_transform::*;
     ///
     /// let mut module = Module::default();
     ///
@@ -327,7 +327,7 @@ impl ModuleTypes {
     /// # Example
     ///
     /// ```
-    /// use walrus::*;
+    /// use blog_wasm_module_transform::*;
     ///
     /// let mut module = Module::default();
     ///

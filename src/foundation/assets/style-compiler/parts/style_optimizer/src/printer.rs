@@ -1,4 +1,4 @@
-//! CSS serialization and source map generation.
+//! CSS serialization.
 
 use crate::style_optimizer::css_modules::CssModule;
 use crate::style_optimizer::dependencies::{Dependency, DependencyOptions};
@@ -8,18 +8,12 @@ use crate::style_optimizer::selector::SelectorList;
 use crate::style_optimizer::targets::{Targets, TargetsWithSupportsScope};
 use crate::style_optimizer::vendor_prefix::VendorPrefix;
 use crate::style_parser::{serialize_identifier, serialize_name};
-#[cfg(any())]
-use parcel_sourcemap::{OriginalLocation, SourceMap};
 
 /// Options that control how CSS is serialized to a string.
 #[derive(Default)]
 pub struct PrinterOptions<'a> {
   /// Whether to minify the CSS, i.e. remove white space.
   pub minify: bool,
-  /// An optional reference to a source map to write mappings into.
-  #[cfg(any())]
-  #[cfg_attr(docsrs, doc(cfg(any())))]
-  pub source_map: Option<&'a mut SourceMap>,
   /// An optional project root path, used to generate relative paths for sources used in CSS module hashes.
   pub project_root: Option<&'a str>,
   /// Targets to output the CSS for.
@@ -58,24 +52,13 @@ pub struct PseudoClasses<'a> {
 /// the [ToCss](super::traits::ToCss) trait. It can wrap any destination that
 /// implements [std::fmt::Write], such as a [String].
 ///
-/// A `Printer` keeps track of the current line and column position, and uses
-/// this to generate a source map if provided in the options.
-///
 /// `Printer` also includes helper functions that assist with writing output
 /// that respects options such as `minify`, and `css_modules`.
 pub struct Printer<'a, 'b, 'c, W> {
   pub(crate) sources: Option<&'c Vec<String>>,
   dest: &'a mut W,
-  #[cfg(any())]
-  #[cfg_attr(docsrs, doc(cfg(any())))]
-  pub(crate) source_map: Option<&'a mut SourceMap>,
-  #[cfg(any())]
-  #[cfg_attr(docsrs, doc(cfg(any())))]
-  pub(crate) source_maps: Vec<Option<SourceMap>>,
   pub(crate) loc: Location,
   indent: u8,
-  line: u32,
-  col: u32,
   pub(crate) minify: bool,
   pub(crate) targets: TargetsWithSupportsScope,
   /// Vendor prefix override. When non-empty, it overrides
@@ -95,18 +78,12 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
     Printer {
       sources: None,
       dest,
-      #[cfg(any())]
-      source_map: options.source_map,
-      #[cfg(any())]
-      source_maps: Vec::new(),
       loc: Location {
         source_index: 0,
         line: 0,
         column: 1,
       },
       indent: 0,
-      line: 0,
-      col: 0,
       minify: options.minify,
       targets: TargetsWithSupportsScope::new(options.targets),
       vendor_prefix: VendorPrefix::empty(),
@@ -137,42 +114,13 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
   }
 
   /// Writes a raw string to the underlying destination.
-  ///
-  /// NOTE: Is is assumed that the string does not contain any newline characters.
-  /// If such a string is written, it will break source maps.
   pub fn write_str(&mut self, s: &str) -> Result<(), PrinterError> {
-    self.col += s.len() as u32;
     self.dest.write_str(s)?;
     Ok(())
   }
 
-  /// Writes a raw string which may contain newlines to the underlying destination.
-  pub fn write_str_with_newlines(&mut self, s: &str) -> Result<(), PrinterError> {
-    let mut last_line_start: usize = 0;
-
-    for (idx, n) in s.char_indices() {
-      if n == '\n' {
-        self.line += 1;
-        self.col = 0;
-
-        // Keep track of where the *next* line starts
-        last_line_start = idx + 1;
-      }
-    }
-
-    self.col += (s.len() - last_line_start) as u32;
-    self.dest.write_str(s)?;
-    Ok(())
-  }
-
-  /// Write a single character to the underlying destination.
+  /// Writes a single character to the underlying destination.
   pub fn write_char(&mut self, c: char) -> Result<(), PrinterError> {
-    if c == '\n' {
-      self.line += 1;
-      self.col = 0;
-    } else {
-      self.col += 1;
-    }
     self.dest.write_char(c)?;
     Ok(())
   }
@@ -239,51 +187,6 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
     self.indent > 2
   }
 
-  /// Adds a mapping to the source map, if any.
-  #[cfg(any())]
-  #[cfg_attr(docsrs, doc(cfg(any())))]
-  pub fn add_mapping(&mut self, loc: Location) {
-    self.loc = loc;
-
-    if let Some(map) = &mut self.source_map {
-      let mut original = OriginalLocation {
-        original_line: loc.line,
-        original_column: loc.column - 1,
-        source: loc.source_index,
-        name: None,
-      };
-
-      // Remap using input source map if possible.
-      if let Some(Some(sm)) = self.source_maps.get_mut(loc.source_index as usize) {
-        let mut found_mapping = false;
-        if let Some(mapping) = sm.find_closest_mapping(loc.line, loc.column - 1) {
-          if let Some(orig) = mapping.original {
-            let sources_len = map.get_sources().len();
-            let source_index = map.add_source(sm.get_source(orig.source).unwrap());
-            let name = orig.name.map(|name| map.add_name(sm.get_name(name).unwrap()));
-            original.original_line = orig.original_line;
-            original.original_column = orig.original_column;
-            original.source = source_index;
-            original.name = name;
-
-            if map.get_sources().len() > sources_len {
-              let content = sm.get_source_content(orig.source).unwrap().to_owned();
-              let _ = map.set_source_content(source_index as usize, &content);
-            }
-
-            found_mapping = true;
-          }
-        }
-
-        if !found_mapping {
-          return;
-        }
-      }
-
-      map.add_mapping(self.line, self.col, Some(original))
-    }
-  }
-
   /// Writes a CSS identifier to the underlying destination, escaping it
   /// as appropriate. If the `css_modules` option was enabled, then a hash
   /// is added, and the mapping is added to the CSS module.
@@ -302,7 +205,6 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
             ""
           },
           |s| {
-            self.col += s.len() as u32;
             if first {
               first = false;
               serialize_identifier(s, dest)
@@ -337,7 +239,6 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
             ""
           },
           |s| {
-            self.col += s.len() as u32;
             serialize_name(s, dest)
           },
         )?;
@@ -415,7 +316,6 @@ impl<'a, 'b, 'c, W: std::fmt::Write + Sized> Printer<'a, 'b, 'c, W> {
 
 impl<'a, 'b, 'c, W: std::fmt::Write + Sized> std::fmt::Write for Printer<'a, 'b, 'c, W> {
   fn write_str(&mut self, s: &str) -> std::fmt::Result {
-    self.col += s.len() as u32;
     self.dest.write_str(s)
   }
 }

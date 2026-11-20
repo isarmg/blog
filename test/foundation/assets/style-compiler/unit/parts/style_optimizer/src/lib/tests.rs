@@ -14,10 +14,48 @@
   use crate::style_optimizer::values::color::CssColor;
   use crate::style_optimizer::vendor_prefix::VendorPrefix;
   use crate::style_parser::SourceLocation;
-  use indoc::indoc;
-  use pretty_assertions::assert_eq;
   use std::collections::HashMap;
   use std::sync::{Arc, RwLock};
+
+  // Keep the formatted fixtures readable and retain their trailing newlines.
+  macro_rules! indoc {
+    ($text:literal) => {{
+      static TEXT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+      TEXT.get_or_init(|| dedent_fixture($text)).as_str()
+    }};
+  }
+
+  macro_rules! format_fixture {
+    ($text:literal, $($args:tt)*) => {
+      dedent_fixture(&format!($text, $($args)*))
+    };
+  }
+
+  fn dedent_fixture(text: &str) -> String {
+    let Some((first_line, remaining)) = text.split_once('\n') else {
+      return text.to_owned();
+    };
+    let indentation = remaining
+      .lines()
+      .filter(|line| !line.trim().is_empty())
+      .map(|line| line.len() - line.trim_start_matches([' ', '\t']).len())
+      .min()
+      .unwrap_or(0);
+
+    let mut output = String::with_capacity(text.len());
+    if !first_line.is_empty() {
+      output.push_str(first_line);
+      output.push('\n');
+    }
+    for line in remaining.split_inclusive('\n') {
+      if !line.trim().is_empty() {
+        output.push_str(&line[indentation..]);
+      } else if line.ends_with('\n') {
+        output.push('\n');
+      }
+    }
+    output
+  }
 
   #[track_caller]
   fn test(source: &str, expected: &str) {
@@ -1558,13 +1596,13 @@
       "#,
           prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: #b32323;
           {}: lab(40% 56.6 39);
         }}
-      "#},
+      "#,
           prop, prop
         ),
         Browsers {
@@ -1596,13 +1634,13 @@
       "#,
           prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: 2px solid #b32323;
           {}: 2px solid lab(40% 56.6 39);
         }}
-      "#},
+      "#,
           prop, prop
         ),
         Browsers {
@@ -1634,8 +1672,8 @@
       "#,
           prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: var(--border-width) solid #b32323;
         }}
@@ -1645,7 +1683,7 @@
             {}: var(--border-width) solid lab(40% 56.6 39);
           }}
         }}
-      "#},
+      "#,
           prop, prop
         ),
         Browsers {
@@ -1665,14 +1703,14 @@
       "#,
           prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         @supports (color: lab(0% 0 0)) {{
           .foo {{
             {}: var(--border-width) solid lab(40% 56.6 39);
           }}
         }}
-      "#},
+      "#,
           prop,
         ),
         Browsers {
@@ -3488,14 +3526,13 @@
       "#,
           prop, prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: 22px;
           {}: max(4%, 22px);
         }}
-      "#
-          },
+      "#,
           prop, prop
         ),
         Browsers {
@@ -3514,13 +3551,12 @@
       "#,
           prop, prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: max(4%, 22px);
         }}
-      "#
-          },
+      "#,
           prop
         ),
         Browsers {
@@ -3539,14 +3575,13 @@
       "#,
           prop, prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: 22px;
           {}: max(2cqw, 22px);
         }}
-      "#
-          },
+      "#,
           prop, prop
         ),
         Browsers {
@@ -3564,13 +3599,12 @@
       "#,
           prop, prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: max(2cqw, 22px);
         }}
-      "#
-          },
+      "#,
           prop
         ),
         Browsers {
@@ -3964,14 +3998,14 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-fill-available;
           {}: -moz-available;
           {}: stretch;
         }}
-      "#},
+      "#,
           out_prop, out_prop, out_prop
         ),
         Browsers {
@@ -3990,12 +4024,12 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-fill-available;
         }}
-      "#},
+      "#,
           out_prop
         ),
         Browsers {
@@ -4015,13 +4049,13 @@
       "#,
           in_prop, in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: 100vw;
           {}: -webkit-fill-available;
         }}
-      "#},
+      "#,
           out_prop, out_prop
         ),
         Browsers {
@@ -4040,14 +4074,14 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-fit-content;
           {}: -moz-fit-content;
           {}: fit-content;
         }}
-      "#},
+      "#,
           out_prop, out_prop, out_prop
         ),
         Browsers {
@@ -4066,12 +4100,12 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: fit-content(50%);
         }}
-      "#},
+      "#,
           out_prop
         ),
         Browsers {
@@ -4090,14 +4124,14 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-min-content;
           {}: -moz-min-content;
           {}: min-content;
         }}
-      "#},
+      "#,
           out_prop, out_prop, out_prop
         ),
         Browsers {
@@ -4116,14 +4150,14 @@
       "#,
           in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-max-content;
           {}: -moz-max-content;
           {}: max-content;
         }}
-      "#},
+      "#,
           out_prop, out_prop, out_prop
         ),
         Browsers {
@@ -4143,13 +4177,13 @@
       "#,
           in_prop, in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: 100%;
           {}: max-content;
         }}
-      "#},
+      "#,
           out_prop, out_prop
         ),
         Browsers {
@@ -4169,13 +4203,13 @@
       "#,
           in_prop, in_prop
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: var(--fallback);
           {}: max-content;
         }}
-      "#},
+      "#,
           out_prop, out_prop
         ),
         Browsers {
@@ -17950,13 +17984,13 @@
       "#,
           property, property
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: url("foo.png");
           {}: image-set("foo.png" 2x, "bar.png" 1x);
         }}
-      "#},
+      "#,
           property, property
         ),
         Browsers {
@@ -17976,13 +18010,13 @@
       "#,
           property, property
         ),
-        &format!(
-          indoc! {r#"
+        &format_fixture!(
+          r#"
         .foo {{
           {}: -webkit-image-set(url("foo.png") 2x, url("bar.png") 1x);
           {}: image-set("foo.png" 2x, "bar.png" 1x);
         }}
-      "#},
+      "#,
           property, property
         ),
         Browsers {
@@ -26716,12 +26750,12 @@
         .unwrap();
       assert_eq!(
         res.code,
-        format!(
-          indoc! {r#"
+        format_fixture!(
+          r#"
       .{}_foo {{
         background: red;
       }}
-      "#},
+      "#,
           hash
         )
       );
@@ -28897,7 +28931,7 @@
 
   #[test]
   fn test_dependencies() {
-    fn dep_test(source: &str, expected: &str, deps: Vec<(&str, &str)>) {
+    fn dep_test(source: &str, expected: &str, urls: &[&str]) {
       let mut stylesheet = StyleSheet::parse(
         &source,
         ParserOptions {
@@ -28914,21 +28948,21 @@
           ..PrinterOptions::default()
         })
         .unwrap();
-      assert_eq!(res.code, expected);
       let dependencies = res.dependencies.unwrap();
-      assert_eq!(dependencies.len(), deps.len());
-      for (i, (url, placeholder)) in deps.into_iter().enumerate() {
-        match &dependencies[i] {
-          Dependency::Url(dep) => {
-            assert_eq!(dep.url, url);
-            assert_eq!(dep.placeholder, placeholder);
-          }
-          Dependency::Import(dep) => {
-            assert_eq!(dep.url, url);
-            assert_eq!(dep.placeholder, placeholder);
-          }
-        }
+      assert_eq!(dependencies.len(), urls.len());
+      let mut css = res.code;
+      for (dependency, expected_url) in dependencies.iter().zip(urls) {
+        let (url, placeholder) = match dependency {
+          Dependency::Url(dep) => (&dep.url, &dep.placeholder),
+          Dependency::Import(dep) => (&dep.url, &dep.placeholder),
+        };
+        assert_eq!(url, expected_url);
+        assert_ne!(placeholder, url);
+        let quoted_placeholder = format!("\"{placeholder}\"");
+        assert!(css.contains(&quoted_placeholder));
+        css = css.replace(&quoted_placeholder, &format!("\"{url}\""));
       }
+      assert_eq!(css, expected);
     }
 
     fn dep_error_test(source: &str, error: PrinterErrorKind) {
@@ -28945,44 +28979,44 @@
 
     dep_test(
       ".foo { background: image-set('./img12x.png', './img21x.png' 2x)}",
-      ".foo{background:image-set(\"hXFI8W\" 1x,\"5TkpBa\" 2x)}",
-      vec![("./img12x.png", "hXFI8W"), ("./img21x.png", "5TkpBa")],
+      ".foo{background:image-set(\"./img12x.png\" 1x,\"./img21x.png\" 2x)}",
+      &["./img12x.png", "./img21x.png"],
     );
 
     dep_test(
       ".foo { background: image-set(url(./img12x.png), url('./img21x.png') 2x)}",
-      ".foo{background:image-set(\"hXFI8W\" 1x,\"5TkpBa\" 2x)}",
-      vec![("./img12x.png", "hXFI8W"), ("./img21x.png", "5TkpBa")],
+      ".foo{background:image-set(\"./img12x.png\" 1x,\"./img21x.png\" 2x)}",
+      &["./img12x.png", "./img21x.png"],
     );
 
     dep_test(
       ".foo { --test: url(/foo.png) }",
-      ".foo{--test:url(\"lDnnrG\")}",
-      vec![("/foo.png", "lDnnrG")],
+      ".foo{--test:url(\"/foo.png\")}",
+      &["/foo.png"],
     );
 
     dep_test(
       ".foo { --test: url(\"/foo.png\") }",
-      ".foo{--test:url(\"lDnnrG\")}",
-      vec![("/foo.png", "lDnnrG")],
+      ".foo{--test:url(\"/foo.png\")}",
+      &["/foo.png"],
     );
 
     dep_test(
       ".foo { --test: url(\"http://example.com/foo.png\") }",
-      ".foo{--test:url(\"3X1zSW\")}",
-      vec![("http://example.com/foo.png", "3X1zSW")],
+      ".foo{--test:url(\"http://example.com/foo.png\")}",
+      &["http://example.com/foo.png"],
     );
 
     dep_test(
       ".foo { --test: url(\"data:image/svg+xml;utf8,<svg></svg>\") }",
-      ".foo{--test:url(\"-vl-rG\")}",
-      vec![("data:image/svg+xml;utf8,<svg></svg>", "-vl-rG")],
+      ".foo{--test:url(\"data:image/svg+xml;utf8,<svg></svg>\")}",
+      &["data:image/svg+xml;utf8,<svg></svg>"],
     );
 
     dep_test(
       ".foo { background: url(\"foo.png\") var(--test) }",
-      ".foo{background:url(\"Vwkwkq\") var(--test)}",
-      vec![("foo.png", "Vwkwkq")],
+      ".foo{background:url(\"foo.png\") var(--test)}",
+      &["foo.png"],
     );
 
     dep_error_test(
@@ -29004,20 +29038,20 @@
 
     dep_test(
       ".foo { behavior: url(#foo) }",
-      ".foo{behavior:url(\"Zn9-2q\")}",
-      vec![("#foo", "Zn9-2q")],
+      ".foo{behavior:url(\"#foo\")}",
+      &["#foo"],
     );
 
     dep_test(
       ".foo { --foo: url(#foo) }",
-      ".foo{--foo:url(\"Zn9-2q\")}",
-      vec![("#foo", "Zn9-2q")],
+      ".foo{--foo:url(\"#foo\")}",
+      &["#foo"],
     );
 
     dep_test(
       "@import \"test.css\"; .foo { color: red }",
-      "@import \"hHsogW\";.foo{color:red}",
-      vec![("test.css", "hHsogW")],
+      "@import \"test.css\";.foo{color:red}",
+      &["test.css"],
     );
   }
 

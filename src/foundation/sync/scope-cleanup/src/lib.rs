@@ -295,7 +295,7 @@ macro_rules! defer_on_unwind {
 /// (except if panic or other code aborts; so as long as destructors run).
 /// It is run only once.
 ///
-/// The `S` parameter for [`Strategy`](trait.Strategy.html) determines if
+/// The `S` parameter for [`Strategy`] determines if
 /// the closure actually runs.
 ///
 /// The guard's closure will be called with the held value in the destructor.

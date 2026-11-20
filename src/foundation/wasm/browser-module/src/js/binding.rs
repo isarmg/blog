@@ -10,7 +10,6 @@ use crate::wit::InstructionData;
 use crate::wit::{
     Adapter, AdapterId, AdapterKind, AdapterType, AuxFunctionArgumentData, ClosureDtor, Instruction,
 };
-use crate::OutputMode;
 use anyhow::{bail, Error};
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
@@ -1261,7 +1260,7 @@ fn instruction(
             // an LLVM-synthesized `i64` sret, arriving in JS as a BigInt, so
             // coerce it to a number before doing pointer arithmetic.
             let val = js.pop();
-            let mem_string = mem.access(js.cx.config.mode.emscripten());
+            let mem_string = mem.access();
             let expr = format!(
                 "{mem_string}.{method}({retptr} + {size} * {offset}, {val}, true);",
                 retptr = if js.cx.memory64 {
@@ -1289,7 +1288,7 @@ fn instruction(
             // If we're loading from the return pointer then we must have pushed
             // it earlier, and we always push the same value, so load that value
             // here
-            let mem_string = mem.access(js.cx.config.mode.emscripten());
+            let mem_string = mem.access();
 
             let expr = format!("{mem_string}.{method}(retptr + {size} * {scaled_offset}, true)");
             js.prelude(&format!("var r{offset} = {expr};"));
@@ -1787,10 +1786,6 @@ fn instruction(
             let a = js.pop();
             let wrapper = js.cx.export_adapter_name(*adapter);
 
-            if matches!(js.cx.config.mode, OutputMode::Emscripten) {
-                js.cx.adapter_deps.insert(wrapper.clone());
-            }
-
             // TODO: further merge the heap and stack closure handling as
             // they're almost identical (by nature) except for ownership
             // integration.
@@ -2137,20 +2132,14 @@ impl Invocation {
                 if cx.current_adapter_jspi && !defer {
                     // Emit a module-level lazy cache variable and wrap the
                     // call with `WebAssembly.promising` so the fiber can
-                    // suspend via JSPI. On emscripten the cache variable must
-                    // be its own library symbol (module-scope `let`s aren't
-                    // preserved there); the `intrinsic` helper handles both.
+                    // suspend via JSPI.
                     let cache_var = format!(
                         "__wbg_jspi_{}",
                         name.replace(|c: char| !c.is_ascii_alphanumeric(), "_")
                     );
-                    let decl = if matches!(cx.config.mode, OutputMode::Emscripten) {
-                        Cow::Borrowed("undefined")
-                    } else {
-                        Cow::Owned(format!("let {cache_var};"))
-                    };
-                    cx.intrinsic(Cow::Owned(cache_var.clone()), Some(&cache_var), decl, &[]);
-                    let raw = cx.raw_wasm_export_ref(&name);
+                    let decl = Cow::Owned(format!("let {cache_var};"));
+                    cx.intrinsic(Cow::Owned(cache_var.clone()), decl);
+                    let raw = cx.wasm_export_ref(&name);
                     Ok(format!(
                         "({cache_var} ??= WebAssembly.promising({raw}))({})",
                         args.join(", ")

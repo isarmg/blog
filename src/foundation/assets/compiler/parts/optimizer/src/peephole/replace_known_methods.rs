@@ -4,12 +4,12 @@ use crate::borrowed_text::CowUtils;
 
 use crate::syntax_arena::{ArenaBox, ArenaVec, GetAllocator, TakeIn};
 use crate::syntax_tree::ast::*;
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     StringCharAt, StringCharAtResult, ToBigInt, ToIntegerIndex,
     constant_evaluation::{ConstantEvaluation, DetermineValueType},
-    side_effects::{MayHaveSideEffects, is_regexp_syntax_supported},
+    side_effects::MayHaveSideEffects,
 };
+use crate::regular_expression::is_regexp_syntax_supported;
 use crate::source_location::SPAN;
 
 use crate::optimizer::{TraverseCtx, generated::ancestor::Ancestor};
@@ -63,9 +63,6 @@ impl<'a> PeepholeOptimizations {
         object: &Expression<'a>,
         ctx: &TraverseCtx<'a>,
     ) -> Option<Expression<'a>> {
-        if !ctx.supports_feature(ESFeature::ES2016ExponentiationOperator) {
-            return None;
-        }
         if !Self::validate_global_reference(object, "Math", ctx)
             || !Self::validate_arguments(arguments, 2)
         {
@@ -266,8 +263,7 @@ impl<'a> PeepholeOptimizations {
                 }
             }
             Expression::StringLiteral(base_str) => {
-                if !ctx.supports_feature(ESFeature::ES2015TemplateLiterals)
-                    || args.is_empty()
+                if args.is_empty()
                     || !args.iter().all(Argument::is_expression)
                 {
                     return None;
@@ -446,7 +442,6 @@ impl<'a> PeepholeOptimizations {
                         && is_regexp_syntax_supported(
                             pattern,
                             regex.regex.flags.to_inline_string().as_str(),
-                            ctx,
                         )
                     {
                         Some(Expression::new_string_literal(
@@ -501,30 +496,19 @@ impl<'a> PeepholeOptimizations {
             "NEGATIVE_INFINITY" => num(span, f64::NEG_INFINITY),
             "NaN" => num(span, f64::NAN),
             "MAX_SAFE_INTEGER" => {
-                if ctx.supports_feature(ESFeature::ES2016ExponentiationOperator) {
-                    // 2**53 - 1
-                    pow_with_expr(span, 2.0, 53.0, BinaryOperator::Subtraction, 1.0)
-                } else {
-                    num(span, 2.0f64.powi(53) - 1.0)
-                }
+                // 2**53 - 1
+                pow_with_expr(span, 2.0, 53.0, BinaryOperator::Subtraction, 1.0)
             }
             "MIN_SAFE_INTEGER" => {
-                if ctx.supports_feature(ESFeature::ES2016ExponentiationOperator) {
-                    // -(2**53 - 1)
-                    Expression::new_unary_expression(
-                        span,
-                        UnaryOperator::UnaryNegation,
-                        pow_with_expr(SPAN, 2.0, 53.0, BinaryOperator::Subtraction, 1.0),
-                        ctx,
-                    )
-                } else {
-                    num(span, -(2.0f64.powi(53) - 1.0))
-                }
+                // -(2**53 - 1)
+                Expression::new_unary_expression(
+                    span,
+                    UnaryOperator::UnaryNegation,
+                    pow_with_expr(SPAN, 2.0, 53.0, BinaryOperator::Subtraction, 1.0),
+                    ctx,
+                )
             }
             "EPSILON" => {
-                if !ctx.supports_feature(ESFeature::ES2016ExponentiationOperator) {
-                    return None;
-                }
                 // 2**-52
                 Expression::new_binary_expression(
                     span,

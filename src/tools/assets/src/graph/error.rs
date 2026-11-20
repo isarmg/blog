@@ -18,8 +18,6 @@ pub enum GraphError {
         #[source]
         source: std::io::Error,
     },
-    #[error("browser manifest has no package name")]
-    BrowserPackageName,
     #[error("workspace must contain exactly one browser manifest")]
     BrowserManifest,
     #[error("Cargo metadata repeats identifier {0}")]
@@ -54,8 +52,6 @@ pub enum GraphError {
     MissingRuntimeNode(String),
     #[error("Cargo runtime tree edge differs from normal metadata")]
     RuntimeEdge,
-    #[error("Cargo lock has no package records")]
-    LockPackages,
     #[error("selected path package missing from root Cargo.lock: {0}")]
     PackageMissingFromLock(String),
     #[error("Cargo runtime tree is empty")]

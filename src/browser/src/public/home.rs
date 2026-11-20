@@ -29,8 +29,7 @@ pub(super) fn Home() -> impl IntoView {
     let push = RwSignal::new(None::<Value>);
     Effect::new(move |_| {
         let items = site
-            .value
-            .get()
+            .current()
             .map(|v| notices(&v.notices.unwrap_or_default()))
             .unwrap_or_default();
         let get = |prefix: &str| {
@@ -105,8 +104,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         component_props_builder(&Avatar)
                                                             .name(site_name(site))
                                                             .src(
-                                                                site.value
-                                                                    .get()
+                                                                site.current()
                                                                     .and_then(|site| site.avatar)
                                                                     .unwrap_or_default(),
                                                             )
@@ -117,8 +115,7 @@ pub(super) fn Home() -> impl IntoView {
                                                 })
                                                 .class("aside-avatar-wrap"),
                                             html::h2().child(move || {
-                                                site.value
-                                                    .get()
+                                                site.current()
                                                     .map(|v| v.web_name.unwrap_or_default())
                                                     .filter(|s| !s.is_empty())
                                                     .unwrap_or("blog".into())
@@ -129,8 +126,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         t("📖 文章", "📖 Articles"),
                                                         html::strong().child(move || {
                                                             stats
-                                                                .value
-                                                                .get()
+                                                                .current()
                                                                 .map(|v| v.article_count)
                                                                 .unwrap_or(0)
                                                         }),
@@ -139,8 +135,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         t("📒 分类", "📒 Categories"),
                                                         html::strong().child(move || {
                                                             categories
-                                                                .value
-                                                                .get()
+                                                                .current()
                                                                 .unwrap_or_default()
                                                                 .len()
                                                         }),
@@ -149,8 +144,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         t("🔥 访问量", "🔥 Views"),
                                                         html::strong().child(move || {
                                                             stats
-                                                                .value
-                                                                .get()
+                                                                .current()
                                                                 .map(|v| v.view_count)
                                                                 .unwrap_or(0)
                                                         }),
@@ -188,7 +182,7 @@ pub(super) fn Home() -> impl IntoView {
                                         .action("/search")
                                         .method("get"),
                                     move || {
-                                        recommended.value.get().filter(|v| !v.items.is_empty()).map(
+                                        recommended.current().filter(|v| !v.items.is_empty()).map(
                                             |v| {
                                                 View::new((
                                                     html::section()
@@ -264,8 +258,7 @@ pub(super) fn Home() -> impl IntoView {
                                             html::h2().child(t("🏷 标签", "🏷 Tags")),
                                             html::div().child(move || {
                                                 labels
-                                                    .value
-                                                    .get()
+                                                    .current()
                                                     .unwrap_or_default()
                                                     .into_iter()
                                                     .take(28)
@@ -288,7 +281,7 @@ pub(super) fn Home() -> impl IntoView {
                                             html::h2()
                                                 .child(t("💬 最新弹幕", "💬 Recent messages")),
                                             html::div().child(move || {
-                                                list(messages.value.get())
+                                                list(messages.current())
                                                     .into_iter()
                                                     .take(9)
                                                     .map(|m| {
@@ -303,8 +296,7 @@ pub(super) fn Home() -> impl IntoView {
                                     html::section()
                                         .child(move || {
                                             categories
-                                                .value
-                                                .get()
+                                                .current()
                                                 .unwrap_or_default()
                                                 .into_iter()
                                                 .enumerate()
@@ -347,8 +339,7 @@ pub(super) fn Home() -> impl IntoView {
                                         .child((
                                             html::span().child("🔊").aria_hidden("true"),
                                             html::p().child(move || {
-                                                site.value
-                                                    .get()
+                                                site.current()
                                                     .map(|v| {
                                                         notices(&v.notices.unwrap_or_default())
                                                             .into_iter()
@@ -370,7 +361,7 @@ pub(super) fn Home() -> impl IntoView {
                                         ))
                                         .class("announcement"),
                                     For(component_props_builder(&For)
-                                        .each(move || sections.value.get().unwrap_or_default())
+                                        .each(move || sections.current().unwrap_or_default())
                                         .key(|s| s.id)
                                         .children(move |section| {
                                             View::new(HomeSection(
@@ -490,8 +481,7 @@ fn HomeSection(section: HomeSectionModel) -> impl IntoView {
                 ),
                 html::div()
                     .child(move || {
-                        data.value
-                            .get()
+                        data.current()
                             .map(|v| v.items)
                             .unwrap_or_default()
                             .into_iter()
@@ -502,7 +492,7 @@ fn HomeSection(section: HomeSectionModel) -> impl IntoView {
                     })
                     .class("article-grid"),
                 move || {
-                    data.value.get().filter(|v| v.items.is_empty()).map(|_| {
+                    data.current().filter(|v| v.items.is_empty()).map(|_| {
                         View::new(
     html::div()
         .child(

@@ -41,14 +41,10 @@ pub(crate) mod event;
 ))]
 pub(crate) mod fs;
 pub(crate) mod io;
-#[cfg(feature = "io_uring")]
-pub(crate) mod io_uring;
 #[cfg(feature = "mm")]
 pub(crate) mod mm;
 #[cfg(feature = "mount")]
 pub(crate) mod mount;
-#[cfg(feature = "net")]
-pub(crate) mod net;
 #[cfg(any(
     feature = "param",
     feature = "runtime",

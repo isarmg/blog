@@ -23,9 +23,8 @@ where
     F: FnOnce() -> N + 'static,
     N: IntoView,
 {
-    // use wasm-bindgen-futures to drive the reactive system
-    // we ignore the return value because an Err here just means the wasm-bindgen executor is
-    // already initialized, which is not an issue
+    // Drive the reactive system with the JavaScript futures executor. An error
+    // here means the executor is already initialized.
     _ = Executor::init_wasm_bindgen();
 
     // create a new reactive owner and use it as the root node to run the app
@@ -51,9 +50,8 @@ where
     F: FnOnce() -> N + 'static,
     N: Render,
 {
-    // use wasm-bindgen-futures to drive the reactive system
-    // we ignore the return value because an Err here just means the wasm-bindgen executor is
-    // already initialized, which is not an issue
+    // Drive the reactive system with the JavaScript futures executor. An error
+    // here means the executor is already initialized.
     _ = Executor::init_wasm_bindgen();
 
     // create a new reactive owner and use it as the root node to run the app

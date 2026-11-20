@@ -9,7 +9,7 @@ mod storage;
 #[path = "../../../test/server/unit/media/performance.rs"]
 mod performance;
 
-pub(crate) use formats::is_media_filename;
+pub(crate) use formats::{is_media_filename, is_media_image_path};
 pub(crate) use storage::recover_deletions;
 
 use axum::{

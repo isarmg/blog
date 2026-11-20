@@ -8,18 +8,12 @@ mod tests {
     use http_routing::kernel::{body::Body, extract::Request};
     use http::StatusCode;
     use http_transport::adapters::rt::TokioIo;
-    #[cfg(unix)]
-    use tokio::net::UnixListener;
     use tokio::{
         io::{self, AsyncRead, AsyncWrite},
         net::TcpListener,
     };
 
-    #[cfg(unix)]
-    use super::IncomingStream;
     use super::{serve, Listener};
-    #[cfg(unix)]
-    use crate::extract::connect_info::Connected;
     use crate::{
         body::to_bytes,
         handler::{Handler, HandlerWithoutStateExt},
@@ -30,16 +24,6 @@ mod tests {
 
     #[allow(dead_code, unused_must_use)]
     async fn if_it_compiles_it_works() {
-        #[derive(Clone, Debug)]
-        struct UdsConnectInfo;
-
-        #[cfg(unix)]
-        impl Connected<IncomingStream<'_, UnixListener>> for UdsConnectInfo {
-            fn connect_info(_stream: IncomingStream<'_, UnixListener>) -> Self {
-                Self
-            }
-        }
-
         let router: Router = Router::new();
 
         let addr = "0.0.0.0:0";
@@ -57,8 +41,6 @@ mod tests {
         serve(tcp_nodelay_listener().await, router.clone())
             .await
             .unwrap();
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), router.clone());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
@@ -66,11 +48,6 @@ mod tests {
         );
         serve(
             tcp_nodelay_listener().await,
-            router.clone().into_make_service(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
             router.clone().into_make_service(),
         );
 
@@ -85,18 +62,11 @@ mod tests {
             router
                 .clone()
                 .into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            router.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
 
         // method router
         serve(TcpListener::bind(addr).await.unwrap(), get(handler));
         serve(tcp_nodelay_listener().await, get(handler));
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), get(handler));
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
@@ -104,11 +74,6 @@ mod tests {
         );
         serve(
             tcp_nodelay_listener().await,
-            get(handler).into_make_service(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
             get(handler).into_make_service(),
         );
 
@@ -119,11 +84,6 @@ mod tests {
         serve(
             tcp_nodelay_listener().await,
             get(handler).into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            get(handler).into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
 
         // handler
@@ -132,24 +92,18 @@ mod tests {
             handler.into_service(),
         );
         serve(tcp_nodelay_listener().await, handler.into_service());
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.into_service());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
             handler.with_state(()),
         );
         serve(tcp_nodelay_listener().await, handler.with_state(()));
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.with_state(()));
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
             handler.into_make_service(),
         );
         serve(tcp_nodelay_listener().await, handler.into_make_service());
-        #[cfg(unix)]
-        serve(UnixListener::bind("").unwrap(), handler.into_make_service());
 
         serve(
             TcpListener::bind(addr).await.unwrap(),
@@ -158,11 +112,6 @@ mod tests {
         serve(
             tcp_nodelay_listener().await,
             handler.into_make_service_with_connect_info::<std::net::SocketAddr>(),
-        );
-        #[cfg(unix)]
-        serve(
-            UnixListener::bind("").unwrap(),
-            handler.into_make_service_with_connect_info::<UdsConnectInfo>(),
         );
     }
 

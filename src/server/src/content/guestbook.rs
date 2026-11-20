@@ -1,4 +1,4 @@
-use super::{AdminPageQuery, PageResult};
+use super::{PageQuery, PageResult};
 use crate::{ApiResult, AppState, absent, invalid};
 use axum::{Json, extract::State};
 use blog_application::admin_core::AuthenticatedIdentity;
@@ -52,9 +52,9 @@ pub(super) async fn create_guest_tree_hole(
 
 pub(super) async fn content_tree_hole(
     State(state): State<AppState>,
-    Query(query): Query<AdminPageQuery>,
+    Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<TreeHole>> {
-    let (page, size) = query.bounds();
+    let pagination = query.admin_bounds();
     let mut transaction = state.pool.begin().await?;
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tree_hole")
         .fetch_one(&mut *transaction)
@@ -62,17 +62,12 @@ pub(super) async fn content_tree_hole(
     let items = sqlx::query_as::<_, TreeHole>(
         "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT ? OFFSET ?",
     )
-    .bind(size)
-    .bind((page - 1) * size)
+    .bind(pagination.size)
+    .bind(pagination.offset())
     .fetch_all(&mut *transaction)
     .await?;
     transaction.commit().await?;
-    Ok(Json(PageResult {
-        items,
-        total,
-        page,
-        size,
-    }))
+    Ok(Json(pagination.result(items, total)))
 }
 pub(super) async fn delete_tree_hole(
     State(state): State<AppState>,

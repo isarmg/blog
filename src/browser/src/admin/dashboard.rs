@@ -24,7 +24,7 @@ pub(super) fn Dashboard() -> impl IntoView {
                         .build(),
                 ),
                 move || {
-                    data.value.get().map(|stats| {
+                    data.current().map(|stats| {
                         View::new(
                             blog_interface::html::div()
                                 .class("blog-table-scroll blog-frame")

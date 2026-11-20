@@ -55,7 +55,6 @@ pub fn try_print_require_call(p: &mut Codegen<'_>, call: &CallExpression<'_>) ->
     };
     p.print_ascii_byte(b'(');
     p.print_string_literal(str_lit, false);
-    p.add_source_mapping_end(call.span);
     p.print_ascii_byte(b')');
     true
 }
@@ -93,7 +92,6 @@ pub fn try_print_define_property_call(
             arg.print(p, ctx);
         }
     }
-    p.add_source_mapping_end(call.span);
     p.print_ascii_byte(b')');
     true
 }

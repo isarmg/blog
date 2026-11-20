@@ -6,7 +6,7 @@
 
 ## 构建环境
 
-准备 Rust 1.99.0（含 rustfmt、Clippy）、`wasm32-unknown-unknown` 标准库、Python 3.11+ 以及 AMD64 Linux GNU/glibc 的 C 编译环境。原生目标为 `x86_64-unknown-linux-gnu`，浏览器目标为 `wasm32-unknown-unknown`；构建脚本会检查宿主和目标。
+准备 Rust 1.100.0（含 rustfmt、Clippy）、`wasm32-unknown-unknown` 标准库、Python 3.11+ 以及 AMD64 Linux GNU/glibc 的 C 编译环境。原生目标为 `x86_64-unknown-linux-gnu`，浏览器目标为 `wasm32-unknown-unknown`；构建脚本会检查宿主和目标。
 
 所有 Rust 源码通过本仓库路径解析，共用根 workspace 和唯一 Cargo.lock。Cargo 默认离线。Rust 工具链、目标标准库和系统构建材料需由环境提供；完整边界见[源码组织与校验](source-layout.md)。
 
@@ -17,9 +17,9 @@ workspace 还检查丢弃必须处理的结果、无说明的 `unwrap`、可简�
 ```sh
 python3 src/tools/rust-sources/manage.py verify --metadata
 python3 src/tools/check-independence.py
-cargo +1.99.0 run --locked --offline -p blog-assets -- build --product-root . --offline
-cargo +1.99.0 build --locked --offline --bin blog
-cargo +1.99.0 build --locked --offline -p blog-setup
+cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
+cargo +1.100.0 build --locked --offline --bin blog
+cargo +1.100.0 build --locked --offline -p blog-setup
 ```
 
 ## 修改位置
@@ -41,7 +41,7 @@ printf '%s\n' '{"bind":"127.0.0.1:18091","development":true}' > "$BLOG_ROOT/conf
 chmod 0600 "$BLOG_ROOT/config/config.json"
 read -r -s -p "管理员密码: " blog_password
 printf '\n'
-printf '%s\n' "$blog_password" | cargo +1.99.0 run --locked --offline -p blog-setup -- --root "$BLOG_ROOT" initialize --username admin
+printf '%s\n' "$blog_password" | cargo +1.100.0 run --locked --offline -p blog-setup -- --root "$BLOG_ROOT" initialize --username admin
 unset blog_password
 ./target/debug/blog --root "$BLOG_ROOT"
 ```
@@ -53,9 +53,9 @@ unset blog_password
 `blog-assets` 编译 JS/CSS、调用 Cargo 构建浏览器 WASM，并在进程中生成绑定。生产构建不需要 npm、Node 或独立 wasm-bindgen CLI。WASM 使用根 `web-release` profile，启用体积优化、LTO 和 panic abort。
 
 ```sh
-cargo +1.99.0 run --locked --offline -p blog-assets -- build --product-root . --offline
-cargo +1.99.0 run --locked --offline -p blog-assets -- serve --product-root . --debug --bind 127.0.0.1:5173
-cargo +1.99.0 run --locked --offline -p blog-assets -- server --product-root . --config blog-assets.json --mode development --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- serve --product-root . --debug --bind 127.0.0.1:5173
+cargo +1.100.0 run --locked --offline -p blog-assets -- server --product-root . --config blog-assets.json --mode development --offline
 ```
 
 `serve` 提供开发资源和变更监控；需要后台 API 时启动本机服务，并用 `--proxy /api=http://127.0.0.1:18091` 配置转发。`preview` 只读提供已有资源。`server` 按根 `blog-assets.json` 协调前端与服务端构建。前端源码固定为 `src/web`，该文件的 `web.dist` 只选择静态输出目录；资源编译直接调用 Rust 构建器。具体选项见[构建器说明](../src/tools/assets/README.md)。
@@ -89,14 +89,14 @@ CI 还会生成原生与 WASM 的完整 API 文档，并将文档警告作为错
 按实际消费者和目标运行检查：根默认成员包括服务端、application 和 setup；构建器及浏览器域测试使用原生目标，浏览器应用使用 WASM 目标。
 
 ```sh
-cargo +1.99.0 fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check
-cargo +1.99.0 clippy --locked --offline --all-targets -- -D warnings
-cargo +1.99.0 clippy --locked --offline -p blog-assets -p blog-browser-domain-tests --all-targets -- -D warnings
-cargo +1.99.0 clippy --locked --offline -p blog-browser --target wasm32-unknown-unknown -- -D warnings
-cargo +1.99.0 test --locked --offline
-cargo +1.99.0 test --locked --offline -p blog-assets -p blog-browser-domain-tests
+cargo +1.100.0 fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check
+cargo +1.100.0 clippy --locked --offline --all-targets -- -D warnings
+cargo +1.100.0 clippy --locked --offline -p blog-assets -p blog-browser-domain-tests --all-targets -- -D warnings
+cargo +1.100.0 clippy --locked --offline -p blog-browser --target wasm32-unknown-unknown -- -D warnings
+cargo +1.100.0 test --locked --offline
+cargo +1.100.0 test --locked --offline -p blog-assets -p blog-browser-domain-tests
 bash test/run-maintained.sh
-cargo +1.99.0 run --locked --offline -p blog-assets -- test --product-root . --offline
+cargo +1.100.0 run --locked --offline -p blog-assets -- test --product-root . --offline
 bash test/operations/smoke.sh
 ```
 
@@ -128,4 +128,4 @@ python3 src/tools/check-independence.py
 
 `blog-assets server --mode candidate` 使用真实 HEAD 并记录未提交源码；`--mode release` 要求干净源码。正式打包脚本 `src/operations/package-linux-x86_64.sh --output-dir ABSOLUTE` 还要求与 HEAD、产品版本一致的注解 tag `vVERSION`。包内服务、初始化工具、资源和源码摘要共同绑定发行身份。安装与验证见[Linux 部署说明](../deploy/linux-x86_64/README.md)。
 
-推送版本 tag 后，发布工作流执行验证并上传安装包及 `SHA256SUMS`，在 GitHub Releases 生成版本说明。仓库文档描述当前用法，版本变更记录由 [GitHub Releases](https://github.com/isarmg/xocs/releases) 提供。
+推送版本 tag 后，发布工作流执行验证并上传安装包及 `SHA256SUMS`，将附注 tag 的说明发布到 GitHub Releases。仓库文档描述当前用法，版本变更记录由 [GitHub Releases](https://github.com/isarmg/blog/releases) 提供。

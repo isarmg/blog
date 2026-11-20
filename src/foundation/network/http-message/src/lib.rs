@@ -159,12 +159,6 @@
 #[cfg(not(feature = "std"))]
 compile_error!("`std` feature currently required, support for `no_std` may be added later");
 
-#[cfg(test)]
-include!("../../../../../test/foundation/network/http-message/unit/src/lib/6456.rs");
-
-#[cfg(test)]
-include!("../../../../../test/foundation/network/http-message/unit/src/lib/6509.rs");
-
 #[macro_use]
 mod convert;
 

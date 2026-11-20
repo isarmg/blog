@@ -31,8 +31,8 @@ use crate::ir::*;
 /// This example counts the number of instruction sequences in a function.
 ///
 /// ```no_run
-/// use walrus::LocalFunction;
-/// use walrus::ir::*;
+/// use blog_wasm_module_transform::LocalFunction;
+/// use blog_wasm_module_transform::ir::*;
 ///
 /// #[derive(Default)]
 /// struct CountInstructionSequences {
@@ -194,8 +194,8 @@ pub fn dfs_in_order<'instr>(
 /// This example walks the IR and adds one to all `i32.const`'s values.
 ///
 /// ```no_run
-/// use walrus::LocalFunction;
-/// use walrus::ir::*;
+/// use blog_wasm_module_transform::LocalFunction;
+/// use blog_wasm_module_transform::ir::*;
 ///
 /// #[derive(Default)]
 /// struct AddOneToI32Consts;

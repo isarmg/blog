@@ -36,8 +36,6 @@ impl<'i> ToCss for ViewportRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_char('@')?;
     self.vendor_prefix.to_css(dest)?;
     dest.write_str("viewport")?;

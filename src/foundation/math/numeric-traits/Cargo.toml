@@ -13,7 +13,7 @@
 edition = "2021"
 rust-version = "1.60"
 name = "blog-math-numeric-traits"
-build = "build.rs"
+build = false
 exclude = [
     "/ci/*",
     "/.github/*",
@@ -24,11 +24,6 @@ publish = false
 autotests = false
 autobenches = false
 autoexamples = false
-
-[build-dependencies.autocfg]
-path = "../../native/compiler-capabilities"
-package = "blog-native-compiler-capabilities"
-
 
 [features]
 default = ["std"]

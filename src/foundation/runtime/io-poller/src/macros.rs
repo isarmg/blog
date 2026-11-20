@@ -46,8 +46,7 @@ macro_rules! cfg_net {
     }
 }
 
-/// One of the features enabled that needs `IoSource`. That is `net` or `os-ext`
-/// on Unix (for `pipe`).
+/// Feature gate for the operating system I/O source.
 macro_rules! cfg_io_source {
     ($($item:item)*) => {
         $(

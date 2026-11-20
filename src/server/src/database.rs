@@ -35,10 +35,7 @@ pub(crate) async fn open_database_with_limit(
             .expect("invariant: database has a filename"),
     )?;
     descriptor.verify_identity()?;
-    let before = descriptor
-        .file()
-        .metadata()
-        .map_err(Error::ReadDatabaseDescriptor)?;
+    let before = descriptor.identity();
     // Closing a raw descriptor after SQLite opens the inode releases POSIX locks.
     drop(descriptor);
     let options = SqliteConnectOptions::new()
@@ -63,7 +60,7 @@ pub(crate) async fn open_database_with_limit(
     use std::os::unix::fs::MetadataExt;
     let verified = (|| {
         let after = fs::symlink_metadata(path).map_err(Error::ReadDatabasePath)?;
-        if (before.dev(), before.ino()) != (after.dev(), after.ino()) {
+        if (before.device(), before.inode()) != (after.dev(), after.ino()) {
             return Err(Error::DatabaseIdentityChanged);
         }
         directory.verify_identity()?;
@@ -152,11 +149,10 @@ pub(crate) async fn initialize(
 
 pub(crate) async fn validate_database(pool: &SqlitePool) -> Result<(), Error> {
     schema::validate(pool).await?;
-    let violations: Vec<(String, Option<i64>, String, i64)> =
-        sqlx::query_as("PRAGMA foreign_key_check")
-            .fetch_all(pool)
-            .await?;
-    if !violations.is_empty() {
+    let violation = sqlx::query("PRAGMA foreign_key_check")
+        .fetch_optional(pool)
+        .await?;
+    if violation.is_some() {
         return Err(Error::ForeignKeyViolations);
     }
     let duplicate_family: bool = sqlx::query_scalar(
@@ -167,12 +163,12 @@ pub(crate) async fn validate_database(pool: &SqlitePool) -> Result<(), Error> {
     if duplicate_family {
         return Err(Error::DuplicateFamily);
     }
-    let authors: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM user WHERE user_type=0 AND deleted=0 AND user_status=1",
+    let has_author: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM user WHERE user_type=0 AND deleted=0 AND user_status=1)",
     )
     .fetch_one(pool)
     .await?;
-    if authors == 0 {
+    if !has_author {
         return Err(Error::MissingAuthor);
     }
     Ok(())

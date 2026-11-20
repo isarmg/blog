@@ -5,8 +5,7 @@ fn generate(mut module: Module) -> anyhow::Result<Output> {
     let mut bindgen = Bindgen::new();
     bindgen
         .input_bytes("termination_contract", module.emit_wasm())
-        .force_enable_abort_handler(true)
-        .web(true)?;
+        .force_enable_abort_handler(true);
     bindgen.generate_output()
 }
 

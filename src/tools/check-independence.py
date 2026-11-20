@@ -115,7 +115,7 @@ def check_declarations() -> None:
 def check_graph(manifest: str, target: str) -> dict:
     require(manifest == 'Cargo.toml', 'Only the root Cargo workspace may be resolved')
     require(target in source_manager.TARGETS, f'Unsupported source graph target: {target}')
-    command = ['cargo', '+1.99.0', 'metadata', '--offline', '--locked', '--format-version', '1',
+    command = ['cargo', '+1.100.0', 'metadata', '--offline', '--locked', '--format-version', '1',
                '--manifest-path', str(ROOT / manifest), '--filter-platform', target]
     completed = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE, check=True)
     metadata = json.loads(completed.stdout)

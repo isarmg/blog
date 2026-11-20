@@ -1,18 +1,10 @@
 
     use super::*;
-    use cfg_if::cfg_if;
 
     #[test]
     fn test_absolute() {
         fn abs(path: &str) -> String {
-            // Absolute paths look different on Windows vs Unix.
-            cfg_if! {
-                if #[cfg(windows)] {
-                    format!("C:\\{}", path)
-                } else {
-                    format!("/{}", path)
-                }
-            }
+            format!("/{path}")
         }
 
         assert_diff_paths(&abs("foo"), &abs("bar"), Some("../foo"));
@@ -49,7 +41,7 @@
     #[test]
     fn test_relative() {
         assert_diff_paths("../foo", "../bar", Some("../foo"));
-        assert_diff_paths("../foo", "../foo/bar/baz", Some("../../.."));
+        assert_diff_paths("../foo", "../foo/bar/baz", Some("../.."));
         assert_diff_paths("../foo/bar/baz", "../foo", Some("bar/baz"));
 
         assert_diff_paths("foo/bar/baz", "foo", Some("bar/baz"));

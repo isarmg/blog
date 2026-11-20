@@ -1,6 +1,7 @@
 //! HTTP values parsed once before content operations begin.
 use axum::http::{HeaderMap, header::ToStrError};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error)]
 pub enum IdempotencyKeyError {
@@ -29,6 +30,20 @@ impl<'a> IdempotencyKey<'a> {
     pub(super) fn as_str(&self) -> &str {
         self.0
     }
+
+    pub(super) fn bind_payload(self, payload: &impl Serialize) -> IdempotentRequest<'a> {
+        let encoded = serde_json::to_vec(payload)
+            .expect("invariant: idempotency payloads contain only serializable fields");
+        IdempotentRequest {
+            key: self,
+            hash: Sha256::digest(encoded).into(),
+        }
+    }
+}
+
+pub(super) struct IdempotentRequest<'a> {
+    pub(super) key: IdempotencyKey<'a>,
+    pub(super) hash: [u8; 32],
 }
 
 #[derive(Deserialize, Serialize)]

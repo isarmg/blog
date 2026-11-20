@@ -4,7 +4,6 @@ use crate::optimizer::generated::ancestor::Ancestor;
 use crate::syntax_arena::{ArenaBox, ArenaHashMap, ArenaVec, CloneIn, GetAllocator, TakeIn};
 use crate::syntax_tree::ast::*;
 use crate::syntax_visitor::{VisitJs, walk_js};
-use crate::browser_compatibility::ESFeature;
 use crate::language_semantics::{
     constant_evaluation::{ConstantEvaluation, DetermineValueType, IsLiteralValue, ValueType},
     side_effects::MayHaveSideEffects,
@@ -293,7 +292,6 @@ impl<'a> PeepholeOptimizations {
             || export_decl.export_kind.is_type()
             || import_specifiers.is_empty()
             || import_specifiers.len() > export_decl.specifiers.len()
-            || (is_namespace_import && !ctx.supports_feature(ESFeature::ES2020ExportNamespaceFrom))
             || (is_namespace_import && export_decl.specifiers.len() != 1)
             || ctx.scoping().root_scope_flags().contains_direct_eval()
             || (!is_namespace_import

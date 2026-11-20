@@ -30,8 +30,3 @@ std = ["alloc"]
 [lib]
 name = "blog_memory_type_specialization"
 path = "src/lib.rs"
-
-[dependencies.rustversion]
-path = "../../native/compiler-conditions"
-package = "blog-native-compiler-conditions"
-

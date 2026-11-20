@@ -2,7 +2,7 @@
 autotests = false
 name = "blog-application"
 edition = "2024"
-rust-version = "1.99"
+rust-version.workspace = true
 license = "Apache-2.0"
 publish = false
 description = "认证、SQLite 持久化、安装契约和资产响应"

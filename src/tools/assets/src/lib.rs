@@ -34,7 +34,7 @@ pub(crate) fn error_chain(error: &(dyn std::error::Error + 'static)) -> String {
     message
 }
 
-pub const RUST: &str = "1.99.0";
+pub const RUST: &str = env!("CARGO_PKG_RUST_VERSION");
 pub const BRIDGE_ABI: &str = "blog-browser-bridge/1";
 pub const TARGET: &str = "wasm32-unknown-unknown";
 
@@ -259,19 +259,28 @@ impl CargoAction {
 }
 
 pub fn cargo_action(options: &Options, action: CargoAction) -> Result<()> {
-    graph::resolve(options)?;
-    run_cargo_action(options, action, &graph::browser_package(&options.root)?)
+    let (package, _) = graph::resolve_policy(options)?;
+    run_cargo_action(options, action, &package)
 }
 
-fn run_cargo_action(options: &Options, action: CargoAction, package: &str) -> Result<()> {
+fn cargo_command(root: &Path, manifest: &Path, action: &str) -> Command {
     let mut command = Command::new("cargo");
     command
         .arg(format!("+{RUST}"))
-        .arg(action.as_str())
-        .args(["--manifest-path"])
-        .arg(options.root.join("Cargo.toml"))
-        .args(["--package", package, "--locked", "--offline"])
-        .current_dir(&options.root);
+        .arg(action)
+        .args(["--locked", "--offline", "--manifest-path"])
+        .arg(manifest)
+        .current_dir(root);
+    command
+}
+
+fn run_cargo_action(options: &Options, action: CargoAction, package: &str) -> Result<()> {
+    let mut command = cargo_command(
+        &options.root,
+        &options.root.join("Cargo.toml"),
+        action.as_str(),
+    );
+    command.args(["--package", package]);
     if action != CargoAction::Test {
         command.args(["--target", TARGET]);
     }
@@ -518,12 +527,6 @@ pub(crate) fn build_locked(options: &Options, owner: &BuildLock) -> Result<Value
     owner.validate(&options.root)?;
     inventory::physical(&options.root)?;
     let web = options.root.join(layout::WEB);
-    let manifest = options.root.join(layout::BROWSER).join("Cargo.toml");
-    let declaration = inventory::manifest(&manifest)?;
-    let package_name = declaration["package"]["name"]
-        .as_str()
-        .ok_or(BuildError::MissingPackage)?;
-    let package = package_name.replace('-', "_");
     let config = assets::Config::read(&web)?;
     let runtime_root = if config.web.runtime_root == assets::RuntimeRoot::Product {
         options.root.clone()
@@ -545,9 +548,9 @@ pub(crate) fn build_locked(options: &Options, owner: &BuildLock) -> Result<Value
     if inventory_path.is_some() && !dist.starts_with(&runtime_root) {
         return Err(BuildError::ExternalDistribution);
     }
-    let csr_graph = graph::resolve(options)?;
     let before = inventory::snapshot(&options.root)?;
-    let mut rust_runtime = graph::runtime(options, &before)?;
+    let (package_name, csr_graph, mut rust_runtime) = graph::build_receipts(options, &before)?;
+    let package = package_name.replace('-', "_");
     let bindings_tool = json!({
         "package": "blog-assets",
         "execution": "in-process",
@@ -556,7 +559,7 @@ pub(crate) fn build_locked(options: &Options, owner: &BuildLock) -> Result<Value
         "lockfile": "Cargo.lock",
         "source_snapshot_sha256": inventory::sha(&serde_json::to_vec(&before).expect("invariant: a JSON source snapshot serializes to bytes")),
     });
-    run_cargo_action(options, CargoAction::Build, package_name)?;
+    run_cargo_action(options, CargoAction::Build, &package_name)?;
     if inventory::snapshot(&options.root)? != before {
         return Err(BuildError::SourceChanged(BuildPhase::BrowserCompilation));
     }

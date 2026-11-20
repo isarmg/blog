@@ -260,16 +260,13 @@ impl<I: Iterator> Combinations<I> {
     pub(crate) fn reset(&mut self, k: usize) {
         self.first = true;
 
-        if k < self.indices.len() {
-            self.indices.truncate(k);
-            for i in 0..k {
-                self.indices[i] = i;
-            }
-        } else {
-            for i in 0..self.indices.len() {
-                self.indices[i] = i;
-            }
-            self.indices.extend(self.indices.len()..k);
+        let previous_len = self.indices.len();
+        self.indices.truncate(k);
+        for (i, index) in self.indices.iter_mut().enumerate() {
+            *index = i;
+        }
+        if k >= previous_len {
+            self.indices.extend(previous_len..k);
             self.pool.prefill(k);
         }
     }

@@ -8,7 +8,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     generator
         .input_path(input)
         .out_name("dom_contracts")
-        .web(true)?
         .typescript(false);
     generator.generate(output)?;
     Ok(())

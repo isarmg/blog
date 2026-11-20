@@ -150,7 +150,7 @@ where
     for<'a> Y: Yokeable<'a>,
 {
     const INFO: DataMarkerInfo = DataMarkerInfo::from_id(DataMarkerId {
-        #[cfg(any(feature = "export", debug_assertions))]
+        #[cfg(debug_assertions)]
         debug: "NeverMarker",
         hash: *b"nevermar",
     });
@@ -324,11 +324,10 @@ unsafe impl EqULE for DataMarkerIdHash {}
 
 /// The ID of a data marker.
 ///
-/// This is generally a [`DataMarkerIdHash`]. If debug assertions or the `export` Cargo feature
-/// are enabled, this also contains a human-readable string for an improved `Debug` implementation.
+/// With debug assertions enabled, the ID also contains a human-readable name for `Debug`.
 #[derive(Debug, Copy, Clone, Eq)]
 pub struct DataMarkerId {
-    #[cfg(any(feature = "export", debug_assertions))]
+    #[cfg(debug_assertions)]
     debug: &'static str,
     hash: [u8; 8],
 }
@@ -383,7 +382,7 @@ impl DataMarkerId {
         let hash = fxhash_32(name.as_bytes()).to_le_bytes();
 
         Ok(Self {
-            #[cfg(any(feature = "export", debug_assertions))]
+            #[cfg(debug_assertions)]
             debug: name,
             hash: [
                 magic[0], magic[1], magic[2], magic[3], hash[0], hash[1], hash[2], hash[3],
@@ -409,14 +408,6 @@ impl DataMarkerId {
         let [.., h1, h2, h3, h4] = self.hash;
         DataMarkerIdHash([h1, h2, h3, h4])
     }
-
-    /// Returns the marker name.
-    ///
-    /// For size reasons, this is only available with the `export` Cargo feature.
-    #[cfg(feature = "export")]
-    pub const fn name(self) -> &'static str {
-        self.debug
-    }
 }
 
 /// Used for loading data from a dynamic ICU4X data provider.
@@ -436,13 +427,6 @@ pub struct DataMarkerInfo {
     pub has_checksum: bool,
     /// The fallback to use for this data marker.
     pub fallback_config: LocaleFallbackConfig,
-    /// The attributes domain for this data marker. This can be used for filtering marker
-    /// attributes during provider export.
-    #[cfg(feature = "export")]
-    pub attributes_domain: &'static str,
-    /// Whether to create constants for each data struct in baked data.
-    #[cfg(feature = "export")]
-    pub expose_baked_consts: bool,
 }
 
 impl PartialOrd for DataMarkerInfo {
@@ -471,10 +455,6 @@ impl DataMarkerInfo {
             fallback_config: LocaleFallbackConfig::default(),
             is_singleton: false,
             has_checksum: false,
-            #[cfg(feature = "export")]
-            attributes_domain: "",
-            #[cfg(feature = "export")]
-            expose_baked_consts: false,
         }
     }
 
@@ -595,9 +575,9 @@ macro_rules! data_marker {
 
 impl fmt::Debug for DataMarkerInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        #[cfg(any(feature = "export", debug_assertions))]
+        #[cfg(debug_assertions)]
         return f.write_str(self.id.debug);
-        #[cfg(not(any(feature = "export", debug_assertions)))]
+        #[cfg(not(debug_assertions))]
         return write!(f, "{:?}", self.id);
     }
 }

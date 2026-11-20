@@ -1155,26 +1155,25 @@ async fn article_comment_gate_is_rechecked_after_waiting_for_a_writer() {
 
 #[tokio::test]
 async fn article_related_reads_keep_authorization_and_content_in_one_snapshot() {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    for (path, release_after_gate) in [
-        ("/api/v1/comments?article_id=1", 1),
-        ("/api/v1/comments/1/replies", 2),
-        ("/api/v1/articles/1/news", 1),
+    use std::sync::atomic::{AtomicBool, Ordering};
+    for (path, expected_comment) in [
+        ("/api/v1/comments?article_id=1", Some("public root")),
+        ("/api/v1/comments/1/replies", Some("public reply")),
+        ("/api/v1/articles/1/news", None),
     ] {
         let (directory, _app, fixture_pool) = setup().await;
         sqlx::raw_sql("INSERT INTO article(id,user_id,sort_id,label_id,article_title,article_content) VALUES(1,1,0,0,'Public','Body'); INSERT INTO comment(id,source,type,parent_comment_id,floor_comment_id,comment_content) VALUES(1,1,'article',0,NULL,'public root'),(2,1,'article',1,1,'public reply'); INSERT INTO wei_yan(id,user_id,content,type,source,is_public) VALUES(1,1,'public news','news',1,1);")
             .execute(&fixture_pool).await.unwrap();
-        let releases = Arc::new(AtomicUsize::new(0));
-        let observed = releases.clone();
+        let changed = Arc::new(AtomicBool::new(false));
         // A one-connection pool deterministically commits an administrator edit
         // when the handler releases its authorization read. A read transaction
         // keeps that connection until its complete response has been assembled.
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .max_connections(1)
             .after_release(move |connection, _| {
-                let observed = observed.clone();
+                let changed = changed.clone();
                 Box::pin(async move {
-                    if observed.fetch_add(1, Ordering::SeqCst) + 1 == release_after_gate {
+                    if !changed.swap(true, Ordering::SeqCst) {
                         sqlx::raw_sql("BEGIN IMMEDIATE; UPDATE article SET view_status=0,password='new protection' WHERE id=1; UPDATE comment SET comment_content='new restricted comment' WHERE source=1; UPDATE wei_yan SET content='new restricted news' WHERE source=1; COMMIT;")
                             .execute(connection).await?;
                     }
@@ -1201,22 +1200,16 @@ async fn article_related_reads_keep_authorization_and_content_in_one_snapshot() 
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK, "{path}");
         let body = body_json(response).await;
-        if path.ends_with("/news") {
+        if let Some(expected_comment) = expected_comment {
+            assert_eq!(body["total"], 1, "{path}");
+            assert_eq!(
+                body["items"][0]["comment_content"], expected_comment,
+                "{path}: permission and content must describe the same snapshot"
+            );
+        } else {
             assert_eq!(body.as_array().unwrap().len(), 1);
             assert_eq!(body[0]["content"], "public news");
-            pool.close().await;
-            continue;
         }
-        assert_eq!(body["total"], 1, "{path}");
-        assert_eq!(
-            body["items"][0]["comment_content"],
-            if release_after_gate == 1 {
-                "public root"
-            } else {
-                "public reply"
-            },
-            "{path}: permission and content must describe the same snapshot"
-        );
         pool.close().await;
     }
 }

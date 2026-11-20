@@ -42,7 +42,18 @@ fn runtime_receipt_uses_target_normal_tree_without_host_build_or_dev_packages() 
         debug: false,
         dist: None,
     };
-    let result = runtime(&options, &json!({"browser_inputs":{},"patched_inputs":{}}))?;
+    let value = cargo_metadata(&options)?;
+    let metadata = metadata(&value)?;
+    let browser = browser_root(&metadata, &frontend)?;
+    std::fs::create_dir_all(temp.path().join("src/web"))?;
+    let inputs = inventory::snapshot(temp.path())?;
+    let result = runtime(
+        &options,
+        &inputs,
+        &metadata,
+        browser,
+        &repository(&frontend)?,
+    )?;
     let names = result["graph"]["packages"]
         .as_array()
         .unwrap()
@@ -51,6 +62,7 @@ fn runtime_receipt_uses_target_normal_tree_without_host_build_or_dev_packages() 
         .collect::<Vec<_>>();
     assert_eq!(names, ["browser", "runtime"]);
     assert_eq!(result["lockfile"], "Cargo.lock");
+    assert_eq!(result["lock_sha256"], inventory::sha(lock.as_bytes()));
     assert_eq!(result["profile"], "web-release");
     assert!(
         result["graph"]["packages"]
@@ -234,19 +246,6 @@ fn cargo_metadata_rejects_duplicate_identifiers_and_missing_dependency_nodes() -
     assert!(matches!(
         validate(&missing, &temp.path().join("src/browser")),
         Err(GraphError::MissingNode(id)) if id == "missing"
-    ));
-    Ok(())
-}
-
-#[test]
-fn browser_manifest_without_package_is_an_input_error() -> Result<()> {
-    let directory = tempfile::tempdir()?;
-    let frontend = directory.path().join("src/browser");
-    std::fs::create_dir_all(&frontend)?;
-    std::fs::write(frontend.join("Cargo.toml"), "[workspace]\n")?;
-    assert!(matches!(
-        browser_package(directory.path()),
-        Err(GraphError::BrowserPackageName)
     ));
     Ok(())
 }

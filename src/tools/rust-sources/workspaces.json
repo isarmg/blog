@@ -139,15 +139,12 @@
       "origins": [
         "bytecount@0.6.9",
         "cow-utils@0.1.3",
-        "json-escape-simd@3.1.2",
         "nonmax@0.5.5",
-        "oxc-browserslist@5.0.1",
         "oxc@0.153.0",
         "oxc_allocator@0.153.0",
         "oxc_ast@0.153.0",
         "oxc_ast_visit@0.153.0",
         "oxc_codegen@0.153.0",
-        "oxc_compat@0.153.0",
         "oxc_data_structures@0.153.0",
         "oxc_diagnostics@0.153.0",
         "oxc_ecmascript@0.153.0",
@@ -158,7 +155,6 @@
         "oxc_parser@0.153.0",
         "oxc_regular_expression@0.153.0",
         "oxc_semantic@0.153.0",
-        "oxc_sourcemap@9.0.0",
         "oxc_span@0.153.0",
         "oxc_str@0.153.0",
         "oxc_syntax@0.153.0",
@@ -173,7 +169,7 @@
       "origins": [
         "linkify@0.11.0",
         "pulldown-cmark-escape@0.11.0",
-        "pulldown-cmark@0.13.4"
+        "pulldown-cmark@0.13.6"
       ],
       "layer": "assets",
       "purpose": "markdown parser"
@@ -610,14 +606,6 @@
       "purpose": "decimal float format"
     },
     {
-      "directory": "src/foundation/encoding/framing",
-      "origins": [
-        "cobs@0.3.0"
-      ],
-      "layer": "encoding",
-      "purpose": "framing"
-    },
-    {
       "directory": "src/foundation/encoding/hex-codec",
       "origins": [
         "hex@0.4.3"
@@ -698,44 +686,12 @@
       "purpose": "variable integer writer"
     },
     {
-      "directory": "src/foundation/encoding/vector-base-encoding",
-      "origins": [
-        "base64-simd@0.8.0"
-      ],
-      "layer": "encoding",
-      "purpose": "vector base encoding"
-    },
-    {
-      "directory": "src/foundation/encoding/vector-escaping",
-      "origins": [
-        "escape-simd@0.1.0"
-      ],
-      "layer": "encoding",
-      "purpose": "vector escaping"
-    },
-    {
-      "directory": "src/foundation/encoding/vector-primitives",
-      "origins": [
-        "vsimd@0.8.0"
-      ],
-      "layer": "encoding",
-      "purpose": "vector primitives"
-    },
-    {
       "directory": "src/foundation/filesystem/temporary-storage",
       "origins": [
         "tempfile@3.27.0"
       ],
       "layer": "filesystem",
       "purpose": "temporary storage"
-    },
-    {
-      "directory": "src/foundation/format/binary-record",
-      "origins": [
-        "postcard@1.1.3"
-      ],
-      "layer": "format",
-      "purpose": "binary record"
     },
     {
       "directory": "src/foundation/format/configuration",
@@ -854,7 +810,7 @@
         "phf@0.14.0"
       ],
       "layer": "lookup",
-      "purpose": "script table"
+      "purpose": "shared CSS and JavaScript perfect hash tables"
     },
     {
       "directory": "src/foundation/lookup/script-table-generator",
@@ -862,7 +818,7 @@
         "phf_generator@0.14.0"
       ],
       "layer": "lookup",
-      "purpose": "script table generator"
+      "purpose": "compile-time CSS and JavaScript perfect hash construction"
     },
     {
       "directory": "src/foundation/lookup/script-table-hashing",
@@ -870,7 +826,7 @@
         "phf_shared@0.14.0"
       ],
       "layer": "lookup",
-      "purpose": "script table hashing"
+      "purpose": "shared perfect hash key encoding and lookup"
     },
     {
       "directory": "src/foundation/lookup/script-table-macros",
@@ -878,39 +834,7 @@
         "phf_macros@0.14.0"
       ],
       "layer": "lookup",
-      "purpose": "script table macros"
-    },
-    {
-      "directory": "src/foundation/lookup/style-table",
-      "origins": [
-        "phf@0.11.3"
-      ],
-      "layer": "lookup",
-      "purpose": "style table"
-    },
-    {
-      "directory": "src/foundation/lookup/style-table-generator",
-      "origins": [
-        "phf_generator@0.11.3"
-      ],
-      "layer": "lookup",
-      "purpose": "style table generator"
-    },
-    {
-      "directory": "src/foundation/lookup/style-table-hashing",
-      "origins": [
-        "phf_shared@0.11.3"
-      ],
-      "layer": "lookup",
-      "purpose": "style table hashing"
-    },
-    {
-      "directory": "src/foundation/lookup/style-table-macros",
-      "origins": [
-        "phf_macros@0.11.3"
-      ],
-      "layer": "lookup",
-      "purpose": "style table macros"
+      "purpose": "CSS and JavaScript static table macro expansion"
     },
     {
       "directory": "src/foundation/math/constant-array",
@@ -951,14 +875,6 @@
       ],
       "layer": "math",
       "purpose": "large integer"
-    },
-    {
-      "directory": "src/foundation/math/lookup-random-generator",
-      "origins": [
-        "rand@0.8.8"
-      ],
-      "layer": "math",
-      "purpose": "lookup random generator"
     },
     {
       "directory": "src/foundation/math/numeric-traits",
@@ -1025,14 +941,6 @@
       "purpose": "indexed arena"
     },
     {
-      "directory": "src/foundation/memory/output-reference",
-      "origins": [
-        "outref@0.5.2"
-      ],
-      "layer": "memory",
-      "purpose": "output reference"
-    },
-    {
       "directory": "src/foundation/memory/owned-borrow",
       "origins": [
         "self_cell@1.3.0"
@@ -1073,30 +981,6 @@
       "purpose": "type specialization"
     },
     {
-      "directory": "src/foundation/native/c-compiler",
-      "origins": [
-        "cc@1.6.0"
-      ],
-      "layer": "native",
-      "purpose": "c compiler"
-    },
-    {
-      "directory": "src/foundation/native/compiler-capabilities",
-      "origins": [
-        "autocfg@1.5.1"
-      ],
-      "layer": "native",
-      "purpose": "compiler capabilities"
-    },
-    {
-      "directory": "src/foundation/native/compiler-conditions",
-      "origins": [
-        "rustversion@1.0.23"
-      ],
-      "layer": "native",
-      "purpose": "compiler conditions"
-    },
-    {
       "directory": "src/foundation/native/target-conditions",
       "origins": [
         "cfg-if@1.0.5"
@@ -1114,14 +998,6 @@
       "purpose": "body stream"
     },
     {
-      "directory": "src/foundation/network/byte-ranges",
-      "origins": [
-        "http-range-header@0.4.2"
-      ],
-      "layer": "network",
-      "purpose": "byte ranges"
-    },
-    {
       "directory": "src/foundation/network/form-data",
       "origins": [
         "serde_urlencoded@0.7.1"
@@ -1130,20 +1006,14 @@
       "purpose": "form data"
     },
     {
-      "directory": "src/foundation/network/http-date",
+      "directory": "src/foundation/network/http-message",
       "origins": [
+        "http-range-header@0.4.2",
+        "http@1.5.0",
         "httpdate@1.0.3"
       ],
       "layer": "network",
-      "purpose": "http date"
-    },
-    {
-      "directory": "src/foundation/network/http-message",
-      "origins": [
-        "http@1.5.0"
-      ],
-      "layer": "network",
-      "purpose": "http message"
+      "purpose": "HTTP messages, field negotiation, date and byte-range parsing"
     },
     {
       "directory": "src/foundation/network/http-middleware",
@@ -1248,14 +1118,6 @@
       ],
       "layer": "platform",
       "purpose": "local time zone"
-    },
-    {
-      "directory": "src/foundation/platform/password-processor-features",
-      "origins": [
-        "cpufeatures@0.2.17"
-      ],
-      "layer": "platform",
-      "purpose": "password processor features"
     },
     {
       "directory": "src/foundation/platform/processor-features",
@@ -1379,28 +1241,12 @@
       "purpose": "task scheduler"
     },
     {
-      "directory": "src/foundation/runtime/task-waker",
-      "origins": [
-        "atomic-waker@1.1.2"
-      ],
-      "layer": "runtime",
-      "purpose": "task waker"
-    },
-    {
       "directory": "src/foundation/runtime/worker-pool",
       "origins": [
         "rayon-core@1.13.0"
       ],
       "layer": "runtime",
       "purpose": "worker pool"
-    },
-    {
-      "directory": "src/foundation/storage/fallible-rows",
-      "origins": [
-        "fallible-iterator@0.3.0"
-      ],
-      "layer": "storage",
-      "purpose": "fallible rows"
     },
     {
       "directory": "src/foundation/storage/record-derive",
@@ -1424,10 +1270,11 @@
     {
       "directory": "src/foundation/storage/sqlite-native",
       "origins": [
-        "libsqlite3-sys@0.37.0"
+        "cc@1.6.0",
+        "libsqlite3-sys@0.39.1"
       ],
       "layer": "storage",
-      "purpose": "sqlite native"
+      "purpose": "native bundled SQLite compilation, AMD64 GNU tool invocation, and FFI"
     },
     {
       "directory": "src/foundation/sync/atomic-lock",
@@ -1666,22 +1513,6 @@
       ],
       "layer": "text",
       "purpose": "compile time text macros"
-    },
-    {
-      "directory": "src/foundation/text/constant-pattern",
-      "origins": [
-        "lazy-regex@3.6.2"
-      ],
-      "layer": "text",
-      "purpose": "constant pattern"
-    },
-    {
-      "directory": "src/foundation/text/constant-pattern-macros",
-      "origins": [
-        "lazy-regex-proc_macros@3.6.2"
-      ],
-      "layer": "text",
-      "purpose": "constant pattern macros"
     },
     {
       "directory": "src/foundation/text/inline-ascii",
@@ -1931,28 +1762,12 @@
       "purpose": "browser bridge schema"
     },
     {
-      "directory": "src/foundation/wasm/browser-futures",
-      "origins": [
-        "wasm-bindgen-futures@0.4.79"
-      ],
-      "layer": "wasm",
-      "purpose": "browser futures"
-    },
-    {
       "directory": "src/foundation/wasm/browser-module",
       "origins": [
         "wasm-bindgen-cli-support@0.2.129"
       ],
       "layer": "wasm",
       "purpose": "browser module"
-    },
-    {
-      "directory": "src/foundation/wasm/debug-information",
-      "origins": [
-        "gimli@0.32.3"
-      ],
-      "layer": "wasm",
-      "purpose": "debug information"
     },
     {
       "directory": "src/foundation/wasm/module-decoder",

@@ -4,7 +4,9 @@ use super::journal::NoteCard;
 use super::photos::Collection;
 use super::shell::{Chrome, site_data};
 use crate::comments::{CommentKind, Comments};
-use crate::common::{Feedback, Lightbox, Pager, Petals, href, list, load, rows, safe_url, t, text};
+use crate::common::{
+    Feedback, Lightbox, Pager, Petals, href, list, load, page_items, safe_url, t, text,
+};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
 use blog_interface::ev;
@@ -56,7 +58,7 @@ pub(super) fn Letter() -> impl IntoView {
                                 .build(),
                         ),
                         move || {
-                            data.value.get().map(|letter| {
+                            data.current().map(|letter| {
                                 if letter.is_null() {
                                     View::new(
                                         html::section()
@@ -129,7 +131,7 @@ pub(super) fn Love() -> impl IntoView {
     let site = site_data();
     let family = load(Signal::derive(|| "/api/v1/family".into()));
     let current = Signal::derive(move || {
-        list(family.value.get())
+        list(family.current())
             .into_iter()
             .next()
             .unwrap_or(Value::Null)
@@ -406,14 +408,13 @@ pub(super) fn Love() -> impl IntoView {
         .role("status"),
 )),
                             html::div()
-                            .child((move | | notes.value.get().map(| v | rows(& v, "items"))
+                            .child((move | | notes.current_items()
                             .unwrap_or_default().into_iter().map(| item | View::new(NoteCard(component_props_builder(&NoteCard)
                 .item( item)
                 .lightbox( lightbox)
                 .love( true)
                 .build()))).collect_view(),
-                            move | | notes.value.get().is_some_and(| v | rows(& v,
-                            "items").is_empty()).then(| | View::new(
+                            move | | notes.with_current(| v | v.is_some_and(| v | page_items(v).is_empty())).then(| | View::new(
     html::div()
         .child(
             (

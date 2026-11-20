@@ -52,7 +52,6 @@ mod keep_var;
 mod minifier_traverse;
 mod options;
 mod peephole;
-mod property_mangler;
 mod state;
 mod symbol_liveness;
 mod symbol_metadata;
@@ -72,11 +71,6 @@ use rustc_hash::FxHashMap;
 use crate::optimizer::state::CompressionMode;
 
 pub use crate::name_compaction::{MangleOptions, MangleOptionsKeepNames};
-pub use property_mangler::{
-    InvalidManglePropertyCacheTarget, ManglePropertiesOptions, ManglePropertyCache,
-    PropertyMangleCollection, PropertyMangler, PropertyMapping,
-    is_valid_property_mangle_cache_target,
-};
 
 pub(crate) use crate::optimizer::generated::traverse::Traverse;
 #[doc(hidden)]
@@ -87,12 +81,6 @@ pub use crate::optimizer::{compressor::Compressor, options::*};
 #[derive(Debug, Clone)]
 pub struct MinifierOptions {
     pub mangle: Option<MangleOptions>,
-    /// Property-name mangling for the current [`Program`].
-    ///
-    /// This option does not coordinate mappings across programs. Bundlers that need cross-file
-    /// consistency must collect all programs with [`PropertyMangler`], assign once, and rewrite
-    /// each program exactly once before emitting chunks.
-    pub mangle_properties: Option<ManglePropertiesOptions>,
     pub compress: Option<CompressOptions>,
 }
 
@@ -100,7 +88,6 @@ impl Default for MinifierOptions {
     fn default() -> Self {
         Self {
             mangle: Some(MangleOptions::default()),
-            mangle_properties: None,
             compress: Some(CompressOptions::default()),
         }
     }
@@ -112,9 +99,6 @@ pub struct MinifierReturn {
     /// A vector where each element corresponds to a class in declaration order.
     /// Each element is a mapping from original private member names to their mangled names.
     pub class_private_mappings: Option<IndexVec<ClassId, FxHashMap<String, CompactStr>>>,
-
-    /// Updated property-name cache when property mangling ran.
-    pub property_mangle_cache: Option<ManglePropertyCache>,
 
     /// Total number of iterations ran. Useful for debugging performance issues.
     pub iterations: u8,
@@ -144,17 +128,7 @@ impl<'a> Minifier {
         program: &mut Program<'a>,
     ) -> MinifierReturn {
         let Self { options } = self;
-        let MinifierOptions { mangle, mangle_properties, compress } = options;
-
-        // Run property mangling first because compression can change which strings are property
-        // keys.
-        let property_mangle_cache = mangle_properties.map(|options| {
-            let mut mangler = PropertyMangler::new_in(options, allocator);
-            mangler.collect(program);
-            mangler.assign();
-            mangler.rewrite(program);
-            mangler.into_cache()
-        });
+        let MinifierOptions { mangle, compress } = options;
 
         let (stats, iterations) = compress
             .map(|options| {
@@ -164,7 +138,6 @@ impl<'a> Minifier {
                 let compressor = Compressor::new(allocator);
                 let iterations = if matches!(mode, CompressionMode::TreeShakeOnly) {
                     let options = CompressOptions {
-                        target: options.target,
                         treeshake: options.treeshake,
                         ..CompressOptions::dce()
                     };
@@ -189,6 +162,6 @@ impl<'a> Minifier {
                 (semantic.into_scoping(), class_private_mappings)
             })
             .map_or((None, None), |(scoping, mappings)| (Some(scoping), Some(mappings)));
-        MinifierReturn { scoping, class_private_mappings, property_mangle_cache, iterations }
+        MinifierReturn { scoping, class_private_mappings, iterations }
     }
 }

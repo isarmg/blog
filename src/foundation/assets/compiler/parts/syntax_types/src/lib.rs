@@ -6,7 +6,6 @@ use oxc_ast_macros::ast;
 
 pub mod class;
 pub mod constant_value;
-pub mod es_target;
 pub mod identifier;
 pub mod keyword;
 pub mod line_terminator;

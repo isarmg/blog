@@ -276,7 +276,7 @@ fn render_page(route: Route) -> AnyView {
         .into_any(),
         Route::EditArticle(id) => View::new(crate::editor::ArticleEditor(
             component_props_builder(&crate::editor::ArticleEditor)
-                .id(id.get())
+                .id(id)
                 .build(),
         ))
         .into_any(),

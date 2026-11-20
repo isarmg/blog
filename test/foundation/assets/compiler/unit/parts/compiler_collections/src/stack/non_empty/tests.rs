@@ -405,14 +405,14 @@
 
             stack.pop();
             assert_eq!(drops(), &[30]);
-            assert_eq!(drops(), []);
+            assert!(drops().is_empty());
 
             stack.push(Droppy(31));
             stack.push(Droppy(40));
             stack.push(Droppy(50));
             assert_eq!(stack.len(), 5);
             assert_eq!(stack.capacity(), 8);
-            assert_eq!(drops(), []);
+            assert!(drops().is_empty());
         }
 
         assert_eq!(drops(), &[10, 20, 31, 40, 50]);

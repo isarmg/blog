@@ -4,8 +4,7 @@ set -euo pipefail
 project_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$project_root"
 
-cargo test --locked --offline -p blog-network-byte-ranges --lib
-cargo test --locked --offline -p blog-network-http-message --test accepted-encodings
+cargo test --locked --offline -p blog-network-http-message --lib --test accepted-encodings
 cargo test --locked --offline -p blog-collections-slot-storage --test consumer-contracts
 cargo test --locked --offline -p blog-encoding-application-base-encoding --test consumer-contracts
 cargo test --locked --offline -p blog-assets --test configuration_contracts
@@ -14,12 +13,13 @@ cargo test --locked --offline -p blog-platform-system-abi --test linux_abi
 cargo test --locked --offline -p blog-runtime-io-poller --test linux_poll
 cargo test --locked --offline -p blog-runtime-task-scheduler --test async-fd-contracts
 cargo test --locked --offline -p blog-runtime-task-scheduler --doc 'io::async_fd::AsyncFd<T>::register'
-cargo test --locked --offline -p blog-assets-compiler --test native-calendar --test compiler-safety
+cargo test --locked --offline -p blog-assets-compiler --lib --test compiler-safety
+cargo test --locked --offline -p blog-assets-style-compiler --lib
 cargo test --locked --offline -p blog-assets -p blog-encoding-compression --test contracts
 cargo test --locked --offline -p blog-format-parser-combinators --test numeric-contracts
 cargo test --locked --offline -p blog-format-json-schema --test serialization-contracts
-cargo test --locked --offline -p blog-wasm-module-transform --test emission-contracts
-cargo test --locked --offline -p blog-wasm-browser-module --test termination-contracts
+cargo test --locked --offline -p blog-wasm-module-transform --lib --test emission-contracts
+cargo test --locked --offline -p blog-wasm-browser-module --lib --test termination-contracts
 cargo test --locked --offline -p blog-storage-sqlite-access --lib
 cargo test --locked --offline -p blog-interface -p blog-dom --lib --tests
 bash test/interface/dom/erasure-contracts.sh
@@ -33,7 +33,6 @@ cargo test --locked --offline -p blog-network-media-detection --lib
 cargo test --locked --offline -p blog-math-numeric-traits --lib
 cargo test --locked --offline -p blog-math-integer-traits --lib
 cargo test --locked --offline -p blog-platform-error-code --lib
-cargo test --locked --offline -p blog-format-binary-record --lib
 # Statistical hash-quality sweeps are separate from bounded consumer regressions.
 cargo test --locked --offline -p blog-collections-keyed-hash --lib -- --skip hash_quality_test::
 cargo test --locked --offline -p blog --test date_time_contracts

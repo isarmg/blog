@@ -30,12 +30,8 @@ cfg_os_poll! {
     cfg_net! {
         mod net;
         pub(crate) mod tcp;
-        pub(crate) mod udp;
         pub(crate) mod uds;
     }
-
-    #[cfg(feature = "os-ext")]
-    pub(crate) mod pipe;
 }
 
 cfg_not_os_poll! {

@@ -4457,6 +4457,328 @@
       ],
       "reason": "Reject repeated or non-final chunked transfer codings across HTTP/1 request fields before handler dispatch, while preserving quoted transfer parameters and valid coding lists.",
       "production_behavior_change": true
+    },
+    {
+      "directory": "src/foundation/cli/arguments",
+      "file": "src/parser/parser.rs",
+      "reason": "Return help and unrecognized-subcommand errors directly and remove the unreachable success branch diagnosed by Rust 1.100.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "file": "parts/scope_analysis/src/multi_index_vec.rs",
+      "reason": "Drop initialized field slices for columns that need destruction. Rust 1.100 diagnoses the former per-element drop calls for Copy columns.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface/macros",
+      "files": [
+        "Cargo.toml",
+        "src/builder/struct_info.rs",
+        "src/token_join/mod.rs"
+      ],
+      "reason": "Inherit the workspace Rust version and move owned syntax nodes into macro output when they have no further use.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface/dom",
+      "files": [
+        "Cargo.toml",
+        "src/kernel/iterators/combinations.rs"
+      ],
+      "reason": "Inherit the workspace Rust version and consolidate combination-index resets while preserving pool prefill behavior.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface/dom",
+      "file": "src/kernel/events/mod.rs",
+      "reason": "Use an intra-doc link for EventListenerOptions.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/diagnostics/event-facade",
+      "file": "src/lib.rs",
+      "reason": "Use intra-doc links for type names whose explicit targets are redundant in Rustdoc 1.100.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/web-address",
+      "file": "src/address/mod.rs",
+      "reason": "Use an intra-doc link for Url in the serialization documentation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/sync/scope-cleanup",
+      "file": "src/lib.rs",
+      "reason": "Use an intra-doc link for the Strategy trait.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/markdown-parser",
+      "file": "src/lib.rs",
+      "reason": "Use intra-doc links for Event and Options under Rustdoc 1.100.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/text/style-identifier-case",
+      "file": "src/lib.rs",
+      "reason": "Use an intra-doc link for the Casing trait.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/encoding/compression",
+      "files": [
+        "src/codec/deflate/core.rs",
+        "src/codec/inflate/stream.rs"
+      ],
+      "reason": "Use intra-doc links for compress and InflateState under Rustdoc 1.100.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/encoding/radix-codecs",
+      "file": "src/lib.rs",
+      "reason": "Use an intra-doc link for Specification in radix codec documentation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "file": "parts/byte_count/src/lib.rs",
+      "reason": "Use intra-doc links for the byte and character count functions.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "file": "parts/typed_index/src/macros.rs",
+      "reason": "Use the primitive MAX constant for the default index bound. Adapt existing compiler unit fixtures to integrated module paths and unambiguous emptiness assertions.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-message",
+      "file": "src/header/encoding.rs",
+      "reason": "Validate coding weights at the HTTP boundary and retain only the acceptability needed by the asset responders.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface",
+      "files": [
+        "src/api.rs",
+        "src/lib.rs"
+      ],
+      "reason": "Share transport session and response handling across request body types. Return mounting failures through WASM initialization and retain the mounted view only after startup succeeds.",
+      "production_behavior_change": true
+    },
+    {
+      "directory": "src/browser",
+      "reason": "Consolidate write and upload lifecycles, validate page identity at response decoding, and represent the editor's optional article with a validated ID.",
+      "production_behavior_change": true
+    },
+    {
+      "directory": "src/server",
+      "reason": "Share pagination and keyed-submission preparation, reduce SQLite lookups for content mutations and comment admission, and reuse the verified database descriptor's identity for startup.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/application",
+      "file": "src/state_file/mod.rs",
+      "reason": "Reuse the private-file creation path's directory identity check when acquiring the instance lock.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/tools/assets",
+      "reason": "Generate both browser graph receipts from the same Cargo metadata and reuse lockfile and package identity facts within the build snapshot.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/tools/assets",
+      "file": "src/platform_contract.rs",
+      "reason": "Use Cargo's existing build-script source fingerprints for the shared platform guard and remove the invalid manually reconstructed source path that invalidated repeat builds.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/style-compiler",
+      "file": "Cargo.toml",
+      "reason": "CSS and JavaScript now generate and read their perfect hash tables using the same current implementation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "reason": "Move browser target analysis to a separate host library and remove unsupported JavaScript source map generation, helper forwarding, Node bindings and source map example code.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/browser-targets",
+      "reason": "Carry browser query and compatibility data and tests into a dedicated host dependency. Remove the unreachable WASM binding and keep ECMAScript target types with capability detection.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/crypto/password-derivation",
+      "reason": "Use the shared Linux AMD64 feature detector for selecting the existing password-derivation implementation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/platform/processor-features",
+      "reason": "Keep the supported AMD64 detector and its Miri fallback. Remove processor branches and dependencies that are outside the build targets.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/platform/system-calls",
+      "reason": "Remove unused kqueue and event-port functionality from the Linux syscall layer.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/platform/linux-abi",
+      "reason": "Reuse core FFI primitive types and retain the supported Linux ABI surface.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/native/c-compiler",
+      "reason": "Remove the unselected parallel compiler launcher and its jobserver adapter. Stream native compiler diagnostics from the active command runner.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/filesystem/temporary-storage",
+      "reason": "Keep file and directory implementations for the Linux host and combine the former forwarding modules with their implementations.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/math/numeric-traits",
+      "reason": "Use stable core float total_cmp and retire the redundant compiler capability probe.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/memory/type-specialization",
+      "reason": "Use stable const generics and explicit target atomic conditions in place of compiler-version branching.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-message",
+      "reason": "Own shared HTTP date and byte-range codecs with their maintained tests and original source attribution.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-transport",
+      "reason": "Reuse HTTP date parsing and the AtomicWaker already provided by the async toolkit.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-middleware",
+      "reason": "Use the date and range parsers from the HTTP message package.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/interface/browser-api",
+      "reason": "Keep the bindings selected by the Blog WASM feature closure. Remove the unused generated interface families and their manifest feature declarations.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/interface/javascript-api",
+      "reason": "Remove unused JavaScript runtime adapters and retain the Promise and Future conversion used by Blog.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/browser-bridge-entry",
+      "reason": "Emit async binding conversion via the owned JavaScript API implementation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/browser-module",
+      "reason": "Move JavaScript loader and initialization declaration generation to a separate module while retaining the browser binding contract.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/storage/sqlite-native",
+      "reason": "Use checked-in Rust FFI declarations directly and remove unused sanitizer configuration and C header export paths. Keep compiling the bundled SQLite amalgamation with the same product flags.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface/dom",
+      "reason": "Use the JavaScript API future implementation directly and remove the unused async-trait dependency.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "reason": "Remove unpublished browser target configuration and property name mangling. Keep identifier compression, the default shortening transforms, and conservative RegExp folding.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/style-compiler",
+      "reason": "Remove the upstream Node and WASM package tools, standalone CLI, documentation site, disabled bundler and source maps. The Rust stylesheet parser, optimizer and Blog asset linker remain in use.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/unicode/data-provider",
+      "reason": "Keep typed baked Unicode data and remove the unavailable export and Postcard paths.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-transport",
+      "reason": "Keep product TCP and generic caller-provided connector interfaces. Remove the unused SOCKS and CONNECT proxy client adapters.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/request-router",
+      "reason": "Remove the unused Tokio Unix socket listener adapter while retaining TCP and generic listener support.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/runtime/scheduled-io",
+      "reason": "Keep task tracking, cancellation and ReaderStream. Remove unused generic I/O adapters and their local dependencies.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/runtime/task-scheduler",
+      "reason": "Retain the Linux TCP, timer, signal, synchronization, and descriptor paths used by Blog. Remove the unused UDP, Unix socket and named-pipe APIs selected by the cut.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/runtime/io-poller",
+      "reason": "Keep Linux readiness and the Unix Stream pair needed by the signal driver. Remove the unused UDP and datagram poller APIs.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/module-transform",
+      "reason": "Drop debug-only DWARF before module transformation and preserve runtime metadata and symbol names. Remove the unused direct LEB128 dependency.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/browser-module",
+      "reason": "Generate the Web binding and module loader required by Blog. Remove non-Web output and initialization variants and their build edges.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/storage/sqlite-native",
+      "reason": "Compile the bundled amalgamation through the package-local GNU tool runner, preserving the product SQLite options and tool selection semantics.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/platform/system-calls",
+      "reason": "Remove network and io_uring syscall families outside the Linux product closure. Retain the shared buffer ABI and used process, event and file interfaces.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/platform/linux-abi",
+      "reason": "Retain GNU AMD64 kernel bindings used by the local syscall wrappers and remove inactive ABI tables.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/markdown-parser",
+      "files": [
+        ".cargo_vcs_info.json",
+        "INTEGRATED-SOURCES.json",
+        "src/firstpass.rs",
+        "src/parse.rs"
+      ],
+      "reason": "Apply the complete upstream 0.13.6 runtime source changes, including fixes for RUSTSEC-2026-0414 and RUSTSEC-2026-0433. Keep central test paths, local dependencies and merged Markdown helpers.",
+      "production_behavior_change": true
+    },
+    {
+      "directory": "src/foundation/storage/sqlite-native",
+      "files": [
+        "sqlite3/sqlite3.c",
+        "sqlite3/bindgen_bundled_version.rs"
+      ],
+      "reason": "Update the bundled SQLite amalgamation and matching Rust declarations to the fixed libsqlite3-sys 0.39.1 source for RUSTSEC-2026-0459.",
+      "production_behavior_change": true
     }
   ]
 }

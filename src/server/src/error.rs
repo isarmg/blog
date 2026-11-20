@@ -39,8 +39,6 @@ pub enum Error {
     Log(#[from] blog_application::log::LogError),
     #[error("initialize tracing collector")]
     Tracing(#[from] tracing::collector::util::TryInitError),
-    #[error("read opened database metadata")]
-    ReadDatabaseDescriptor(#[source] std::io::Error),
     #[error("read database path metadata after opening")]
     ReadDatabasePath(#[source] std::io::Error),
     #[error("create initialization staging database")]

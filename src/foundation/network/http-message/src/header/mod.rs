@@ -36,6 +36,8 @@
 //!
 //! [*See also the `HeaderMap` type.*](HeaderMap)
 
+pub mod byte_ranges;
+pub mod date;
 mod encoding;
 mod map;
 mod name;

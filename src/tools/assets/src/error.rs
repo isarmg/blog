@@ -148,8 +148,6 @@ pub enum BuildError {
     BrowserModule(#[from] crate::BrowserModuleError),
     #[error(transparent)]
     Command(#[from] crate::ProcessError),
-    #[error("browser manifest has no package name")]
-    MissingPackage,
     #[error("runtime receipt requires distribution inside its configured source root")]
     ExternalDistribution,
     #[error("source changed during {0}; previous outputs were preserved")]

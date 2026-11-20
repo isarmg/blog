@@ -4,7 +4,7 @@
 
 ## 安装与使用
 
-从 [GitHub Releases](https://github.com/isarmg/xocs/releases) 下载 Linux AMD64 安装包及 `SHA256SUMS`，核对后按[部署说明](deploy/linux-x86_64/README.md)安装。初始化和离线检查使用安装包中的 `blog-setup`，服务运行入口为 `blog --root ROOT`。
+从 [GitHub Releases](https://github.com/isarmg/blog/releases) 下载 Linux AMD64 安装包及 `SHA256SUMS`，核对后按[部署说明](deploy/linux-x86_64/README.md)安装。初始化和离线检查使用安装包中的 `blog-setup`，服务运行入口为 `blog --root ROOT`。
 
 - [首次运行](docs/getting-started.md)
 - [发布内容与管理账号](docs/usage.md)
@@ -17,13 +17,13 @@
 
 ## 从源码构建
 
-准备 Rust 1.99.0、`wasm32-unknown-unknown` target、Linux C 编译工具及 Python 3.11 或更新版本，然后在仓库根目录执行：
+准备 Rust 1.100.0、`wasm32-unknown-unknown` target、Linux C 编译工具及 Python 3.11 或更新版本，然后在仓库根目录执行：
 
 ```sh
 python3 src/tools/rust-sources/manage.py verify --metadata
-cargo +1.99.0 run --locked --offline -p blog-assets -- build --product-root . --offline
-cargo +1.99.0 build --locked --offline --bin blog
-cargo +1.99.0 build --locked --offline -p blog-setup
+cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
+cargo +1.100.0 build --locked --offline --bin blog
+cargo +1.100.0 build --locked --offline -p blog-setup
 ```
 
 全部 Rust 依赖和 SQLite 源码位于本仓库，共用根 Cargo workspace 与唯一的 `Cargo.lock`。`blog-assets` 完成 JS/CSS 编译、WASM 绑定生成和资源校验。Node 与浏览器仅用于测试。环境准备、本机启动和验证命令见[开发说明](docs/development.md)。

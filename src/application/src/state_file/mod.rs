@@ -197,7 +197,6 @@ impl PrivateStateDirectory {
     }
 
     pub fn try_instance_lock(&self) -> Result<InstanceLock, Error> {
-        self.verify_identity()?;
         let instance = self.create_file(INSTANCE_LOCK_FILE)?;
         let instance = StateLock::acquire(
             instance,

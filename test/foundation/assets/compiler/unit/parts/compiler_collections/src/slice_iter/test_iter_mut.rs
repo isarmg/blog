@@ -206,7 +206,7 @@
         assert_eq!(iter.as_mut_slice(), &mut [333]);
 
         assert_eq!(iter.next(), Some(&mut 333));
-        assert_eq!(iter.as_mut_slice(), &mut []);
+        assert!(iter.as_mut_slice().is_empty());
 
         assert_eq!(iter.next(), None);
     }

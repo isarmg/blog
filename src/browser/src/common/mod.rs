@@ -76,10 +76,10 @@ pub(crate) fn flag(v: &Value, k: &str) -> bool {
     }
 }
 
-pub(crate) fn rows(v: &Value, k: &str) -> Vec<Value> {
-    v[k].as_array()
+pub(crate) fn page_items(v: &Value) -> &[Value] {
+    v["items"]
+        .as_array()
         .expect("invariant: list items passed the response contract")
-        .clone()
 }
 
 pub(crate) fn list(v: Option<Value>) -> Vec<Value> {

@@ -504,4 +504,5 @@ pub(crate) fn create(
     imp::create(path, permissions, disable_cleanup)
 }
 
+#[path = "linux.rs"]
 mod imp;

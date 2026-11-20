@@ -55,6 +55,42 @@ fn assert_round_trip(instructions: &[Instruction<'_>]) {
 }
 
 #[test]
+fn emits_browser_metadata_and_discards_embedded_dwarf() {
+    let mut module = Module::new();
+    let mut names = wasm_encoder::NameSection::new();
+    names.module("browser");
+    module
+        .section(&names)
+        .section(&wasm_encoder::CustomSection {
+            name: ".debug_info".into(),
+            data: [0xff, 0xff].as_slice().into(),
+        })
+        .section(&wasm_encoder::CustomSection {
+            name: "blog-metadata".into(),
+            data: [1, 2, 3].as_slice().into(),
+        });
+
+    let mut parsed = ModuleConfig::new().parse(&module.finish()).unwrap();
+    assert_eq!(parsed.name.as_deref(), Some("browser"));
+    let emitted = parsed.emit_wasm();
+    Validator::new().validate_all(&emitted).unwrap();
+
+    let custom_sections: Vec<_> = Parser::new(0)
+        .parse_all(&emitted)
+        .filter_map(|payload| match payload.unwrap() {
+            Payload::CustomSection(section) => Some((section.name(), section.data())),
+            _ => None,
+        })
+        .collect();
+    assert!(custom_sections.iter().any(|(name, _)| *name == "name"));
+    assert!(custom_sections.iter().any(|(name, _)| *name == "producers"));
+    assert!(custom_sections.contains(&("blog-metadata", &[1, 2, 3])));
+    assert!(custom_sections
+        .iter()
+        .all(|(name, _)| !name.starts_with(".debug")));
+}
+
+#[test]
 fn try_table_preserves_empty_and_nested_catches() {
     assert_round_trip(&[
         Instruction::Block(BlockType::Empty),

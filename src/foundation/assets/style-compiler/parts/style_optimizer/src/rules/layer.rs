@@ -103,8 +103,6 @@ impl<'i> ToCss for LayerStatementRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@layer ")?;
     self.names.to_css(dest)?;
     dest.write_char(';')
@@ -146,8 +144,6 @@ impl<'a, 'i, T: ToCss> ToCss for LayerBlockRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@layer")?;
     if let Some(name) = &self.name {
       dest.write_char(' ')?;

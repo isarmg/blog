@@ -20,7 +20,7 @@ export async function preview(options = {}) {
   const executable = process.env.BLOG_ASSETS_BIN;
   const command = executable || "cargo";
   const commandArgs = executable ? args : [
-    "+1.99.0", "run", "--quiet", "--locked", "--offline", "-p", "blog-assets", "--manifest-path",
+    "+1.100.0", "run", "--quiet", "--locked", "--offline", "-p", "blog-assets", "--manifest-path",
     resolve(productRoot, "Cargo.toml"), "--", ...args,
   ];
   const child = spawn(command, commandArgs, {

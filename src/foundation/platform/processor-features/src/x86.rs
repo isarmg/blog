@@ -1,30 +1,15 @@
-//! x86/x86-64 CPU feature detection support.
-//!
-//! Portable, `no_std`-friendly implementation that relies on the x86 `CPUID`
-//! instruction for feature detection.
+//! AMD64 CPU feature detection using CPUID and XGETBV.
 
-/// Evaluate the given `$body` expression any of the supplied target features
-/// are not enabled. Otherwise returns true.
-///
-/// The `$body` expression is not evaluated on SGX targets, and returns false
-/// on these targets unless *all* supplied target features are enabled.
+/// Evaluate the body only when some target features need runtime detection.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __unless_target_features {
     ($($tf:tt),+ => $body:expr ) => {{
         #[cfg(not(all($(target_feature=$tf,)*)))]
-        {
-            #[cfg(not(any(target_env = "sgx", target_os = "none", target_os = "uefi")))]
-            $body
-
-            // CPUID is not available on SGX. Freestanding and UEFI targets
-            // do not support SIMD features with default compilation flags.
-            #[cfg(any(target_env = "sgx", target_os = "none", target_os = "uefi"))]
-            false
-        }
-
+        let supported = $body;
         #[cfg(all($(target_feature=$tf,)*))]
-        true
+        let supported = true;
+        supported
     }};
 }
 
@@ -33,22 +18,9 @@ macro_rules! __unless_target_features {
 #[doc(hidden)]
 macro_rules! __detect_target_features {
     ($($tf:tt),+) => {{
-        #[cfg(target_arch = "x86")]
-        use core::arch::x86::{__cpuid, __cpuid_count, CpuidResult};
-        #[cfg(target_arch = "x86_64")]
-        use core::arch::x86_64::{__cpuid, __cpuid_count, CpuidResult};
+        use core::arch::x86_64::{__cpuid, __cpuid_count};
 
-        unsafe fn cpuid(leaf: u32) -> CpuidResult {
-            __cpuid(leaf)
-        }
-
-        unsafe fn cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
-            __cpuid_count(leaf, sub_leaf)
-        }
-
-        let cr = unsafe {
-            [cpuid(1), cpuid_count(7, 0), cpuid_count(7, 1)]
-        };
+        let cr = [__cpuid(1), __cpuid_count(7, 0), __cpuid_count(7, 1)];
 
         $($crate::check!(cr, $tf) & )+ true
     }};
@@ -59,9 +31,6 @@ macro_rules! __detect_target_features {
 #[doc(hidden)]
 macro_rules! __xgetbv {
     ($cr:expr, $mask:expr) => {{
-        #[cfg(target_arch = "x86")]
-        use core::arch::x86 as arch;
-        #[cfg(target_arch = "x86_64")]
         use core::arch::x86_64 as arch;
 
         // Check bits 26 and 27

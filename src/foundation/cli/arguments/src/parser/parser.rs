@@ -119,11 +119,11 @@ impl<'cmd> Parser<'cmd> {
                     debug!("Parser::get_matches_with: sc={sc_name:?}");
                     if let Some(sc_name) = sc_name {
                         if sc_name == "help" && !self.cmd.is_disable_help_subcommand_set() {
-                            ok!(self.parse_help_subcommand(raw_args.remaining(&mut args_cursor)));
-                            unreachable!("`parse_help_subcommand` always errors");
-                        } else {
-                            subcmd_name = Some(sc_name.to_owned());
+                            return Err(
+                                self.help_subcommand_err(raw_args.remaining(&mut args_cursor))
+                            );
                         }
+                        subcmd_name = Some(sc_name.to_owned());
                         break;
                     }
                 }
@@ -650,11 +650,8 @@ impl<'cmd> Parser<'cmd> {
         None
     }
 
-    fn parse_help_subcommand(
-        &self,
-        cmds: impl Iterator<Item = &'cmd OsStr>,
-    ) -> CommandLineResult<std::convert::Infallible> {
-        debug!("Parser::parse_help_subcommand");
+    fn help_subcommand_err(&self, cmds: impl Iterator<Item = &'cmd OsStr>) -> CommandLineError {
+        debug!("Parser::help_subcommand_err");
 
         let mut cmd = self.cmd.clone();
         let sc = {
@@ -666,11 +663,11 @@ impl<'cmd> Parser<'cmd> {
                 {
                     sc._build_subcommand(&sc_name).unwrap()
                 } else {
-                    return Err(CommandLineError::unrecognized_subcommand(
+                    return CommandLineError::unrecognized_subcommand(
                         sc,
                         cmd.to_string_lossy().into_owned(),
                         Usage::new(sc).create_usage_with_title(&[]),
-                    ));
+                    );
                 };
             }
 
@@ -678,7 +675,7 @@ impl<'cmd> Parser<'cmd> {
         };
         let parser = Parser::new(sc);
 
-        Err(parser.help_err(true))
+        parser.help_err(true)
     }
 
     fn is_new_arg(&self, next: &crate::lexer::ParsedArg<'_>, current_positional: &Arg) -> bool {

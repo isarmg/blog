@@ -1,4 +1,5 @@
 
+    use crate::parser::Parser;
     use crate::syntax_arena::Allocator;
     use crate::syntax_tree::{AstKind, ast::VariableDeclarationKind};
     use crate::source_location::SourceType;
@@ -12,7 +13,7 @@
         source: &'s str,
         source_type: SourceType,
     ) -> Semantic<'s> {
-        let parse = oxc_parser::Parser::new(allocator, source, source_type).parse();
+        let parse = Parser::new(allocator, source, source_type).parse();
         assert!(parse.diagnostics.is_empty());
         let semantic =
             SemanticBuilder::new().with_build_nodes(true).build(allocator.alloc(parse.program));
@@ -68,7 +69,7 @@
         let allocator = Allocator::default();
         let source = "export const X = class Base {};";
         let source_type = SourceType::ts();
-        let parse = oxc_parser::Parser::new(&allocator, source, source_type).parse();
+        let parse = Parser::new(&allocator, source, source_type).parse();
 
         assert!(parse.diagnostics.is_empty());
 

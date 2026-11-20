@@ -1,34 +1,18 @@
+//! Cached CPU feature detection for Linux AMD64.
+
 #![no_std]
-#![doc = include_str!("../../../../../docs/dependencies/origins/cpufeatures-0.3.1/README.md")]
-#![doc(
-    html_logo_url = "https://raw.githubusercontent.com/RustCrypto/media/6ee8e381/logo.svg",
-    html_favicon_url = "https://raw.githubusercontent.com/RustCrypto/media/6ee8e381/logo.svg"
-)]
-
-#[cfg(not(miri))]
-#[cfg(target_arch = "aarch64")]
-#[doc(hidden)]
-pub mod aarch64;
-
-#[cfg(not(miri))]
-#[cfg(target_arch = "loongarch64")]
-#[doc(hidden)]
-pub mod loongarch64;
-
-#[cfg(not(miri))]
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-mod x86;
+#[cfg(not(all(
+    target_os = "linux",
+    target_arch = "x86_64",
+    target_env = "gnu",
+    target_pointer_width = "64"
+)))]
+compile_error!("blog-platform-processor-features requires Linux AMD64 GNU");
 
 #[cfg(miri)]
 mod miri;
-
-#[cfg(not(any(
-    target_arch = "aarch64",
-    target_arch = "loongarch64",
-    target_arch = "x86",
-    target_arch = "x86_64"
-)))]
-compile_error!("This crate works only on `aarch64`, `loongarch64`, `x86`, and `x86-64` targets.");
+#[cfg(not(miri))]
+mod x86;
 
 /// Create module with CPU feature detection code.
 #[macro_export]

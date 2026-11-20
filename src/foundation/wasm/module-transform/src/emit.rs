@@ -4,8 +4,8 @@
 
 use crate::ir::Local;
 use crate::map::{IdHashMap, IdHashSet};
-use crate::{CodeTransform, Global, GlobalId, Memory, MemoryId, Module, Table, TableId};
 use crate::{Data, DataId, Element, ElementId, Function, FunctionId};
+use crate::{Global, GlobalId, Memory, MemoryId, Module, Table, TableId};
 use crate::{Tag, TagId, Type, TypeId};
 
 pub struct EmitContext<'a> {
@@ -13,7 +13,6 @@ pub struct EmitContext<'a> {
     pub indices: &'a mut IdsToIndices,
     pub wasm_module: wasm_encoder::Module,
     pub locals: IdHashMap<Function, IdHashSet<Local>>,
-    pub code_transform: CodeTransform,
 }
 
 /// Anything that can be lowered to raw wasm structures.

@@ -48,15 +48,6 @@ use core::ptr::null_mut;
 use linux_raw_sys::general::__kernel_clockid_t;
 #[cfg(target_pointer_width = "64")]
 use linux_raw_sys::general::__kernel_loff_t;
-#[cfg(feature = "net")]
-use linux_raw_sys::net::socklen_t;
-
-/// Convert `SYS_*` constants for socketcall.
-#[cfg(target_arch = "x86")]
-#[inline]
-pub(super) fn x86_sys<'a, Num: ArgNumber>(sys: u32) -> ArgReg<'a, Num> {
-    pass_usize(sys as usize)
-}
 
 /// Pass the "low" half of the endian-specific memory encoding of a `u64`, for
 /// 32-bit architectures.
@@ -163,10 +154,6 @@ pub(super) unsafe fn raw_fd<'a, Num: ArgNumber>(fd: RawFd) -> ArgReg<'a, Num> {
     // Use `no_fd` when passing `-1` is intended.
     #[cfg(feature = "fs")]
     debug_assert!(fd == crate::fs::CWD.as_raw_fd() || fd == crate::fs::ABS.as_raw_fd() || fd >= 0);
-
-    // Don't pass the `IORING_REGISTER_FILES_SKIP` sentry value this way.
-    #[cfg(feature = "io_uring")]
-    debug_assert_ne!(fd, crate::io_uring::IORING_REGISTER_FILES_SKIP.as_raw_fd());
 
     // Linux doesn't look at the high bits beyond the `c_int`, so use
     // zero-extension rather than sign-extension because it's a smaller
@@ -284,12 +271,6 @@ impl<'a, Num: ArgNumber> From<TimerfdClockId> for ArgReg<'a, Num> {
     fn from(i: TimerfdClockId) -> Self {
         pass_usize(i as __kernel_clockid_t as usize)
     }
-}
-
-#[cfg(feature = "net")]
-#[inline]
-pub(super) fn socklen_t<'a, Num: ArgNumber>(i: socklen_t) -> ArgReg<'a, Num> {
-    pass_usize(i as usize)
 }
 
 #[cfg(any(
@@ -709,14 +690,6 @@ impl<'a, Num: ArgNumber> From<Signal> for ArgReg<'a, Num> {
     }
 }
 
-#[cfg(feature = "io_uring")]
-impl<'a, Num: ArgNumber> From<crate::io_uring::IoringEnterFlags> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(flags: crate::io_uring::IoringEnterFlags) -> Self {
-        c_uint(flags.bits())
-    }
-}
-
 #[cfg(feature = "time")]
 impl<'a, Num: ArgNumber> From<crate::time::TimerfdFlags> for ArgReg<'a, Num> {
     #[inline]
@@ -741,48 +714,6 @@ impl<'a, Num: ArgNumber> From<crate::rand::GetRandomFlags> for ArgReg<'a, Num> {
     }
 }
 
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<crate::net::RecvFlags> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(flags: crate::net::RecvFlags) -> Self {
-        c_uint(flags.bits())
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<crate::net::SendFlags> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(flags: crate::net::SendFlags) -> Self {
-        c_uint(flags.bits())
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<crate::net::SocketFlags> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(flags: crate::net::SocketFlags) -> Self {
-        c_uint(flags.bits())
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<crate::net::AddressFamily> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(family: crate::net::AddressFamily) -> Self {
-        c_uint(family.0.into())
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<(crate::net::SocketType, crate::net::SocketFlags)>
-    for ArgReg<'a, Num>
-{
-    #[inline]
-    fn from(pair: (crate::net::SocketType, crate::net::SocketFlags)) -> Self {
-        c_uint(pair.0 .0 | pair.1.bits())
-    }
-}
-
 #[cfg(feature = "thread")]
 impl<'a, Num: ArgNumber>
     From<(
@@ -798,25 +729,6 @@ impl<'a, Num: ArgNumber>
         ),
     ) -> Self {
         c_uint(pair.0 as u32 | pair.1.bits())
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<crate::net::SocketType> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(type_: crate::net::SocketType) -> Self {
-        c_uint(type_.0)
-    }
-}
-
-#[cfg(feature = "net")]
-impl<'a, Num: ArgNumber> From<Option<crate::net::Protocol>> for ArgReg<'a, Num> {
-    #[inline]
-    fn from(protocol: Option<crate::net::Protocol>) -> Self {
-        c_uint(match protocol {
-            Some(p) => p.0.get(),
-            None => 0,
-        })
     }
 }
 

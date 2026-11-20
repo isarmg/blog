@@ -6,6 +6,10 @@ import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 
 const workflow = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+const releaseWorkflow = readFileSync(new URL('../../.github/workflows/release.yml', import.meta.url), 'utf8');
+const toolchain = readFileSync(new URL('../../rust-toolchain.toml', import.meta.url), 'utf8');
+const manifest = readFileSync(new URL('../../Cargo.toml', import.meta.url), 'utf8');
+const webScripts = JSON.parse(readFileSync(new URL('../../src/web/package.json', import.meta.url), 'utf8')).scripts;
 // Read only the fixed job/step blocks under test. YAML and Actions validation
 // remain separate; this test executes the exact aggregate shell from the file.
 function job(id) {
@@ -16,6 +20,23 @@ function job(id) {
 const server = job('server-and-smoke');
 const browser = job('browser');
 const aggregate = job('build-and-smoke');
+
+test('CI, releases and web commands use the pinned Rust version', () => {
+  const version = toolchain.match(/^channel = "(\d+\.\d+\.\d+)"$/m)?.[1];
+  assert.ok(version, 'missing exact Rust toolchain version');
+  assert.equal(manifest.match(/^rust-version = "(\d+\.\d+\.\d+)"$/m)?.[1], version);
+  for (const file of [workflow, releaseWorkflow]) {
+    assert.equal(file.match(/^  RUSTUP_TOOLCHAIN: (\d+\.\d+\.\d+)$/m)?.[1], version);
+    assert.match(file, /rustup toolchain install "\$RUSTUP_TOOLCHAIN" .*--target wasm32-unknown-unknown/);
+  }
+  const webCargoCommands = Object.values(webScripts)
+    .flatMap(script => script.split('&&').map(command => command.trim()))
+    .filter(command => command.startsWith('cargo '));
+  assert.ok(webCargoCommands.length > 0, 'missing Web Cargo commands');
+  for (const command of webCargoCommands) {
+    assert.ok(command.startsWith(`cargo +${version} `), command);
+  }
+});
 
 test('server and browser groups are independent and preserve every gate', () => {
   assert.doesNotMatch(server, /^    needs:/m);
@@ -55,7 +76,7 @@ test('server and browser groups are independent and preserve every gate', () => 
     assert.match(block, /Prepare browser test dependencies\n        working-directory: src\/web\n        run: npm ci/);
     assert.match(block, /Build web from repository Rust sources\n        run: cargo run --quiet --locked --offline -p blog-assets -- build --product-root \. --offline/);
     assert.match(block, /playwright install --with-deps chromium firefox/);
-    assert.match(block, /rustup toolchain install 1\.99\.0 .*--target wasm32-unknown-unknown/);
+    assert.match(block, /rustup toolchain install "\$RUSTUP_TOOLCHAIN" .*--target wasm32-unknown-unknown/);
     assert.doesNotMatch(block, /cargo.*install wasm-bindgen-cli/);
     assert.doesNotMatch(block, /--workspace.*--all-features/);
   }

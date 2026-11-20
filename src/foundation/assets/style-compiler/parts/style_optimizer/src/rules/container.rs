@@ -475,8 +475,6 @@ impl<'a, 'i, T: ToCss> ToCss for ContainerRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@container ")?;
     let has_condition = self.condition.is_some();
 

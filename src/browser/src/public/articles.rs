@@ -168,7 +168,7 @@ pub(super) fn Article(id: i64) -> impl IntoView {
         }
     }));
     let unlocked = RwSignal::new(None::<ArticleModel>);
-    let current = Signal::derive(move || unlocked.get().or(data.value.get()));
+    let current = Signal::derive(move || unlocked.get().or_else(|| data.current()));
     let password = RwSignal::new(String::new());
     let action = Action::new();
     let retry = Callback::new(move |()| data.reload());
@@ -246,7 +246,7 @@ pub(super) fn Article(id: i64) -> impl IntoView {
                                 .into_any()
                             };
                         }
-                        let Some(info) = access.value.get() else {
+                        let Some(info) = access.current() else {
                             return View::new(
                                 html::p()
                                     .child(t("正在加载文章…", "Loading article…"))
@@ -350,7 +350,7 @@ fn reading_action(
             .text_content()
             .expect("invariant: an element has text content");
         blog_interface::task::spawn_local(async move {
-            let result = wasm_bindgen_futures::JsFuture::from(
+            let result = js_sys::futures::JsFuture::from(
                 web_sys::window()
                     .expect("invariant: the application is mounted in a browser window")
                     .navigator()
@@ -666,7 +666,7 @@ fn News(id: i64) -> impl IntoView {
                 .build(),
         )),
         IntoMaybeErased::into_maybe_erased(move || {
-            data.value.get().filter(|v| !v.is_empty()).map(|v| {
+            data.current().filter(|v| !v.is_empty()).map(|v| {
                 View::new(
                     html::section()
                         .child((
@@ -787,8 +787,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
             t("搜索文章", "Search articles")
         } else {
             categories
-                .value
-                .get()
+                .current()
                 .unwrap_or_default()
                 .iter()
                 .find(|c| c.id == selected.get())
@@ -864,7 +863,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
             .child((html::button()
             .child((t("全部 ", "All "),
             html::small()
-            .child( move | | categories.value.get().unwrap_or_default().iter().map(| c | c
+            .child( move | | categories.current().unwrap_or_default().iter().map(| c | c
             .article_count).sum:: < i64 > ()),))
             .class(move | | if selected.get() == 0
             { "active" } else { "" }).on(ev::click, move
@@ -873,7 +872,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
             .child( t("推荐", "Recommended")).class(move | | if selected.get()
             == - 1 { "active" } else { "" })
             .on(ev::click, move | _ | choose.run(- 1)),
-            move | | categories.value.get().unwrap_or_default().into_iter().map(| c |
+            move | | categories.current().unwrap_or_default().into_iter().map(| c |
             { let id = c.id; View::new(
     html::button()
         .child(
@@ -890,7 +889,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
         .on(ev::click, move |_| choose.run(id)),
 ) }).collect_view(),))
             .class("original-tag-panel original-category-panel"),
-            move | | (! labels.value.get().unwrap_or_default().is_empty()).then(| |
+            move | | (! labels.current().unwrap_or_default().is_empty()).then(| |
             View::new(
     html::div()
         .child(
@@ -901,7 +900,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                     | if label.get() == 0 { "active" } else { "" })
                     .on(ev::click, move | _ |
                     browse(state, & [("label_id", None), ("page", None)])),
-                    move | | labels.value.get().unwrap_or_default().into_iter().map(|
+                    move | | labels.current().unwrap_or_default().into_iter().map(|
                     l | { let id = l.id; View::new(
     html::button()
         .child(
@@ -963,7 +962,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
         .role("status"),
 )),
                             move | | (search && ! term.get().is_empty()).then(| | data
-                            .value.get().map(| v | View::new(
+                            .current().map(| v | View::new(
     html::p()
         .child(
 
@@ -978,7 +977,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                             html::div()
                             .child((html::h2()
                             .child( t("🍃 发现", "🍃 Discover")),
-                            move | | data.value.get().map(| v | v.items)
+                            move | | data.current().map(| v | v.items)
                             .unwrap_or_default().into_iter().map(| item | if search {
                             View::new(
     html::a()
@@ -1038,8 +1037,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                 .compact( true)
                 .build()))
                             .into_any() }).collect_view(),
-                            move | | ((search && term.get().is_empty()) || data.value
-                            .get().is_some_and(| v | v.items.is_empty())).then(| | View::new(
+                            move | | ((search && term.get().is_empty()) || data.current().is_some_and(| v | v.items.is_empty())).then(| | View::new(
     html::div()
         .child(
             (

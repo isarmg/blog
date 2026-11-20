@@ -286,13 +286,10 @@ macro_rules! multi_index_vec {
                 let len = self.len as usize;
                 $(
                     if ::core::mem::needs_drop::<$fty>() {
-                        for i in 0..len {
-                            // SAFETY: `i < len <= cap`, so the pointer is within the allocation.
-                            // Each element is only dropped once.
-                            unsafe {
-                                ::core::ptr::drop_in_place(self.$fname.as_ptr().add(i));
-                            }
-                        }
+                        let initialized = ::core::ptr::slice_from_raw_parts_mut(self.$fname.as_ptr(), len);
+                        // SAFETY: The first `len <= cap` entries are initialized and exclusively
+                        // owned. The backing allocation stays live until after the drop.
+                        unsafe { ::core::ptr::drop_in_place(initialized) };
                     }
                 )*
                 let layout = Self::compute_layout(self.cap as usize).unwrap();

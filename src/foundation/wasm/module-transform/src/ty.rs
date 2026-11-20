@@ -109,7 +109,7 @@ impl fmt::Display for StorageType {
 /// # Example
 ///
 /// ```
-/// use walrus::{FieldType, StorageType, ValType};
+/// use blog_wasm_module_transform::{FieldType, StorageType, ValType};
 ///
 /// // A mutable i32 field (unpacked)
 /// let int_field = FieldType {
@@ -266,7 +266,7 @@ impl fmt::Display for ArrayType {
 /// # Example
 ///
 /// ```
-/// use walrus::*;
+/// use blog_wasm_module_transform::*;
 ///
 /// // A struct composite type
 /// let struct_comp = CompositeType::Struct(StructType {

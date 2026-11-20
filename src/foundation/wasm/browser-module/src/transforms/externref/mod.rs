@@ -681,7 +681,3 @@ impl Transform<'_> {
         }
     }
 }
-
-#[path = "../../../../../../../test/foundation/wasm/browser-module/unit/src/transforms/externref/tests/mod.rs"]
-#[cfg(test)]
-mod tests;

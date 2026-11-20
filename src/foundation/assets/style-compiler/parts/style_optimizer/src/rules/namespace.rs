@@ -34,8 +34,6 @@ impl<'i> ToCss for NamespaceRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@namespace ")?;
     if let Some(prefix) = &self.prefix {
       prefix.to_css(dest)?;

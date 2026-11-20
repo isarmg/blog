@@ -2,8 +2,8 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
-use atomic_waker::AtomicWaker;
 use bytes::Bytes;
+use futures::task::AtomicWaker;
 use http::HeaderMap;
 
 use crate::common::lock::LockResultExt;

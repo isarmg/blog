@@ -32,16 +32,41 @@ struct PageResult<T> {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct AdminPageQuery {
+struct PageQuery {
     page: Option<i64>,
     size: Option<i64>,
 }
-impl AdminPageQuery {
-    fn bounds(self) -> (i64, i64) {
-        (
-            self.page.unwrap_or(1).clamp(1, 100_000),
-            self.size.unwrap_or(20).clamp(1, 100),
-        )
+
+impl PageQuery {
+    fn admin_bounds(self) -> PageBounds {
+        self.bounds(20, 100)
+    }
+
+    fn bounds(self, default_size: i64, max_size: i64) -> PageBounds {
+        PageBounds {
+            page: self.page.unwrap_or(1).clamp(1, 100_000),
+            size: self.size.unwrap_or(default_size).clamp(1, max_size),
+        }
+    }
+}
+
+struct PageBounds {
+    page: i64,
+    size: i64,
+}
+
+impl PageBounds {
+    fn offset(&self) -> i64 {
+        (self.page - 1) * self.size
+    }
+
+    fn result<T>(self, items: Vec<T>, total: i64) -> PageResult<T> {
+        PageResult {
+            items,
+            total,
+            page: self.page,
+            size: self.size,
+        }
     }
 }
 

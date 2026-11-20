@@ -45,8 +45,6 @@ impl<'a, 'i, T: ToCss> ToCss for NestingRule<'i, T> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     if dest.context().is_none() {
       dest.write_str("@nest ")?;
     }
@@ -89,8 +87,6 @@ impl<'i> ToCss for NestedDeclarationsRule<'i> {
   where
     W: std::fmt::Write,
   {
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
 
     if should_compile!(dest.targets.current, Nesting) {
       if let Some(context) = dest.context() {

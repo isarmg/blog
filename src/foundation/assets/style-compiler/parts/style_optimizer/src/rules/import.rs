@@ -48,8 +48,6 @@ impl<'i> ToCss for ImportRule<'i> {
       None
     };
 
-    #[cfg(any())]
-    dest.add_mapping(self.loc);
     dest.write_str("@import ")?;
     if let Some(dep) = dep {
       serialize_string(&dep.placeholder, dest)?;

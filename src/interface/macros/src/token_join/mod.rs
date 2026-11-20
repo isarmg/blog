@@ -90,7 +90,7 @@ fn expand(
                         *contains_paste = true;
                         group
                     } else {
-                        group.clone()
+                        group
                     };
                     if delimiter != Delimiter::None {
                         expanded.extend(iter::once(TokenTree::Group(group)));

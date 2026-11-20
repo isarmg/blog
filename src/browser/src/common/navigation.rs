@@ -2,7 +2,7 @@
 use blog_interface::prelude::*;
 use blog_interface::thread_bound::SendWrapper;
 
-pub(super) const MAX_PAGE: u64 = 100_000;
+pub(super) use crate::contracts::MAX_PAGE;
 
 pub(crate) fn enc(s: &str) -> String {
     js_sys::encode_uri_component(s)

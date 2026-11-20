@@ -22,8 +22,8 @@
 Rust 文档注释与 `include_str!` 引用的 Markdown 是当前 API 说明。先按[开发说明](../development.md)准备工具链并构建 Web 资源（服务端构建脚本需要嵌入这些资源），再从仓库根目录离线生成实际消费者的本地 HTML 文档：
 
 ```sh
-cargo +1.99.0 doc --locked --offline -p blog -p blog-setup -p blog-assets
-cargo +1.99.0 doc --locked --offline -p blog-browser --target wasm32-unknown-unknown
+cargo +1.100.0 doc --locked --offline -p blog -p blog-setup -p blog-assets
+cargo +1.100.0 doc --locked --offline -p blog-browser --target wasm32-unknown-unknown
 ```
 
 原生入口为 `target/doc/blog/index.html` 和 `target/doc/blog_assets/index.html`，浏览器入口为 `target/wasm32-unknown-unknown/doc/blog_browser/index.html`；`CARGO_TARGET_DIR` 可改变根目录。不使用 `--no-deps`，这样依赖接口也会生成；各目标使用实际启用的特性组合。

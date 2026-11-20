@@ -199,17 +199,17 @@ impl Executor {
 }
 
 impl Executor {
-    /// Globally sets the [`wasm_bindgen_futures`] runtime as the executor used to spawn tasks.
+    /// Globally registers the JavaScript futures executor for local tasks.
     ///
     /// Returns `Err(_)` if a global executor has already been set.
     ///
     #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn init_wasm_bindgen() -> Result<(), ExecutorError> {
         let executor_impl = ExecutorFns {
-            // wasm-bindgen-futures only supports spawn_local
+            // The JavaScript futures executor only supports local tasks.
             spawn: no_op_spawn,
             spawn_local: |fut| {
-                wasm_bindgen_futures::spawn_local(fut);
+                js_sys::futures::spawn_local(fut);
             },
             poll_local: no_op_poll,
         };

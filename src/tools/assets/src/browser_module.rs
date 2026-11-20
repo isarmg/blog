@@ -29,8 +29,6 @@ pub(crate) fn generate(input: &Path, output: &Path, name: &str) -> Result<(), Br
     generator
         .input_path(input)
         .out_name(name)
-        .web(true)
-        .expect("invariant: a new binding generator has no conflicting output mode")
         .typescript(false)
         .omit_default_module_path(false);
     generator
