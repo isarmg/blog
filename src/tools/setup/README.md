@@ -1,23 +1,28 @@
 # blog-setup
 
-离线初始化、检查实例和重置管理员凭据的 Rust 工具，直接调用 `blog-application` 的实例管理 API。
+`blog-setup` 是已停止实例的离线工具。它直接调用服务端 `blog::maintenance`，与 `blog` 使用同一份配置、数据库校验和实例锁。
 
-在仓库根目录构建：
+发行安装不需要自行构建：首次部署使用 `install.sh`；已安装实例执行 `ROOT/maintenance.sh`，由脚本校验已安装程序并切换到服务账号。见[生产部署](../../../deploy/linux-x86_64/README.md)和[运行与排障](../../../docs/operations.md)。
 
-```sh
-cargo +1.100.0 build --locked --offline --release -p blog-setup
-```
+## 源码开发
 
-先准备私有的 `ROOT/config/config.json`，以实例服务账号执行：
+在仓库根目录按[开发说明](../../../docs/development.md)先生成 Web 资源，再构建开发版工具：
 
 ```sh
-systemd-ask-password 'Initial administrator password:' | blog-setup --root /absolute/instance initialize --username admin
-blog-setup --root /absolute/instance check
-systemd-ask-password 'New administrator password:' | blog-setup --root /absolute/instance admin-reset --username admin
+cargo +1.100.0 build --locked --offline -p blog-setup
 ```
 
-密码从标准输入读取，限制为有长度上限的单行 UTF-8；不放入命令行、配置或日志。运行前停止服务，工具与服务端使用同一个实例锁。初始化拒绝已有数据库，检查验证数据库结构、实际数据和凭据，重置密码以事务更新账号并撤销旧会话。
+默认输出是 `./target/debug/blog-setup`，不会安装到 `PATH`。以实例账号操作，`BLOG_ROOT` 设为已准备好 `config/config.json` 的实例绝对路径。按需要选择一项，不要对已有站点执行初始化：
 
-离线操作仅读取明确指定的 `ROOT/config/config.json`，运行时 `BLOG_*` 环境覆盖不能将操作重定向到另一实例。工具先核对编译内的产品、数据库和应用源码身份；打包同时校验服务端与 setup 的身份一致。
+```sh
+# 新实例：建立当前结构的数据库和管理员
+systemd-ask-password '初始管理员密码：' | ./target/debug/blog-setup --root "$BLOG_ROOT" initialize --username admin
 
-安装包使用方式见[生产部署](../../../deploy/linux-x86_64/README.md)，源码实例配置见[首次运行](../../../docs/getting-started.md)。
+# 已停止的实例：核验数据库、管理员和私有目录
+./target/debug/blog-setup --root "$BLOG_ROOT" check
+
+# 已停止的实例：重置现有管理员的密码并撤销其会话
+systemd-ask-password '新管理员密码：' | ./target/debug/blog-setup --root "$BLOG_ROOT" admin-reset --username admin
+```
+
+初始化和重置从标准输入读取单行密码，不接受密码命令行参数。`--root` 必填；可选全局参数 `--config` 只接受该实例的 `ROOT/config/config.json`。工具不应用服务的 `BLOG_DATA_DIR` 等运行时配置覆盖。

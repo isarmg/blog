@@ -1,46 +1,49 @@
 # Blog 生产部署
 
-支持 AMD64 Linux GNU/glibc 和 systemd。服务、初始化、安装、完整性检查和离线密码重置工具均包含在发行包中。发行归档包含 `bin/blog`、`libexec/blog-setup`、`install.sh`、`maintenance.sh` 和构建元数据；`share/README.md` 为部署入口，`share/docs/` 提供首次运行、配置、内容管理、运行与请求约定的离线手册。`share/package.json` 与 `share/package.sha256` 记录完整不可变文件清单及 SHA-256、大小和权限。
+发行包适用于 AMD64 Linux GNU/glibc。主机需有 systemd、Bash、Python 3、`useradd` 和 `runuser`；无需安装 Rust、Node 或单独的数据库服务。
 
-执行归档内程序前，先通过可信渠道核对 `SHA256SUMS`。候选包的 `share/package.json` 明确标记 `kind=candidate`，记录真实 Git HEAD、源码树哈希及工作树是否有修改；候选包不代表正式发布。正式发行需干净源码树和绑定当前提交的 annotated `vVERSION` tag。
+## 校验发行包
 
-准备配置（示例省略的数据目录自动跟随 ROOT），然后首次安装到不存在的新 ROOT：
-
-```bash
-cp share/config/config.json.example /absolute/private/config.json
-chmod 600 /absolute/private/config.json
-sudo install -d -o root -g root -m 0755 /opt/isarmg
-systemd-ask-password 'Initial administrator password:' | sudo ./install.sh \
-  --package /absolute/verified-package --root /opt/isarmg/blog \
-  --config /absolute/private/config.json --username admin
-sudo systemctl enable --now blog.service
-curl --fail http://127.0.0.1:8081/readyz
-```
-
-安装前先创建 ROOT 的父目录；其全部祖先须由 root 管理，不能允许其他账号改名或替换。安装工具先验证完整包，再创建固定非 root 账号 `isarmg-blog`。新 ROOT 从 `0700` 权限开始创建，并在写入内容前移除继承的访问和默认 ACL；原父目录属性保持不变。程序文件由 root 管理；配置为 `root:isarmg-blog` 的 `0640`，配置目录 `0750`；可写的 `state/`、`media/`、`logs/`、`run/` 为服务账号的 `0700`。初始化通过服务账号执行本地 `blog-setup`，使用当前 schema、私有文件验证及服务器相同实例锁，拒绝已有数据库。密码仅从有界的 stdin 输入，不写命令行、配置或日志。安装成功不自动启动或启用服务；失败保留已创建的部分安装供检查，不能直接覆盖重试。
-
-生产 ROOT 必须位于 systemd 隔离后仍可见的位置；安装拒绝 `/tmp`、`/var/tmp`、`/home`、`/root`、`/run/user` 及其后代，因为服务启用 `PrivateTmp=true` 和 `ProtectHome=true`。默认 `/opt/isarmg/blog` 不受影响。临时验收实例不安装 unit，可使用 `/tmp`。
-
-此安装器只接受 ROOT 下的 state/media，systemd 只允许写入上述四个目录。高级外置布局可先人工准备受管配置和权限，再使用 `blog-setup`；需同步由运维明确配置服务可写目录。开发源码使用 `cargo build --locked --offline -p blog-setup`，以实例账号执行：
+从同一条 [GitHub Release](https://github.com/isarmg/blog/releases) 下载 `blog-版本号-linux-x86_64.tar.gz` 和 `SHA256SUMS`。将两者放在仅 root 可写的独立目录；先确认校验文件来自可信的发布渠道，再执行包内程序。以下命令在该目录的 root Bash 中执行：
 
 ```bash
-blog-setup --root /absolute/instance initialize --username admin
-blog-setup --root /absolute/instance check
-blog-setup --root /absolute/instance admin-reset --username admin
+set -euo pipefail
+sha256sum --check --strict SHA256SUMS
+read -r _ archive < SHA256SUMS
+tar -xzpf "$archive"
+cd -P -- "${archive%.tar.gz}"
 ```
 
-`initialize` 与 `admin-reset` 从 stdin 读取密码。配置固定为 `ROOT/config/config.json`；可选 `--config FILE` 只接受这一物理位置。服务占用实例锁时，检查、初始化和重置均拒绝运行。检查核验当前数据库 schema、实际数据和凭据；密码重置执行事务并撤销旧会话。
+归档内 `share/package.json` 列出程序、文档等不可变文件的摘要、大小和权限；`share/package.sha256` 是该清单的摘要。安装器会复核这些内容，但包内自检不能替代下载校验。正式包标记为 `kind=release`；`kind=candidate` 是候选构建。离线手册在 `share/README.md` 和 `share/docs/`。
 
-安装实例维护需先停止服务，再检查或重置密码：
+## 首次安装
+
+默认实例目录是 `/opt/isarmg/blog`。只创建它的**父目录**，不要提前创建实例目录或其中的配置。安装器会从 `--config` 读取配置、写入实例、初始化唯一管理员并检查数据库。下面直接使用包内未改动的生产示例。需要改端口时，先把示例复制到**解压目录外**，编辑副本，并把副本的绝对路径传给 `--config`。
 
 ```bash
-sudo systemctl stop blog.service
-sudo ./maintenance.sh --root /opt/isarmg/blog check
-systemd-ask-password 'New administrator password:' | \
-  sudo ./maintenance.sh --root /opt/isarmg/blog admin-reset --username admin
-sudo systemctl start blog.service
+[ -d /opt/isarmg ] || install -d -o root -g root -m 0755 /opt/isarmg
+systemd-ask-password '初始管理员密码：' | ./install.sh \
+  --root /opt/isarmg/blog --config "$PWD/share/config/config.json.example" --username admin
 ```
 
-替换程序前停止服务，备份配置、数据库和媒体，并核对目标程序要求的数据库结构。不要删除锁文件绕过正在运行的服务器。服务运行入口仍为 `bin/blog --root ROOT`，生产保持 Secure Cookie、Host/Origin 来源校验；`development=true` 仅允许回环 HTTP。
+密码为 12–1024 个 UTF-8 字节，不含 ASCII 控制字符，只通过标准输入传递。安装器创建或验证非登录服务账号 `isarmg-blog`，写入 `blog.service` 并重新加载 systemd，但不启动或启用服务。安装成功后执行：
 
-配置字段见[配置参考](../../docs/configuration.md)，备份与常见问题见[运行与排障](../../docs/operations.md)，数据库要求见[数据与请求约定](../../docs/contracts.md)。
+```bash
+systemctl enable --now blog.service
+curl -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8081/readyz
+```
+
+使用自定义 `bind` 时相应修改探测地址。正常响应为 `{"ready":true}`。
+
+## 接入 HTTPS
+
+内置服务监听 HTTP。生产保持 `development=false`，由反向代理终止 TLS。使用默认回环监听时，代理将站点页面、静态资源、`/media/` 和 `/api/` 一起转给 `http://127.0.0.1:8081`，不要拆到不同的浏览器源。
+
+代理只接收本站公开域名，将该域名和非默认端口作为上游 `Host`，保留浏览器的 `Origin` 和 `Sec-Fetch-Site`。例如从 `https://blog.example.org:8443/admin` 登录时，上游 `Host` 应是 `blog.example.org:8443`，不能改成 `127.0.0.1:8081`。仅传 `X-Forwarded-Host` 或 `X-Forwarded-Proto` 不能替代同源检查。用公开 HTTPS 地址打开首页和 `/admin`，实际登录一次。
+
+## 安装边界与维护
+
+- 安装器只用于首次部署。实例目录必须是包外的新绝对路径；祖先须由 root 管理，不得让其他账号替换路径。已存在的 `blog.service` 或其 drop-in 目录不会被覆盖。失败后保留部分安装供检查，不要对原目录强行重装。
+- 程序归 root 所有。配置为 `root:isarmg-blog`、权限 `0640`；配置目录权限 `0750`。`state/`、`media/`、`logs/`、`run/` 由服务账号所有，权限 `0700`。生产单元启用 `PrivateTmp` 和 `ProtectHome`，不接受 `/tmp`、`/var/tmp`、`/home`、`/root` 或 `/run/user` 下的实例目录。
+- 安装器只接受默认的 `ROOT/state`、`ROOT/media` 布局。手工部署外置状态或媒体目录时，须在 JSON 中指定真实路径，同时为服务账号和 systemd 单元配置相应的写入权限，见[配置参考](../../docs/configuration.md)。
+- 已安装实例由 `ROOT/maintenance.sh` 校验程序并以服务账号执行离线维护，不需要保留解压目录。停机检查、重置密码和备份步骤见[运行与排障](../../docs/operations.md)，数据库版本限制见[数据与请求约定](../../docs/contracts.md)。
