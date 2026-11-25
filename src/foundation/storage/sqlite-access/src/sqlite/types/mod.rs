@@ -70,7 +70,7 @@
 //! ##### NOTE: `CURRENT_TIMESTAMP` and comparison/interoperability of `DATETIME` values
 //! As stated previously, `DateTime<Tz>` always encodes to a date-time string
 //! _with_ a timezone offset,
-//! in [RFC 3339 format][::chrono::DateTime::to_rfc3339_opts] (with `use_z: false`).
+//! in RFC 3339 format (using `chrono::DateTime::to_rfc3339_opts` with `use_z: false`).
 //!
 //! However, most of SQLite's datetime functions
 //! (including `datetime()` and `DEFAULT CURRENT_TIMESTAMP`)

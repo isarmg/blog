@@ -77,15 +77,13 @@ impl DefaultBodyLimit {
     /// Disable the default request body limit.
     ///
     /// This must be used to receive bodies larger than the default limit of 2MB using [`Bytes`] or
-    /// an extractor built on it such as `String`, [`Json`], [`Form`].
+    /// an extractor built on it such as `String`, `Json`, or `Form`.
     ///
     /// Untrusted streaming bodies still require a bound enforced by the caller.
     /// To increase the extractor limit while keeping a finite bound, use
     /// [`DefaultBodyLimit::max`] instead of disabling it.
     ///
     /// [`Bytes`]: bytes::Bytes
-    /// [`Json`]: crate::Json
-    /// [`Form`]: crate::Form
     pub const fn disable() -> Self {
         Self {
             kind: DefaultBodyLimitKind::Disable,

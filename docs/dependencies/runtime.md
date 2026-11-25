@@ -20,4 +20,4 @@
 
 `sync` 层按用途提供互斥锁、条件通知、一次初始化、消息通道、线程局部存储和 pinned projection。跨线程所有权、取消及用户回调 panic 都属于同步边界；调用者仍须遵守每种类型的借用和锁顺序。
 
-`diagnostics` 层提供结构化事件、错误上下文、错误派生和符号解码。`filesystem/temporary-storage` 提供临时文件与目录；权限和生命周期要求由实际使用它的安装、快照和构建流程决定。
+`diagnostics` 层提供结构化事件、错误上下文、错误派生和符号解码。服务端在 [runtime.rs](../../src/server/src/runtime.rs) 组装事件注册表、级别过滤器和应用自己的 [日志输出层](../../src/application/src/log/tracing_layer.rs)，而不是用通用格式化订阅器输出日志。`filesystem/temporary-storage` 提供临时文件与目录；权限和生命周期要求由实际使用它的安装、快照和构建流程决定。

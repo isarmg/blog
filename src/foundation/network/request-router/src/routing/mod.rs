@@ -62,9 +62,7 @@ pub(crate) struct RouteId(u32);
 ///
 /// `Router<S>` means a router that is _missing_ a state of type `S` to be able
 /// to handle requests. Thus, only `Router<()>` (i.e. without missing state) can
-/// be passed to [`serve`]. See [`Router::with_state`] for more details.
-///
-/// [`serve`]: crate::serve()
+/// serve requests. See [`Router::with_state`] for more details.
 #[must_use]
 pub struct Router<S = ()> {
     inner: Arc<RouterInner<S>>,
@@ -507,7 +505,7 @@ where
 }
 
 impl Router {
-    /// Convert this router into a [`MakeService`], that is a [`Service`] whose
+    /// Convert this router into an [`IntoMakeService`], that is a [`Service`] whose
     /// response is another service.
     ///
     /// ```
@@ -523,8 +521,6 @@ impl Router {
     /// http_routing::serve(listener, app).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// [`MakeService`]: service_stack::make::MakeService
     #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         // call `Router::with_state` such that everything is turned into `Route` eagerly

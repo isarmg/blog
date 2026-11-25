@@ -12,6 +12,8 @@
 
 视图协议用于 CSR 的构建、更新、挂载与拆卸，支持动态列表、context、Portal 和错误边界。事件监听、观察器和异步工作应随所有者清理；改变列表键会改变子树身份。业务页面和请求状态位于 `src/browser`，共享组件不承担产品业务规则。
 
+浏览器的异步任务由 JavaScript 事件循环驱动。CSR 只启用请求共享、异步锁、通道和流处理所需的 Futures 接口；原生测试用的本地执行器不进入 WASM 正式构建。浏览器绑定按组件调用选择：请求使用 Fetch 的响应流，媒体上传使用 File/Blob，不引入 XHR、WebRTC 或动态执行 JavaScript 字符串的绑定。
+
 ## WASM 边界
 
 `browser-api` 和 `javascript-api` 提供类型化浏览器与 JavaScript 接口。`browser-bridge`、入口宏、元数据及 schema 配合 `browser-module` 生成绑定；模块的编码、解码、变换和调试信息由 `wasm` 层其余包提供。绑定生成直接由 `blog-assets` 调用。元数据字段、枚举顺序和描述符操作码通过 `browser-bridge-schema` 的协议快照测试核验；协议变化需更新 `SCHEMA_VERSION`，注释、文档和辅助函数变化不改变协议身份。

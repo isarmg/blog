@@ -5,9 +5,7 @@ use std::{
 };
 use service_stack::Service;
 
-/// A [`MakeService`] that produces axum router services.
-///
-/// [`MakeService`]: service_stack::make::MakeService
+/// A [`Service`] that yields a clone of the wrapped service for each connection.
 #[derive(Debug, Clone)]
 pub struct IntoMakeService<S> {
     svc: S,

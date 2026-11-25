@@ -41,7 +41,7 @@ default-features = true
 [dependencies.indexmap]
 package = "blog-collections-ordered-map"
 path = "../../collections/ordered-map"
-features = ["serde"]
+features = []
 default-features = true
 
 [dependencies.itertools]
@@ -71,7 +71,7 @@ default-features = true
 [dependencies.smallvec]
 package = "blog-collections-inline-vector"
 path = "../../collections/inline-vector"
-features = ["serde", "union"]
+features = ["union"]
 default-features = true
 
 [dependencies.cssparser_macros]
@@ -101,17 +101,5 @@ default-features = true
 [dependencies.rustc_hash]
 package = "blog-collections-compiler-hash"
 path = "../../collections/compiler-hash"
-features = []
-default-features = true
-
-[dependencies.serde]
-package = "blog-format-data-model"
-path = "../../format/data-model"
-features = ["derive"]
-default-features = true
-
-[dependencies.serde_json]
-package = "blog-format-json"
-path = "../../format/json"
 features = []
 default-features = true

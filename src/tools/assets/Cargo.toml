@@ -20,14 +20,16 @@ serde = {  features = ["derive"], path = "../../foundation/format/data-model",pa
 serde_json = { path = "../../foundation/format/json",package = "blog-format-json"}
 sha2 = { path = "../../foundation/crypto/secure-hash",package = "blog-crypto-secure-hash"}
 tempfile = { path = "../../foundation/filesystem/temporary-storage",package = "blog-filesystem-temporary-storage"}
-tokio = {  features = ["fs", "macros", "net", "rt-multi-thread", "signal", "sync", "time"], path = "../../foundation/runtime/task-scheduler",package = "blog-runtime-task-scheduler"}
-toml = { path = "../../foundation/format/configuration",package = "blog-format-configuration"}
+tokio = {  features = ["macros", "net", "rt", "signal", "sync", "time"], path = "../../foundation/runtime/task-scheduler",package = "blog-runtime-task-scheduler"}
+toml = { path = "../../foundation/format/configuration", package = "blog-format-configuration", default-features = false, features = ["std", "parse", "serialization"] }
 wasm-bindgen-cli-support = {path = "../../foundation/wasm/browser-module",package = "blog-wasm-browser-module"}
 
 [dependencies.compiler]
 package = "blog-assets-compiler"
 path = "../../foundation/assets/compiler"
 [dev-dependencies]
+# Only the configuration contract tests write formatted TOML.
+toml = { path = "../../foundation/format/configuration", package = "blog-format-configuration", default-features = false, features = ["display"] }
 
 [build-dependencies.sha2]
 path = "../../foundation/crypto/secure-hash"
@@ -36,7 +38,8 @@ package = "blog-crypto-secure-hash"
 [dependencies.axum]
 path = "../../foundation/network/request-router"
 package = "blog-network-request-router"
-default-features = true
+default-features = false
+features = ["http1", "tokio"]
 
 [dependencies.url-encoding]
 path = "../../foundation/network/web-address"

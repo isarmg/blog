@@ -4784,6 +4784,113 @@
       "directory": "src/foundation/runtime/async-toolkit",
       "reason": "Use the retained future and stream interfaces in documentation and examples after removing the unused macro exports.",
       "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/cli/arguments",
+      "files": [
+        "src/builder/action.rs"
+      ],
+      "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/format/date-time",
+      "files": [
+        "src/offset/utc.rs"
+      ],
+      "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/http-transport",
+      "files": [
+        "src/adapters/rt/tokio.rs",
+        "src/body/mod.rs",
+        "src/ext/mod.rs",
+        "src/upgrade.rs"
+      ],
+      "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/request-router",
+      "files": [
+        "src/docs/extract.md",
+        "src/docs/routing/nest.md",
+        "src/docs/routing/route.md",
+        "src/docs/routing/with_state.md",
+        "src/extract/rejection.rs",
+        "src/handler/mod.rs",
+        "src/handler/service.rs",
+        "src/kernel/extract/default_body_limit.rs",
+        "src/lib.rs",
+        "src/routing/into_make_service.rs",
+        "src/routing/method_routing.rs",
+        "src/routing/mod.rs",
+        "src/service_ext.rs"
+      ],
+      "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/storage/sqlite-access",
+      "files": [
+        "src/sqlite/types/mod.rs"
+      ],
+      "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/compiler",
+      "files": [
+        "Cargo.toml"
+      ],
+      "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/style-compiler",
+      "files": [
+        "Cargo.toml"
+      ],
+      "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/format/configuration",
+      "files": [
+        "src/lib.rs"
+      ],
+      "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/browser-module",
+      "files": [
+        "Cargo.toml"
+      ],
+      "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/module-transform",
+      "files": [
+        "Cargo.toml"
+      ],
+      "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/format/configuration",
+      "file": "src/lib.rs",
+      "reason": "Keep TOML formatting documentation valid when display support is not enabled.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/wasm/module-decoder",
+      "file": "src/validator/types.rs",
+      "reason": "Document component-specific return information without unresolved rustdoc links in core-module-only builds.",
+      "production_behavior_change": false
     }
   ]
 }

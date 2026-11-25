@@ -15,7 +15,7 @@
 
 ## 日期与版本
 
-[date-time](../../src/foundation/format/date-time/README.md)提供日历计算、检查式构造、解析、格式化和时间偏移。Linux 本地时区由系统文件和 `TZ` 解析；浏览器本地时间通过 JavaScript `Date`。产品日期输入、存储解释和显示统一使用 UTC，不采用浏览器本地时区作为业务日界。
+[date-time](../../src/foundation/format/date-time/README.md)提供日历计算、检查式构造、解析、格式化和时间偏移。产品日期输入、存储解释和显示统一使用 UTC。原生服务按需使用日期解析和 UTC 时钟，不加载本地时区数据库；本地时间转换和日期序列化仍由服务端开发依赖中的 `clock`、`serde` 特性测试。不要用包含开发依赖的图推断生产功能。
 
 `release-identity` 处理版本身份，`parser-combinators` 提供文本解析组合器。格式与错误位置应保留原输入边界，特别是 UTF-8、CRLF 与多字节字符。
 

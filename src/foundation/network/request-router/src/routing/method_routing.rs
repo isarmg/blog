@@ -676,7 +676,7 @@ where
 }
 
 impl MethodRouter<(), Infallible> {
-    /// Convert the router into a [`MakeService`].
+    /// Convert the router into an [`IntoMakeService`].
     ///
     /// This allows you to serve a single `MethodRouter` if you don't need any
     /// routing based on the path:
@@ -701,8 +701,6 @@ impl MethodRouter<(), Infallible> {
     /// http_routing::serve(listener, router.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// [`MakeService`]: service_stack::make::MakeService
     #[must_use]
     pub fn into_make_service(self) -> IntoMakeService<Self> {
         IntoMakeService::new(self.with_state(()))

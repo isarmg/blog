@@ -27,7 +27,7 @@
 //! The extensions in this module can be grouped as follows:
 //!
 //! - **HTTP/1 Reason Phrase**: [`ReasonPhrase`] — Access non-canonical reason phrases in HTTP/1 responses.
-//! - **Informational Responses**: [`on_informational`] — Register callbacks for 1xx HTTP/1 responses on the client.
+//! - **Informational Responses**: With `client` and `http1`, `on_informational` registers callbacks for 1xx responses.
 //! - **Header Case Tracking**: Internal types for tracking the original casing and order of headers as received.
 //!
 //! Some extensions are only available for HTTP/1 clients or servers.

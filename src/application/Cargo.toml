@@ -34,16 +34,19 @@ tempfile = {  path = "../foundation/filesystem/temporary-storage",package = "blo
 libc = { path = "../foundation/platform/system-abi",package = "blog-platform-system-abi"}
 tokio-util = {  features = ["rt"], path = "../foundation/runtime/scheduled-io",package = "blog-runtime-scheduled-io"}
 socket2 = {  path = "../foundation/platform/socket-options",package = "blog-platform-socket-options"}
-chrono = {  default-features = false, features = ["clock", "std"], path = "../foundation/format/date-time",package = "blog-format-date-time"}
+chrono = {  default-features = false, features = ["now"], path = "../foundation/format/date-time",package = "blog-format-date-time"}
 http = {  path = "../foundation/network/http-message",package = "blog-network-http-message"}
 
 [dev-dependencies]
+# Fixtures assert how synthetic peer information is handled. The product uses its own HTTP/1 listener.
+axum = { default-features = false, features = ["tokio"], path = "../foundation/network/request-router", package = "blog-network-request-router" }
 tokio = { default-features = false, features = ["test-util"], path = "../foundation/runtime/task-scheduler", package = "blog-runtime-task-scheduler" }
 
 [dependencies.axum]
 path = "../foundation/network/request-router"
 package = "blog-network-request-router"
-default-features = true
+default-features = false
+features = ["json", "query", "tower-log", "tracing"]
 
 [dependencies.http-body]
 path = "../foundation/network/body-stream"
@@ -57,7 +60,6 @@ features = [
 features = [
     "http1",
     "server",
-    "service-adapter",
     "tokio",
 ]
 path = "../foundation/network/http-transport"
@@ -86,13 +88,8 @@ features = [
 [dependencies.tracing]
 path = "../foundation/diagnostics/structured-events"
 package = "blog-diagnostics-structured-events"
-default-features = true
-features = [
-    "attributes",
-    "collector",
-    "registry",
-    "std",
-]
+default-features = false
+features = ["registry"]
 
 [dependencies.url-encoding]
 path = "../foundation/network/web-address"

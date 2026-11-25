@@ -4,7 +4,7 @@
 
 ## 密码与共享接口
 
-产品管理员密码使用 Argon2id。`password-derivation`、`memory-hard-hash`、密码格式和专用 trait 组成密码消费者的类型闭包；盐和随机值使用操作系统或 Web Crypto 熵源，失败会向上返回。
+产品管理员密码使用 Argon2id。`password-derivation`、`memory-hard-hash`、密码格式和专用 trait 组成密码消费者的类型闭包；[原生密码实现](../../src/application/src/admin_auth/mod.rs) 通过操作系统熵源生成盐，读取失败时返回错误。浏览器使用 Web Crypto 生成评论等请求的标识，不负责计算管理员密码哈希。
 
 `digest-traits`、`message-authentication` 和 `secure-hash` 为消息摘要与认证提供接口；算法标识、固定数组和常量时间操作由明确的基础包提供。通用摘要与密码消费者的接口按真实版本和类型关系分开，不能通过名字相近的 trait 随意混用。基础组合方式见[摘要接口参考](guides/cryptography.md)。
 

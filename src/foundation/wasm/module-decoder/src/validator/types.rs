@@ -373,10 +373,8 @@ impl<'a> TypesRef<'a> {
 
     /// Gets a core WebAssembly type id from a type index.
     ///
-    /// Note that this is not to be confused with
-    /// [`TypesRef::component_type_at`] which gets a component type from its
-    /// index, nor [`TypesRef::core_type_at_in_component`] which is for
-    /// learning about core types in components.
+    /// With the `component-model` feature, `component_type_at` and
+    /// `core_type_at_in_component` resolve indices in a component instead.
     ///
     /// # Panics
     ///
@@ -391,8 +389,8 @@ impl<'a> TypesRef<'a> {
 
     /// Returns the number of core types defined so far.
     ///
-    /// Note that this is only for core modules, for components you should use
-    /// [`TypesRef::core_type_count_in_component`] instead.
+    /// For components, the `component-model` feature provides
+    /// `core_type_count_in_component` instead.
     pub fn core_type_count_in_module(&self) -> u32 {
         match &self.kind {
             TypesRefKind::Module(module) => module.types.len() as u32,

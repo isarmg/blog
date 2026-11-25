@@ -55,6 +55,27 @@ fn assert_round_trip(instructions: &[Instruction<'_>]) {
 }
 
 #[test]
+fn browser_transform_only_accepts_valid_core_modules() {
+    let config = ModuleConfig::new();
+    assert!(config.parse(b"\0asm\x01\0\0\0").is_ok()); // empty core module
+    assert!(config.parse(b"\0asm\x0d\0\x01\0").is_err()); // empty component
+
+    let mut types = TypeSection::new();
+    types.ty().function([], []);
+    let mut functions = FunctionSection::new();
+    functions.function(0);
+    let mut code = CodeSection::new();
+    let mut body = Function::new([]);
+    // A function with no results must not leave a value on its stack.
+    body.instruction(&Instruction::I32Const(7));
+    body.instruction(&Instruction::End);
+    code.function(&body);
+    let mut invalid = Module::new();
+    invalid.section(&types).section(&functions).section(&code);
+    assert!(config.parse(&invalid.finish()).is_err());
+}
+
+#[test]
 fn emits_browser_metadata_and_discards_embedded_dwarf() {
     let mut module = Module::new();
     let mut names = wasm_encoder::NameSection::new();

@@ -35,7 +35,7 @@
 //!
 //! # Body handling
 //!
-//! [`Json`] and [`Form`] decode bodies through the shared data model and codecs.
+//! The optional `Json` and `Form` extractors decode bodies through the shared data model and codecs.
 //! [`DefaultBodyLimit`] configures the limit used by body-buffering extractors;
 //! custom streaming extractors must enforce their own limits. See [`extract`]
 //! for ordering, custom extractors and rejection handling, and [`response`] for
@@ -58,8 +58,6 @@
 //! [`FromRequestParts`]: crate::extract::FromRequestParts
 //! [`IntoResponse`]: crate::response::IntoResponse
 //! [`DefaultBodyLimit`]: crate::extract::DefaultBodyLimit
-//! [`Json`]: crate::Json
-//! [`Form`]: crate::Form
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(test, allow(clippy::float_cmp))]
 #![cfg_attr(not(test), warn(clippy::print_stdout, clippy::dbg_macro))]

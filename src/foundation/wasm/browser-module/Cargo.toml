@@ -61,7 +61,6 @@ path = "../../format/json"
 package = "blog-format-json"
 
 [dependencies.walrus]
-features = ["parallel"]
 path = "../module-transform"
 package = "blog-wasm-module-transform"
 
@@ -70,6 +69,8 @@ path = "../browser-bridge-schema"
 package = "blog-wasm-browser-bridge-schema"
 
 [dependencies.wasmparser]
+default-features = false
+features = ["std"]
 path = "../module-decoder"
 package = "blog-wasm-module-decoder"
 

@@ -31,8 +31,8 @@ let app = Router::new().nest("/api", api_routes);
 
 Note that nested routes will not see the original request URI but instead
 have the matched prefix stripped. This is necessary for services like static
-file serving to work. Use [`OriginalUri`] if you need the original request
-URI.
+file serving to work. The optional `original-uri` feature provides an
+`OriginalUri` extractor for consumers that need the URI before nesting.
 
 # Captures from outer routes
 
@@ -190,5 +190,4 @@ router.
 - If the route contains a wildcard (`*`).
 - If `path` is empty.
 
-[`OriginalUri`]: crate::extract::OriginalUri
 [fallbacks]: Router::fallback

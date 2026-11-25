@@ -7,7 +7,10 @@ fn restore_does_not_touch_the_browser_during_revocation() {
             state.revoking = Some(state.generation);
             state.phase = phase;
         });
-        let error = futures::executor::block_on(restore()).unwrap_err();
+        let error = restore()
+            .now_or_never()
+            .expect("revocation must reject restore without waiting for a browser request")
+            .unwrap_err();
         assert_eq!(
             error.code,
             ApiErrorCode::Local(LocalErrorCode::AuthLogoutUnconfirmed)

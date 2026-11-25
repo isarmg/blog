@@ -1,4 +1,5 @@
 use super::*;
+use futures::FutureExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 struct NoopHook;
@@ -68,6 +69,6 @@ fn a_future_preserves_an_absent_captured_hook_when_polled_in_another_scope() {
     });
     let outer: Arc<dyn ErrorHook> = Arc::new(NoopHook);
     let _scope = set_error_hook(outer.clone());
-    assert_eq!(futures::executor::block_on(future), 42);
+    assert_eq!(future.now_or_never(), Some(42));
     assert!(Arc::ptr_eq(&get_error_hook().unwrap(), &outer));
 }

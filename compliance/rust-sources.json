@@ -5848,21 +5848,128 @@
         "directory": "src/foundation/runtime/async-toolkit",
         "production_behavior_change": false,
         "reason": "Use the retained future and stream interfaces in documentation and examples after removing the unused macro exports."
+      },
+      {
+        "directory": "src/foundation/cli/arguments",
+        "files": [
+          "src/builder/action.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled."
+      },
+      {
+        "directory": "src/foundation/format/date-time",
+        "files": [
+          "src/offset/utc.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled."
+      },
+      {
+        "directory": "src/foundation/network/http-transport",
+        "files": [
+          "src/adapters/rt/tokio.rs",
+          "src/body/mod.rs",
+          "src/ext/mod.rs",
+          "src/upgrade.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled."
+      },
+      {
+        "directory": "src/foundation/network/request-router",
+        "files": [
+          "src/docs/extract.md",
+          "src/docs/routing/nest.md",
+          "src/docs/routing/route.md",
+          "src/docs/routing/with_state.md",
+          "src/extract/rejection.rs",
+          "src/handler/mod.rs",
+          "src/handler/service.rs",
+          "src/kernel/extract/default_body_limit.rs",
+          "src/lib.rs",
+          "src/routing/into_make_service.rs",
+          "src/routing/method_routing.rs",
+          "src/routing/mod.rs",
+          "src/service_ext.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled."
+      },
+      {
+        "directory": "src/foundation/storage/sqlite-access",
+        "files": [
+          "src/sqlite/types/mod.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Document optional APIs without unresolved intra-doc links when only the lean blog features are enabled."
+      },
+      {
+        "directory": "src/foundation/assets/compiler",
+        "files": [
+          "Cargo.toml"
+        ],
+        "production_behavior_change": false,
+        "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features."
+      },
+      {
+        "directory": "src/foundation/assets/style-compiler",
+        "files": [
+          "Cargo.toml"
+        ],
+        "production_behavior_change": false,
+        "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features."
+      },
+      {
+        "directory": "src/foundation/format/configuration",
+        "files": [
+          "src/lib.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features."
+      },
+      {
+        "directory": "src/foundation/wasm/browser-module",
+        "files": [
+          "Cargo.toml"
+        ],
+        "production_behavior_change": false,
+        "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features."
+      },
+      {
+        "directory": "src/foundation/wasm/module-transform",
+        "files": [
+          "Cargo.toml"
+        ],
+        "production_behavior_change": false,
+        "reason": "Keep the source-owned tooling features used by the blog's JavaScript, CSS and core WebAssembly asset pipeline; omit unused generic tooling features."
+      },
+      {
+        "directory": "src/foundation/format/configuration",
+        "file": "src/lib.rs",
+        "production_behavior_change": false,
+        "reason": "Keep TOML formatting documentation valid when display support is not enabled."
+      },
+      {
+        "directory": "src/foundation/wasm/module-decoder",
+        "file": "src/validator/types.rs",
+        "production_behavior_change": false,
+        "reason": "Document component-specific return information without unresolved rustdoc links in core-module-only builds."
       }
     ],
     "schema": 1
   },
-  "local_modifications_sha256": "85c4cda5fd5c22b8857ec98ac259172ca3bf1b46f4f95e4c683fee25f739bd68",
+  "local_modifications_sha256": "f72ed0cb3768f7ce1f9f903b3f743ef9c085e5cb6b9fa51a75e6e4449d40ecbb",
   "lockfiles_sha256": {
-    "Cargo.lock": "65283fc1ddd80ee78fc8bf828313ba5e9470b3fa2ec8c0c2e323130df7f78f15"
+    "Cargo.lock": "81f973783cf915d92489b560dab2019d218491e94d06a4aa4764eff2411ab20c"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
-    "src/application/Cargo.toml": "2a610fc54ccd7eda3e77d5e95cd313da59a6a6a9590f1640ace9066cbbc21568",
-    "src/browser/Cargo.toml": "a000bd053053303d1bbf5bc51d41af03a52a815b7e96156f8c56f4d2a283b027",
-    "src/foundation/assets/compiler/Cargo.toml": "51eea1ae4097e484cf39bd19001357c7849a2fbbad9bf57a0a669fd70e89b0d1",
+    "src/application/Cargo.toml": "f42cad7ecafa7bf5e1fc75e3bf21a90d4b2a85588e4ef9c3d03729b7667eeeea",
+    "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
+    "src/foundation/assets/compiler/Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
-    "src/foundation/assets/style-compiler/Cargo.toml": "298d00b71ba8ac61420a94b6c68ff21ffc00f337cb35c089e1690b8c1b0234b3",
+    "src/foundation/assets/style-compiler/Cargo.toml": "2d179aae66c30769c32ed86a5cb1b0c7558bf7c8b78b9b27bdc86390d37d14d1",
     "src/foundation/assets/style-token-macros/Cargo.toml": "aeb403e29a2fafdc4a09e2c96caf0a064322c89d7e18dc538f59bed979e2bd08",
     "src/foundation/assets/style-value-derive/Cargo.toml": "8dfcd2aceeb204452d0e3b407e0e82963da5d4199ad6680a4cbfab08390f51dc",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
@@ -6052,16 +6159,16 @@
     "src/foundation/wasm/browser-bridge-entry/Cargo.toml": "eaeb2c240945fdb64ec3a4d7bb33e4f67d727f9dcd64fb74951f8c44a701933f",
     "src/foundation/wasm/browser-bridge-schema/Cargo.toml": "1f9c9b36e8f4f3dbf359da6b7072708d3c5850894e91405ff744d5d2230af763",
     "src/foundation/wasm/browser-bridge/Cargo.toml": "a871c24574018e4bfe49a621b05780d12fe2f4d1b173f41175dc917aae39e66b",
-    "src/foundation/wasm/browser-module/Cargo.toml": "a9d23fb980b33808e18e98c35f880c8535ca0b3df83240d179a9650d166866dd",
+    "src/foundation/wasm/browser-module/Cargo.toml": "7819b9099e8c645316ecb8e6abc8da2cf8731ab56ce4bd4224d5f8b3c18a45a0",
     "src/foundation/wasm/module-decoder/Cargo.toml": "f8988378a795f559bed556dd6eef6237567de1d616ec6f0ee00609168c451c37",
     "src/foundation/wasm/module-encoder/Cargo.toml": "17b2e606c906842b46fd587da82ad286f8c84faaab56b91b1f39a4876d23490b",
     "src/foundation/wasm/module-transform-derive/Cargo.toml": "5cebc674cc2e9932d2f10ddd2bf6ad9aa5208af60c33b34c49f34b74b447592f",
-    "src/foundation/wasm/module-transform/Cargo.toml": "db1e245bb6c49adc360020fe579b8c67f35225f4b286700f620068125edff114",
-    "src/interface/Cargo.toml": "1a47ccd5309b05c632b49a5d57eb2aead7673599db494da1a07a5c99b87fc677",
-    "src/interface/dom/Cargo.toml": "881bcf20628fc2c7daaef484364991862864aa2b7cfe1f11c7948b0d45ab400e",
+    "src/foundation/wasm/module-transform/Cargo.toml": "1e56bd76e3091e74abad0f1f0e63b16b90a1f6c6757da33b8fe00d2dc5e3300a",
+    "src/interface/Cargo.toml": "ad57df9faff3a0b96abe7987206a7c50f3b55b8c464861059c331957048978c2",
+    "src/interface/dom/Cargo.toml": "4e3897f0b3a58e5979dfdd2bf3bd9274ab029a94668d652874dc9ab341691e57",
     "src/interface/macros/Cargo.toml": "44040134fece65724eef03f46252573ec0c5704f9807711fa25d18e488d6360f",
-    "src/server/Cargo.toml": "727a3b2d3f7e14d5931da91cc7dc5f8812779c056b3616ea1ae9c467a09bd2b9",
-    "src/tools/assets/Cargo.toml": "b0cb0b5c0b673db7d459e94bcd38bf3b10e5ede03a3a0fa2f462966b461516d3",
+    "src/server/Cargo.toml": "ca6a10744fe70d06b073091fa8d57203eca8eaa11c30b0e1f9a1ece5471f98ed",
+    "src/tools/assets/Cargo.toml": "3c939d2efbb778f334a9f45ac74620a06fe08298423c23a8e87d572dc55f7b1f",
     "src/tools/setup/Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
     "test/browser-domain/Cargo.toml": "a8960cc84bf02373c106ffdc6f501659768e979774076041ca45d3a9769b6477"
   },
@@ -33641,7 +33748,7 @@
       ],
       "directory": "src/application",
       "files_sha256": {
-        "Cargo.toml": "2a610fc54ccd7eda3e77d5e95cd313da59a6a6a9590f1640ace9066cbbc21568",
+        "Cargo.toml": "f42cad7ecafa7bf5e1fc75e3bf21a90d4b2a85588e4ef9c3d03729b7667eeeea",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "schemas/admin/persistent-v1.sql": "767889d1925178d8ac632ed54e2e4e69ec8253d2b4e798b62bcfca4d948d8ec6",
         "schemas/platform/v1.sql": "f96ee5c99dc7dd89dc2c0bfb4dc332ce9ca28a314e4e6685aa1e96ee7cdae199",
@@ -33774,7 +33881,7 @@
       ],
       "directory": "src/browser",
       "files_sha256": {
-        "Cargo.toml": "a000bd053053303d1bbf5bc51d41af03a52a815b7e96156f8c56f4d2a283b027",
+        "Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
         "src/admin.rs": "c6cbe258caa76b54b188619ca295437ad9578c52c1ad0aab907de8d8d280b3c4",
         "src/admin/articles.rs": "131ce56b22d3041271a781b586bfca128f2acce6dd707cb060915b33b3b4ecc8",
         "src/admin/dashboard.rs": "3314fe21ed03d6e3bae68fccc1fa60446a798d4f96b000cef8b2b4455d387cf2",
@@ -33878,7 +33985,6 @@
         "src/foundation/collections/inline-string",
         "src/foundation/collections/inline-vector",
         "src/foundation/diagnostics/event-facade",
-        "src/foundation/diagnostics/typed-error",
         "src/foundation/encoding/byte-search",
         "src/foundation/encoding/integer-format",
         "src/foundation/encoding/script-float-format",
@@ -33898,7 +34004,7 @@
       ],
       "directory": "src/foundation/assets/compiler",
       "files_sha256": {
-        "Cargo.toml": "51eea1ae4097e484cf39bd19001357c7849a2fbbad9bf57a0a669fd70e89b0d1",
+        "Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
         "parts/borrowed_text/.cargo_vcs_info.json": "a02da9075ae145256dab8ff224c31220d82c4389b650068154e0675533f283a1",
         "parts/borrowed_text/src/lib.rs": "9aeb83daf0098231c280727eff0fb1bbfbd7372e6bfbe0fbe038c020bb610896",
         "parts/bounded_index/.cargo_vcs_info.json": "b358523ff41c3bcee35e15a8476e79750f8f948de3c8ff8eab9ebf340e1ea67d",
@@ -34608,8 +34714,6 @@
         "src/foundation/diagnostics/event-facade",
         "src/foundation/encoding/integer-format",
         "src/foundation/encoding/radix-codecs",
-        "src/foundation/format/data-model",
-        "src/foundation/format/json",
         "src/foundation/lookup/script-table",
         "src/foundation/sync/lazy-global",
         "src/foundation/syntax/style-iterators",
@@ -34618,7 +34722,7 @@
       ],
       "directory": "src/foundation/assets/style-compiler",
       "files_sha256": {
-        "Cargo.toml": "298d00b71ba8ac61420a94b6c68ff21ffc00f337cb35c089e1690b8c1b0234b3",
+        "Cargo.toml": "2d179aae66c30769c32ed86a5cb1b0c7558bf7c8b78b9b27bdc86390d37d14d1",
         "parts/cached_hash/src/lib.rs": "079a5f369a82b4573cca488a8c52a8427546e9050c89964a7b554215dd4da5f1",
         "parts/float_format/.cargo_vcs_info.json": "c745454c84bcf2144e28b355f7e63c480768bbd013043293a35bca550ec73094",
         "parts/float_format/src/diyfp.rs": "0c5c1be29ffe1d2623226bbae145d9998abf6542d633a368c1536b8d197b3301",
@@ -35016,7 +35120,7 @@
         "src/_features.rs": "d12e61f16db91ff15a118731a8a9f8d70b873296eb8c00244e5e11416f9c43cf",
         "src/_tutorial.rs": "9e6e12f32b7b8c088998b25d485df40ec1c2964c942e7b1a6c25c5ae612001c1",
         "src/bin/stdio-fixture.rs": "87f46641f09a29a49a703c42e7f2609e99ef003beee9227238f4948b62f135fa",
-        "src/builder/action.rs": "4aa1ea959e04ac6281db9b39b03922d638b0840813b8e5d5775542e69d60ddf8",
+        "src/builder/action.rs": "17f20d46fd0bc0db8e7f08765a43182c323afb1d47bec7e83e56c02c020ef0d5",
         "src/builder/app_settings.rs": "05143ef7a7d318f5d56025e1633174c2d0e3fccb1918aee7fac77b453cc3a82e",
         "src/builder/arg.rs": "65cf9187ff85d04d9e856a7177fbdc35cf28a5c073bab3ebfde0779858a1b998",
         "src/builder/arg_group.rs": "7ba87267afc774320d420cf7cb4715f8bbc6b7fb7882108291c0752c14ffe2a1",
@@ -37664,7 +37768,7 @@
         "src/editor/visit.rs": "6ddf372dbb1b1055280d446af8bfe7d316d7f4cf26b729d353807fc36f60ba51",
         "src/editor/visit_mut.rs": "66efaca911b30db8416589863e45733f2d4c272ae5360b59650f67b8cf0092b7",
         "src/fmt.rs": "faf9b4337d267a9deb707472ca878fe8d28455262e5560394abc638791172890",
-        "src/lib.rs": "fe87aaf75101d4035f56fcfb1d1da16e1d739aee5808760c98f94e1e3b5ed3d1",
+        "src/lib.rs": "176de049e4d7c571651125bfe36c8df24260f2fe0ade42cfd9fa8985dcf73004",
         "src/macros.rs": "d072b7be488b4d4d680a7a2de1b15ce00972421586a7191ac5b743e26a1c2e25",
         "src/map.rs": "9734d64ed0ab3a58364d427a483615275a9d38a1aa3ebd292418c003be3fe810",
         "src/ser/array.rs": "7b48ff0adf7e731d742b1cb12752a9ac5f3bba1b6b4799e8bd24267e3f35dbbd",
@@ -37904,7 +38008,7 @@
         "src/offset/local/tz_info/timezone.rs": "673ac76be4a9a38269eb1052863e21c6398ce38f45eb1bbbc7e24c4d9d1c9c30",
         "src/offset/local/unix.rs": "3a61b0828eecc86d91ffcd002079a8d52b00078eb397f10e799a314c26c2baa3",
         "src/offset/mod.rs": "8f4a79c0c7afc9425cde2bb657ec9d294a4e57dae49d4d62a1d4c8701b9e6522",
-        "src/offset/utc.rs": "f5bc0c346ccf99a047cf4d4c1d797f52af462cbfa6e35bce7c6b26d79cb066db",
+        "src/offset/utc.rs": "1e0b8cb121a18b9f85f026c5c32f7e97f723ee84f7429d2a701f8bc4a2bdf361",
         "src/round.rs": "fa380af849fb6143dcbda3d2c0f614a98c816185ae3795e6236ef45171ae714a",
         "src/time_delta.rs": "808fd9f4485c835e6d403dc912b5aa52ce26e476a5069f02caf1a546cbf8ed5d",
         "src/traits.rs": "ecccddf021fd9f0a3dbf453bb68e10bf6041185ac3633a705c070174ef8bc880",
@@ -40346,7 +40450,7 @@
         "src/adapters/common/timer.rs": "0af825cea718f066ab1047846835612c81d17dbbd71e2aeca3fa455434d0d583",
         "src/adapters/mod.rs": "739e8f473934977312a7343b1b659b0ff6690c4b37636d75f61dc8f14105240a",
         "src/adapters/rt/mod.rs": "ab54f1454d6d2682744fe32607e5c2f73681dcc3d1b6ddd80ced7309ffe84e98",
-        "src/adapters/rt/tokio.rs": "333a68871c81a6c32082948c619bfdfcaccb89a795ecfe8dfc52fb46fe8aa2b7",
+        "src/adapters/rt/tokio.rs": "daa867edcd2ce43b7518aafefc7c74ea3268dad05c79eedefe24768aca616457",
         "src/adapters/rt/tokio/with_hyper_io.rs": "90c6895cca7b951204fc3a5cf33ab7f385a103fe88c1a2444e9acb8a6161915c",
         "src/adapters/rt/tokio/with_tokio_io.rs": "f6ab03770881e4dc2fa35a1ea6495a2ce20607de1f81596e9acafce6a73e74be",
         "src/adapters/rt/tracing.rs": "0642de8fdc1e0b5d88008020a6b28a2818f7ac7c9b02b18394a4f5b80d41bc04",
@@ -40360,7 +40464,7 @@
         "src/body/chan.rs": "7ce319291f3ab35aa4ece090b08810696927760dd04b61e8fe6e5d085daf8e2d",
         "src/body/incoming.rs": "de9a36b54e575773d0ee31bfd515561346d9852f521f91b10c921bd0a69631cf",
         "src/body/length.rs": "5090901379724946ccac5b423eda22407720ec35f45d424231e0839a1c085b06",
-        "src/body/mod.rs": "636435172aaf2636e0e09222163fb067966ecbb5614aa6c674e8cb7d3d2ab234",
+        "src/body/mod.rs": "11286eff23cd5ab461c4dd39fcec70cefcda307705f0b9332912b0142638d434",
         "src/cfg.rs": "af436e119e99f66953599ebbb6be0f01c70a5975351e2bbe2eb96df0109b91b3",
         "src/client/conn/http1.rs": "8cfd9dc30b481fdd0760172fd3b8e4058f63ce9775515a7b407ff15fa6e8392a",
         "src/client/conn/mod.rs": "8156d873de684c8cc5eaa2f0bc4ec1e07c071dd2f92978236a8af21f8cd5de9f",
@@ -40380,7 +40484,7 @@
         "src/error.rs": "11201745dc00be9f8b8f5e30f48dcb59bd78ff28e0896b7538d1dfe9829cbd26",
         "src/ext/h1_reason_phrase.rs": "3aa5a47abcf6064174f4d9d4ce71c96750e1502c99650852fa671524053e6fba",
         "src/ext/informational.rs": "647ad6cff8e086f1ac96202e88f0728aa7a75ec03c2031f60ba0fd90996c796e",
-        "src/ext/mod.rs": "e9c85c4976ccaa191961a381b0563555182a6af779745836daeff857429ceec9",
+        "src/ext/mod.rs": "325560bc76a3cb54fff788578b3ef154112bb55fe63a02835d022770996f39f6",
         "src/headers.rs": "ed03977bb9a7c86ba4729d9c29c285f46d1522e301c902edd495598e41c60b23",
         "src/lib.rs": "ce303657b0fbfda1097b7cc1a31c0b3ad05e3e705215aebe1903a704dc8d64d3",
         "src/proto/h1/conn.rs": "a47582cc829d4986d68329729721b274281af93c3b9c04402e3244c8f6003057",
@@ -40402,7 +40506,7 @@
         "src/service/service.rs": "6e556ad9561a1b2d99a08feb107cd525f48538ecf8dac38364029f551ff2c4b6",
         "src/service/util.rs": "bc0545cbd536adabca1118a678fdab8cec8c49bb00c5fcb16df46adfff2216be",
         "src/trace.rs": "a766c472433c7569440862e978eceeea78220af170220e9fdc90b71bab731344",
-        "src/upgrade.rs": "bba407d7c712a6e0e02c51452075008abd53a3b44c7d213d8e4afc24e31fb9f4"
+        "src/upgrade.rs": "70e136b745531bdc7bc8a532c71cd28cc60499d34e6ce9d8207d5be7004acd73"
       },
       "layer": "network",
       "name": "blog-network-http-transport",
@@ -40687,7 +40791,7 @@
         "src/boxed.rs": "b512dddc84214ee7d838cde64227c919364a8cbc2e2cfc8a43a1074e056db287",
         "src/docs/debugging_handler_type_errors.md": "35bb477dae509161953a1d2235faa261b6952f860a8c07b082f2402b707feb30",
         "src/docs/error_handling.md": "2fdefb6548c590e2655152329c0fa36696f2f23d793f48c540b40d3ab9cf1b58",
-        "src/docs/extract.md": "5e716e563f8987557b91af21b7b3048b9efd57665454ff086e8ad63ddf2d61dd",
+        "src/docs/extract.md": "9e22e2928a8a5065c489e841075d821377fdef6c0d7e29e7a2080d59bdbb4072",
         "src/docs/handlers_intro.md": "44be7d8c2087380d3e512b6724cba41c9637dd7177c9b545d45cda244b6ec861",
         "src/docs/method_routing/fallback.md": "ba192fc8db5730ac99147ba452838486bfc94db02d7b84be456a22403d4baf56",
         "src/docs/method_routing/layer.md": "34cefd35aa422811a7f3708c9ef38708ff6ddbcaa78eda4c91e1ddc354af5ffc",
@@ -40700,11 +40804,11 @@
         "src/docs/routing/layer.md": "c21fffba6876ae6002e27eef59fee825c8197080cb2481500d5c8f0080eee047",
         "src/docs/routing/merge.md": "a9d97545d6172477caeea022d7dadb7e1db630da07475e94c18958c131b56cf9",
         "src/docs/routing/method_not_allowed_fallback.md": "09d2cdc60a88e20644a95201ca529c46889dd2263622f50440f697cdfb62a94f",
-        "src/docs/routing/nest.md": "25d0d7024fbb7fa3a7c7d6761669aa454375aa1729a37983af0a2589f6d2c297",
-        "src/docs/routing/route.md": "ded53bc5fddd1f0f3f97f368d6dc801214dece3462fb85773fb0bb96480b60a7",
+        "src/docs/routing/nest.md": "9b20052ae953a121280eb8df5b0bc6439e3cc047ee31b77bb30b9a18140c8525",
+        "src/docs/routing/route.md": "b1c05d8fb503146427b2ad7fccdf1d05785a0164e952a0603f6022c8c9dad7d1",
         "src/docs/routing/route_layer.md": "6de2d1bea1421dd064e2ac55e4a8e5a5a4459de46acc4aabe94e84d69393e505",
         "src/docs/routing/route_service.md": "3117d8cd686d37290c02a0143ccfd233cbaa7217f71127d17582dd02f25a8648",
-        "src/docs/routing/with_state.md": "140dba81452d0c27ae34773fb93d40650316b782bfebb4be58395f6c2f56164d",
+        "src/docs/routing/with_state.md": "9f22a405112c8baeb99eeb7bf49b87fd81537a8709d0ce99a350b8092f71425b",
         "src/docs/routing/without_v07_checks.md": "9989c9b9fdf9db2e91d377a0ea3fbab7d979e6f8abef0f6ea8afc99fb56a1fbf",
         "src/error_handling/mod.rs": "a556e8344747a0e7941d748ff0b225c531735a8ad51e078a01c245a373b2204f",
         "src/extension.rs": "990d0798e7d8acd7e743bdc692ae090ea9420c55fc19c4d0c55606969f0c3892",
@@ -40718,19 +40822,19 @@
         "src/extract/query.rs": "b222e948e04abd8c72186ea0880ec6e11561a7bb383d5c0100015d1b56488a57",
         "src/extract/raw_form.rs": "b21463f85843a00b987009f6a7ebf2f7ff76c2afe195fa471b6f748f6f6d7e20",
         "src/extract/raw_query.rs": "266562e81409a28ccddb148c5c6e129203fb11a126324a6b484870be4233d167",
-        "src/extract/rejection.rs": "77313ebfc36df4a9f582c9c97f92d4ae1eb802f471e15e1a95395a2b2e3ccf0c",
+        "src/extract/rejection.rs": "6cf7c13c1af54e4420f29dd9a9c58d7138f9f0d0d6c1ab4f19e07d0df5222449",
         "src/extract/state.rs": "fcdff1dfd7b89a2322731e809a94995fde16c0320729b758b027f62897f1fe77",
         "src/form.rs": "a2ad2db58fb9d90985a1f37e377cd1d1a4b7340d18388f0564b314a5b638ed20",
         "src/handler/future.rs": "1dee777f97b9f1016fbdc4f8b0748de2e7ad78409e4b8ad923d275ec7e3b1474",
-        "src/handler/mod.rs": "8b52f447fa2b6e3a3a2d086dd7b3114314bff369986457d3683cbe8d7f923e4f",
-        "src/handler/service.rs": "5a7e4b1a9bf15f2fd932aab6502608822f2cd9ab356902de7d62417bfa5f7008",
+        "src/handler/mod.rs": "ba3b10b04995b4a0a51a5f207a27b4d07fb44153ad602efea26728de8649a958",
+        "src/handler/service.rs": "55492a53c407b703c5c3fbeb595ab10dbd199047db1c16f991492405732a582e",
         "src/json.rs": "11ff95bf98590136f2c78b262f91617a42ed012f0a66b98fb5a9023ec1012c81",
         "src/kernel/body.rs": "752b9daf50b436285e90fd3ba5449e30f29ce455bc84064105cf37db5c51a63e",
         "src/kernel/error.rs": "1ff4164973e79862159cbb55894974995631ea06b0cbf8c555460be2ac0d619c",
         "src/kernel/ext_traits/mod.rs": "e72a9b43b2eb92f58f417b14829afdbf61e72cbba4a8069681ec340d7dd18cd3",
         "src/kernel/ext_traits/request.rs": "52f1cf12b76a0c86c9a872a8cb320a866b7bc2bda286c9d863bf7b6f6dbddc76",
         "src/kernel/ext_traits/request_parts.rs": "b60e150d693d2dddd3f62d3dd1fef507192be4a5bd94d66486c6a25011f3da61",
-        "src/kernel/extract/default_body_limit.rs": "5da5a055be4850d600f79b4619c06d8ccaed0479a0735b1e6a7ebf9b408003af",
+        "src/kernel/extract/default_body_limit.rs": "6b77d0de3a3c4ee701ccf8318345a0ecb6893badc7b35a94d1f0b53b707973d4",
         "src/kernel/extract/from_ref.rs": "c4b4016873fa96f0833aa6dd3540e1989507a64900249514f928ebcb6069a5aa",
         "src/kernel/extract/mod.rs": "0e23699d21ad5abd4334068bc60b22d0e3ce147309c2b103b5885b156114b383",
         "src/kernel/extract/option.rs": "13dc8be140841b25618c67c1bbf05526fed943837307c965ec7241d730c3c1d1",
@@ -40743,7 +40847,7 @@
         "src/kernel/response/into_response.rs": "f78916fd723e4189a1db9d3951030e67d6489292b56b164cb8db063a20b6207b",
         "src/kernel/response/into_response_parts.rs": "b30b3695e1604f65cb3c95121615a19ae913a279dbfedfc6617f6a68f9e0925c",
         "src/kernel/response/mod.rs": "0b029393b14a9ce27077df16f98afa63a911537c5d36a3de41ffa372eb7f9637",
-        "src/lib.rs": "78a7afe8b972abc59215b3fb09c3e8362a927c591c3013511f5ce8e10b04bb27",
+        "src/lib.rs": "ceb3e213ae06e8e8f983934fffc2eef5f9da5c293bbdd66b6fe96aef9c095e7b",
         "src/macros.rs": "c853759c285a324149b6e143c84dd275233b52c4b8fd2a69f090ce72cc7438f2",
         "src/middleware/from_extractor.rs": "2ec40e4c0c58cf971fba630bee58d1464c7a373ccd2966706a57dd48ad1c3518",
         "src/middleware/from_fn.rs": "f63e5cf97e83758e8b47da24e5a0dd71e1bda632b98255bf8575723575c670c6",
@@ -40755,10 +40859,10 @@
         "src/response/redirect.rs": "bae62cc2a9ba81f284a96016ea3679b75e2a6006a320bfd57dc1a5e3f5999da5",
         "src/response/sse.rs": "fb0213abed1d93789e7cf379a3ae31d0d3b49491faf19a9c831450d5af731709",
         "src/routing/future.rs": "c0610a9b104f64f02deec5fdf79e148c09e72e6f325b62afc174f42b36f295c5",
-        "src/routing/into_make_service.rs": "4d828e689c27e7f39d681d7facd781ac876660746ff168b41ce4955574dbc0ba",
+        "src/routing/into_make_service.rs": "ed22bd6d31a82d7c9182f3b64dadc51c7f67b92fa6ff8bdc896536c1b3d6c241",
         "src/routing/method_filter.rs": "d4429bb855c59e83476aac38155d10b16fc8886e4b2a36f3a2e1e8c1ced9b1b8",
-        "src/routing/method_routing.rs": "62894624d20598dd80411c46d25ffea5052394cffe960000694bba2097832d2b",
-        "src/routing/mod.rs": "a46045128cb0e41fd446b3dd06a2af7b86973df559a640f916be90ea18754c8c",
+        "src/routing/method_routing.rs": "e2fa40f68242d57498e74222621564213954160b745e7bde10a410828b89e1ff",
+        "src/routing/mod.rs": "65fe6cdab9b5c7d76b7e3c5b7b5bddf045722c095300f4f9f3ad934ea01e8f58",
         "src/routing/not_found.rs": "6d1e3f51b1c34bf7ac91b89b28495abd5840ff450207e6683d780da0c54de358",
         "src/routing/path_router.rs": "ce165659a78db756499b9e75e6c7301af59eb85654927a93ec3e513c0a3f7514",
         "src/routing/route.rs": "d59b092a970ee921b47c38f38425bbfcc8cc4b8923881cd5c6ee5387738008ba",
@@ -40766,7 +40870,7 @@
         "src/routing/url_params.rs": "8113a01bcd12af313fbf592840c8b764495cde4a2bae521f98d63db9b39c5ca8",
         "src/serve/listener.rs": "e15abc2899a7b9c168dd1a85ff5f267dea09a27d8197c3417f8d59b561a93ea2",
         "src/serve/mod.rs": "1fc0b8c7caed237964c4e6f36d3f46b4b1c124b382f62c282ce52902383298b8",
-        "src/service_ext.rs": "fef154bece9a3436cdc3ce91f3283fe85e7178fe14fc4e5225e9d879b6b35383",
+        "src/service_ext.rs": "aeb52fcf99a53493ef00803955697e4f17dd3a856a5c7ae4554d735d836260fa",
         "src/util.rs": "3749c6655be116e44f0274e59d6b165641dd796dff80992a6aca7609be2ad8dd"
       },
       "layer": "network",
@@ -43065,7 +43169,7 @@
         "src/sqlite/types/float.rs": "ef22a32647e13d02d471a82a91a4dbec8fa28f9db4bdf750b71ba71b3f40762e",
         "src/sqlite/types/int.rs": "0f8ae94df678337dc3bb0615506886cfb7413e33fd3d0630e365129ce0a2a6dc",
         "src/sqlite/types/json.rs": "fba5938e950b6a25352418013b38de5f85aa5354d970f2985c77ce79daa83d76",
-        "src/sqlite/types/mod.rs": "a2c6035efcdc39904f6deb618aa460bf923016afe8c9e54925fb84fc32696351",
+        "src/sqlite/types/mod.rs": "84de2a2f79708cc433fd23c64692a1102a1971d872c0b56a76cd7bb76c8796ba",
         "src/sqlite/types/str.rs": "a15261e0bc94666d48edc1d6dee024be135049a060b0e2ea9059f6fd262cc1ab",
         "src/sqlite/types/text.rs": "05f8e318b14fe28d83761089e4f26811c000d70e0d415b37d9ca2d0d917c0016",
         "src/sqlite/types/uint.rs": "4825553e380db8b2cb9d4c3fdb252c7c7d11a69bac9723b92afa8a203ec32476",
@@ -46503,7 +46607,7 @@
       "directory": "src/foundation/wasm/browser-module",
       "files_sha256": {
         ".cargo_vcs_info.json": "9915a0947a6db98a5dd6f3a0a7d43b2db7afea5356752c7e52d56dc0c7b81a85",
-        "Cargo.toml": "a9d23fb980b33808e18e98c35f880c8535ca0b3df83240d179a9650d166866dd",
+        "Cargo.toml": "7819b9099e8c645316ecb8e6abc8da2cf8731ab56ce4bd4224d5f8b3c18a45a0",
         "src/decode.rs": "8fa1b01bf93e599ec86b058b7cc287615c02b9605fb394bbe75f73681b5b4546",
         "src/descriptor.rs": "9d8c54c180c5bf9699aa677d17173e1f422e17539fe47c606848345dc0183ba5",
         "src/descriptors.rs": "83b39ab75da5479e0bdf4c0def09ff5891c418bc3a8c23005438f747e71e37f5",
@@ -46623,7 +46727,7 @@
         "src/validator/operators/simd.rs": "a338d3f82be1246a14cb96e5d99a99de0c728256703be36e4caf8142042693a2",
         "src/validator/operators/transaction.rs": "ff5c6353f2591a6d48ee334e74700b2c0299070892ab15e087d3b4f41f7e73df",
         "src/validator/operators/transaction_disabled.rs": "8a6d35a89a45af0f57282f9cf1e25146e18ac495e114c181e82988d52e5eac6d",
-        "src/validator/types.rs": "78dc299f1db4b8e305d44f2f5b005603187dde2a56d10d0d56df2d7c2bba9754"
+        "src/validator/types.rs": "5a8c5632951cea9dd7fbf6cac4625578f47bfcf17b02c11567645a3594f0d7fa"
       },
       "layer": "wasm",
       "name": "blog-wasm-module-decoder",
@@ -46726,7 +46830,7 @@
       "files_sha256": {
         ".cargo_vcs_info.json": "61468656f462106a3a472b20df14824472baefc15e031322839b24888bb172b8",
         ".gitmodules": "6a568b2383678621450816affc6e71d9801ca1a4e83be3960540bddee21637f6",
-        "Cargo.toml": "db1e245bb6c49adc360020fe579b8c67f35225f4b286700f620068125edff114",
+        "Cargo.toml": "1e56bd76e3091e74abad0f1f0e63b16b90a1f6c6757da33b8fe00d2dc5e3300a",
         "examples/build-wasm-from-scratch.rs": "73cb086352ffbb4e3df32bbf6e181790d2f8ec34c6dea83214956eb9cd7718a7",
         "examples/parse.rs": "54f06215b4e548e17ea0d94af4f584b53a2d48b997f919f974db188e433b5e58",
         "examples/round-trip.rs": "4d3d984976543b61ba9a959b90b409ac619ddd456f1c9d294151d4e7abbb02a4",
@@ -46776,7 +46880,7 @@
       "tests_sha256": {
         "test/foundation/wasm/module-transform/benches/benches.rs": "9f90e3c0ab0966272735a41d8d42e0f62787a076dad552f6bddd888f287024ea",
         "test/foundation/wasm/module-transform/benches/fixtures/dodrio-todomvc.wasm": "c96827fdf045bdd33b20b59cad115da0844481e234d461146c527271ed381324",
-        "test/foundation/wasm/module-transform/integration/emission_contracts.rs": "f25efde4aa4772e6170c1b041e5d4f81a7a29f28d9fb008967de36abd61b088d",
+        "test/foundation/wasm/module-transform/integration/emission_contracts.rs": "7ecc76e67cdcbddcc78b59e3e7b2a272052078de75af6fcbe1adc964c23244c5",
         "test/foundation/wasm/module-transform/unit/src/ir/traversals/tests.rs": "aef97ea4192168720d0e03695c183fee1a457e30a89cda02309d7e8c26b35d93",
         "test/foundation/wasm/module-transform/unit/src/module/exports/tests.rs": "e1dd7de8c17d4ee8d5c7bb6549517e7d1cfcecaefe3c9c70b67748ecbf7d12f0",
         "test/foundation/wasm/module-transform/unit/src/module/functions/mod/tests.rs": "355ff41478a46ab208dcab7837a556ef7e7963703b9b17064a9553e6d42ffddb",
@@ -46822,7 +46926,7 @@
       ],
       "directory": "src/interface",
       "files_sha256": {
-        "Cargo.toml": "1a47ccd5309b05c632b49a5d57eb2aead7673599db494da1a07a5c99b87fc677",
+        "Cargo.toml": "ad57df9faff3a0b96abe7987206a7c50f3b55b8c464861059c331957048978c2",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "ORIGIN.json": "bde0d55effc2c7042927f9302813c52aae0f80b65d2170808a9c8f20ab664150",
         "README.md": "b4926c681d00fc3d4c5b4f0c0298daf7dd7c65598fcc6cf9efc87f3eb1065fa6",
@@ -46852,7 +46956,7 @@
         "test/interface/integration/csr_components.rs": "46085818bc7810eca3dec877211cbacea01f0a52c902e031f98037fd9c3ce91f",
         "test/interface/integration/executor_overrides.rs": "d8bae47f589f39a70b6072bc3fcbc09a049cd148d16a201dbe7fc1f98adf19f5",
         "test/interface/integration/kernel_state.rs": "6a562d8ac15f9400c1f206bfdaa40645f98f594f81373219282e8941ae23529f",
-        "test/interface/unit/api/tests.rs": "bca29d7d397f6dce5233eee3b2a94932c7238b00c372c5c694b9e8f358985caf",
+        "test/interface/unit/api/tests.rs": "6c0657322af219671f28fb807bb53bef638b6322c66bd20fa82eb5b932ea1d18",
         "test/interface/unit/contracts/tests.rs": "1c6a402cee8bbd2f9a06fdbae1e75f866249b7e095446216620767961aba6f8d",
         "test/interface/unit/i18n/tests.rs": "0288e92a6279c139a2952ee5bf09187722c787dc4256f59feb0206128c534408",
         "test/interface/unit/server_corners/geometry/tests.rs": "9b5e42e86638409b741fed5f4fccab6f0545770daa7f559ea36dd4f3c2c2fb2e",
@@ -46877,7 +46981,7 @@
       ],
       "directory": "src/interface/dom",
       "files_sha256": {
-        "Cargo.toml": "881bcf20628fc2c7daaef484364991862864aa2b7cfe1f11c7948b0d45ab400e",
+        "Cargo.toml": "4e3897f0b3a58e5979dfdd2bf3bd9274ab029a94668d652874dc9ab341691e57",
         "INTEGRATED-SOURCES.json": "253a45faba5605279809242cee632f0a7e8222fa6d4ae5e20c678dac31fefe73",
         "LICENSE": "76356e713a0d1ea0bde549f4236b01c750100ab31790019843faa5aec449310f",
         "ORIGIN.json": "7a9f05665927f1a6effbf083c3c2c34c345dc53b01710f52ac1889364c7baebf",
@@ -47110,7 +47214,7 @@
         "test/interface/dom/unit/kernel/iterators/adaptors/test_checked_binomial.rs": "6f6ad2e62d31af8fa3b1bb19da9364c58eabd6ec9ffe73af74168b3e6dff4621",
         "test/interface/dom/unit/kernel/iterators/size_hint/mul_size_hints.rs": "fb3cbe9862c0df24913d051f1793aecacd451094eca6d5606858ee3d765e3605",
         "test/interface/dom/unit/kernel/reactivity/owner/tests.rs": "11c2bf7d2a4e4cb8de64229e18c2566de95eeda0cf5f7b7115e4ece0aae58ca1",
-        "test/interface/dom/unit/kernel/view_errors/tests.rs": "dec2ccc6cbe201041c96550ddb52e77d5d9bc8cc907550855420abdc4366440a",
+        "test/interface/dom/unit/kernel/view_errors/tests.rs": "186bdf6b3c2ba1c8312256080c5f7632e893104185d36ae0b6dbccebd64f7dd7",
         "test/interface/dom/unit/kernel/view_tree/erased/tests.rs": "8b85d80a0551719b6e8179d07a8bcd5f3b8bc2ed61e449a613a622185fd31ecc",
         "test/interface/dom/unit/kernel/view_tree/reactive_graph/tests.rs": "ddeb70be4d3e537fa5eebe37f6c2b3477ece4eef05ab854832e76bbb2d814a47",
         "test/interface/dom/unit/kernel/view_tree/renderer/dom/queue_tests.rs": "0a5c2a8eec2a75805806f62fe62eaa808b580a9ce4177380b5010684b86a6e0c",
@@ -47196,7 +47300,7 @@
       ],
       "directory": "src/server",
       "files_sha256": {
-        "Cargo.toml": "727a3b2d3f7e14d5931da91cc7dc5f8812779c056b3616ea1ae9c467a09bd2b9",
+        "Cargo.toml": "ca6a10744fe70d06b073091fa8d57203eca8eaa11c30b0e1f9a1ece5471f98ed",
         "build.rs": "26bfa0190c338532cf029c003937aeaea00e0c302004a5d0503df7761c7ef453",
         "schema/initialize-site-author.sql": "fa82753ff3758d95a71df0fd0c0318cfe134b4738137cd7d3f30c93cb2f500af",
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
@@ -47307,7 +47411,7 @@
       "directory": "src/tools/assets",
       "files_sha256": {
         ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-        "Cargo.toml": "b0cb0b5c0b673db7d459e94bcd38bf3b10e5ede03a3a0fa2f462966b461516d3",
+        "Cargo.toml": "3c939d2efbb778f334a9f45ac74620a06fe08298423c23a8e87d572dc55f7b1f",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "ORIGIN.json": "93ce2b98016b4bfed5ba1ace17bc948b38f9fa9cfb124a00ea4a19cd0667fb49",
         "README.md": "77a380007c6b7b8cf3d0245436d8b3f8264d4e980d94e293cdce94109b46ba8b",
@@ -47326,7 +47430,7 @@
         "src/javascript.rs": "70f1615bf8e157305aeb147e81c2f742db0d92555083742eac274868708a7db8",
         "src/layout.rs": "4b3aac724ca05dbacdb5f491f4ebfe2f5c0021d79cc0f58b06d99d73df18791b",
         "src/lib.rs": "45c06e29dcf74d7ae659d7ce194a6bbf80c35d06bd8a16a2e471a5b4ba27483d",
-        "src/main.rs": "b2f552c661fe3c196909d5cf8bdda0d07049592c65565089dd8fc418d502b6ea",
+        "src/main.rs": "51e283b08514fc0b505e31f7e9f1bb8587296d8824e8d604d388712e3e2c3af7",
         "src/platform_contract.rs": "36e1fcb9f7ce24ea01a94805125d01239c51ee97d063a68f69664cb66a184725",
         "src/process.rs": "154524de4e0625bed5ad59500a9b8518c2617bc96b49d7bb31e1761a747f221e",
         "src/server_build.rs": "6b088879e15eeaaed892a186a1e9e9d3c4d241750ac09164daa219838283f643",
@@ -47369,7 +47473,7 @@
       "directory": "src/tools/setup",
       "files_sha256": {
         "Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
-        "README.md": "f95afde5b745a37129b5e6c19ee5138e2730c563817d47049b26e8bb990c5206",
+        "README.md": "9136643e2b06dc5f51a9876bc6c93f458ba6a65c7d8c48e3429fba9a8c031c5e",
         "src/main.rs": "c4aa568381c76e8154dc147d4e3999525f10b4450548ef295e2a706784481919"
       },
       "layer": "operations",
@@ -47445,7 +47549,6 @@
             "color",
             "default",
             "derive",
-            "env",
             "error-context",
             "help",
             "std",
@@ -47454,18 +47557,6 @@
           ],
           "name": "blog-cli-arguments",
           "roles": [
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/cli/terminal-format": {
-          "features": [
-            "default",
-            "std"
-          ],
-          "name": "blog-cli-terminal-format",
-          "roles": [
-            "compile",
             "runtime"
           ],
           "version": "0.0.0"
@@ -47510,8 +47601,7 @@
             "default-hasher",
             "equivalent",
             "inline-more",
-            "raw-entry",
-            "serde"
+            "raw-entry"
           ],
           "name": "blog-collections-database-hash-table",
           "roles": [
@@ -47545,7 +47635,6 @@
           "features": [
             "const_generics",
             "const_new",
-            "serde",
             "union"
           ],
           "name": "blog-collections-inline-vector",
@@ -47576,7 +47665,6 @@
         "src/foundation/collections/ordered-map": {
           "features": [
             "default",
-            "serde",
             "std"
           ],
           "name": "blog-collections-ordered-map",
@@ -47807,12 +47895,9 @@
         "src/foundation/diagnostics/structured-events": {
           "features": [
             "alloc",
-            "ansi",
             "attributes",
             "collector",
-            "collector-default",
             "default",
-            "fmt",
             "log",
             "log-bridge",
             "log-tracer",
@@ -48031,14 +48116,10 @@
           "features": [
             "alloc",
             "clock",
-            "default",
             "iana-time-zone",
-            "js-sys",
             "now",
             "serde",
-            "std",
-            "wasm-bindgen",
-            "wasmbind"
+            "std"
           ],
           "name": "blog-format-date-time",
           "roles": [
@@ -48316,12 +48397,8 @@
         },
         "src/foundation/network/request-router": {
           "features": [
-            "default",
-            "form",
             "http1",
             "json",
-            "matched-path",
-            "original-uri",
             "query",
             "tokio",
             "tower-log",
@@ -48463,12 +48540,8 @@
         "src/foundation/runtime/async-toolkit": {
           "features": [
             "alloc",
-            "async-await",
-            "async-await-macro",
             "channel",
-            "default",
             "executor",
-            "io",
             "shared-state",
             "sink",
             "std",
@@ -48478,14 +48551,6 @@
           "roles": [
             "compile",
             "runtime"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/future-macros": {
-          "features": [],
-          "name": "blog-runtime-future-macros",
-          "roles": [
-            "compile"
           ],
           "version": "0.0.0"
         },
@@ -48580,7 +48645,6 @@
         },
         "src/foundation/storage/sqlite-access": {
           "features": [
-            "chrono",
             "derive",
             "json",
             "serde",
@@ -49113,7 +49177,6 @@
         "src/foundation/collections/ordered-map": {
           "features": [
             "default",
-            "serde",
             "std"
           ],
           "name": "blog-collections-ordered-map",
@@ -49208,14 +49271,10 @@
           "features": [
             "alloc",
             "clock",
-            "default",
             "iana-time-zone",
-            "js-sys",
             "now",
             "serde",
-            "std",
-            "wasm-bindgen",
-            "wasmbind"
+            "std"
           ],
           "name": "blog-format-date-time",
           "roles": [
@@ -49254,14 +49313,11 @@
             "CssStyleDeclaration",
             "CustomEvent",
             "CustomEventInit",
-            "DataTransfer",
             "DeviceMotionEvent",
             "DeviceOrientationEvent",
             "Document",
             "DocumentFragment",
             "DomException",
-            "DomMatrix",
-            "DomMatrixReadOnly",
             "DomRect",
             "DomRectList",
             "DomRectReadOnly",
@@ -49271,12 +49327,10 @@
             "Element",
             "ErrorEvent",
             "Event",
-            "EventSource",
             "EventTarget",
             "File",
             "FileList",
             "FocusEvent",
-            "FontFace",
             "FontFaceSet",
             "FormData",
             "GamepadEvent",
@@ -49323,7 +49377,6 @@
             "HtmlObjectElement",
             "HtmlOptGroupElement",
             "HtmlOptionElement",
-            "HtmlOptionsCollection",
             "HtmlOutputElement",
             "HtmlParagraphElement",
             "HtmlParamElement",
@@ -49355,8 +49408,6 @@
             "Location",
             "MediaQueryList",
             "MediaQueryListEvent",
-            "MediaStream",
-            "MediaStreamTrack",
             "MessageEvent",
             "MouseEvent",
             "MutationObserver",
@@ -49366,34 +49417,19 @@
             "Node",
             "NodeList",
             "PageTransitionEvent",
-            "Performance",
             "PointerEvent",
             "PopStateEvent",
             "ProgressEvent",
             "PromiseRejectionEvent",
             "ReadableStream",
             "ReadableStreamDefaultReader",
-            "ReadableStreamReadResult",
             "Request",
             "RequestCache",
             "RequestCredentials",
             "RequestInit",
-            "RequestMode",
             "RequestRedirect",
             "ResizeObserver",
             "Response",
-            "RtcConfiguration",
-            "RtcIceGatheringState",
-            "RtcIceServer",
-            "RtcPeerConnection",
-            "RtcPeerConnectionState",
-            "RtcRtpTransceiver",
-            "RtcRtpTransceiverDirection",
-            "RtcRtpTransceiverInit",
-            "RtcSdpType",
-            "RtcSessionDescription",
-            "RtcSessionDescriptionInit",
-            "RtcTrackEvent",
             "ScrollBehavior",
             "ScrollToOptions",
             "SecurityPolicyViolationEvent",
@@ -49416,9 +49452,6 @@
             "ValidityState",
             "WheelEvent",
             "Window",
-            "XmlHttpRequest",
-            "XmlHttpRequestEventTarget",
-            "XmlHttpRequestUpload",
             "console",
             "default",
             "std"
@@ -49486,12 +49519,8 @@
         "src/foundation/runtime/async-toolkit": {
           "features": [
             "alloc",
-            "async-await",
-            "async-await-macro",
             "channel",
-            "default",
             "executor",
-            "io",
             "shared-state",
             "sink",
             "std",
@@ -49500,14 +49529,6 @@
           "name": "blog-runtime-async-toolkit",
           "roles": [
             "runtime"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/future-macros": {
-          "features": [],
-          "name": "blog-runtime-future-macros",
-          "roles": [
-            "compile"
           ],
           "version": "0.0.0"
         },
@@ -49779,17 +49800,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/cli/terminal-format": {
-          "features": [
-            "default",
-            "std"
-          ],
-          "name": "blog-cli-terminal-format",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/collections/bit-set": {
           "features": [
             "std"
@@ -49826,8 +49836,7 @@
             "default-hasher",
             "equivalent",
             "inline-more",
-            "raw-entry",
-            "serde"
+            "raw-entry"
           ],
           "name": "blog-collections-database-hash-table",
           "roles": [
@@ -49869,7 +49878,6 @@
           "features": [
             "const_generics",
             "const_new",
-            "serde",
             "union"
           ],
           "name": "blog-collections-inline-vector",
@@ -49902,7 +49910,6 @@
         "src/foundation/collections/ordered-map": {
           "features": [
             "default",
-            "serde",
             "std"
           ],
           "name": "blog-collections-ordered-map",
@@ -50022,12 +50029,9 @@
         "src/foundation/diagnostics/structured-events": {
           "features": [
             "alloc",
-            "ansi",
             "attributes",
             "collector",
-            "collector-default",
             "default",
-            "fmt",
             "log",
             "log-bridge",
             "log-tracer",
@@ -50214,7 +50218,6 @@
         "src/foundation/format/configuration": {
           "features": [
             "alloc",
-            "default",
             "display",
             "edit",
             "parse",
@@ -50273,14 +50276,6 @@
             "std"
           ],
           "name": "blog-format-parser-combinators",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/format/release-identity": {
-          "features": [],
-          "name": "blog-format-release-identity",
           "roles": [
             "compile"
           ],
@@ -50433,7 +50428,6 @@
         "src/foundation/memory/indexed-arena": {
           "features": [
             "default",
-            "rayon",
             "std"
           ],
           "name": "blog-memory-indexed-arena",
@@ -50572,12 +50566,8 @@
         },
         "src/foundation/network/request-router": {
           "features": [
-            "default",
-            "form",
             "http1",
             "json",
-            "matched-path",
-            "original-uri",
             "query",
             "tokio",
             "tower-log",
@@ -50700,26 +50690,14 @@
         "src/foundation/runtime/async-toolkit": {
           "features": [
             "alloc",
-            "async-await",
-            "async-await-macro",
             "channel",
-            "default",
             "executor",
-            "io",
             "shared-state",
             "sink",
             "std",
             "utilities"
           ],
           "name": "blog-runtime-async-toolkit",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/future-macros": {
-          "features": [],
-          "name": "blog-runtime-future-macros",
           "roles": [
             "compile"
           ],
@@ -50732,14 +50710,6 @@
             "os-poll"
           ],
           "name": "blog-runtime-io-poller",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/parallel-iterator": {
-          "features": [],
-          "name": "blog-runtime-parallel-iterator",
           "roles": [
             "compile"
           ],
@@ -50795,28 +50765,9 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/runtime/worker-pool": {
-          "features": [],
-          "name": "blog-runtime-worker-pool",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/atomic-lock": {
           "features": [],
           "name": "blog-sync-atomic-lock",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/sync/concurrent-collections": {
-          "features": [
-            "alloc",
-            "std"
-          ],
-          "name": "blog-sync-concurrent-collections",
           "roles": [
             "compile"
           ],
@@ -51334,11 +51285,8 @@
         },
         "src/foundation/wasm/module-decoder": {
           "features": [
-            "component-model",
-            "default",
             "features",
             "hash-collections",
-            "serde",
             "simd",
             "std",
             "validate"
@@ -51351,8 +51299,6 @@
         },
         "src/foundation/wasm/module-encoder": {
           "features": [
-            "component-model",
-            "default",
             "std"
           ],
           "name": "blog-wasm-module-encoder",
@@ -51362,10 +51308,7 @@
           "version": "0.0.0"
         },
         "src/foundation/wasm/module-transform": {
-          "features": [
-            "parallel",
-            "rayon"
-          ],
+          "features": [],
           "name": "blog-wasm-module-transform",
           "roles": [
             "compile"
@@ -51418,7 +51361,6 @@
           "features": [
             "const_generics",
             "const_new",
-            "serde",
             "union"
           ],
           "name": "blog-collections-inline-vector",
@@ -51869,7 +51811,6 @@
             "color",
             "default",
             "derive",
-            "env",
             "error-context",
             "help",
             "std",
@@ -51877,17 +51818,6 @@
             "usage"
           ],
           "name": "blog-cli-arguments",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/cli/terminal-format": {
-          "features": [
-            "default",
-            "std"
-          ],
-          "name": "blog-cli-terminal-format",
           "roles": [
             "compile"
           ],
@@ -51942,8 +51872,7 @@
             "default-hasher",
             "equivalent",
             "inline-more",
-            "raw-entry",
-            "serde"
+            "raw-entry"
           ],
           "name": "blog-collections-database-hash-table",
           "roles": [
@@ -51985,7 +51914,6 @@
           "features": [
             "const_generics",
             "const_new",
-            "serde",
             "union"
           ],
           "name": "blog-collections-inline-vector",
@@ -52026,7 +51954,6 @@
         "src/foundation/collections/ordered-map": {
           "features": [
             "default",
-            "serde",
             "std"
           ],
           "name": "blog-collections-ordered-map",
@@ -52239,12 +52166,9 @@
         "src/foundation/diagnostics/structured-events": {
           "features": [
             "alloc",
-            "ansi",
             "attributes",
             "collector",
-            "collector-default",
             "default",
-            "fmt",
             "log",
             "log-bridge",
             "log-tracer",
@@ -52477,7 +52401,6 @@
         "src/foundation/format/configuration": {
           "features": [
             "alloc",
-            "default",
             "display",
             "edit",
             "parse",
@@ -52528,14 +52451,10 @@
           "features": [
             "alloc",
             "clock",
-            "default",
             "iana-time-zone",
-            "js-sys",
             "now",
             "serde",
-            "std",
-            "wasm-bindgen",
-            "wasmbind"
+            "std"
           ],
           "name": "blog-format-date-time",
           "roles": [
@@ -52589,14 +52508,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/format/release-identity": {
-          "features": [],
-          "name": "blog-format-release-identity",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/interface/browser-api": {
           "features": [
             "AbortController",
@@ -52615,14 +52526,11 @@
             "CssStyleDeclaration",
             "CustomEvent",
             "CustomEventInit",
-            "DataTransfer",
             "DeviceMotionEvent",
             "DeviceOrientationEvent",
             "Document",
             "DocumentFragment",
             "DomException",
-            "DomMatrix",
-            "DomMatrixReadOnly",
             "DomRect",
             "DomRectList",
             "DomRectReadOnly",
@@ -52632,12 +52540,10 @@
             "Element",
             "ErrorEvent",
             "Event",
-            "EventSource",
             "EventTarget",
             "File",
             "FileList",
             "FocusEvent",
-            "FontFace",
             "FontFaceSet",
             "FormData",
             "GamepadEvent",
@@ -52684,7 +52590,6 @@
             "HtmlObjectElement",
             "HtmlOptGroupElement",
             "HtmlOptionElement",
-            "HtmlOptionsCollection",
             "HtmlOutputElement",
             "HtmlParagraphElement",
             "HtmlParamElement",
@@ -52716,8 +52621,6 @@
             "Location",
             "MediaQueryList",
             "MediaQueryListEvent",
-            "MediaStream",
-            "MediaStreamTrack",
             "MessageEvent",
             "MouseEvent",
             "MutationObserver",
@@ -52727,34 +52630,19 @@
             "Node",
             "NodeList",
             "PageTransitionEvent",
-            "Performance",
             "PointerEvent",
             "PopStateEvent",
             "ProgressEvent",
             "PromiseRejectionEvent",
             "ReadableStream",
             "ReadableStreamDefaultReader",
-            "ReadableStreamReadResult",
             "Request",
             "RequestCache",
             "RequestCredentials",
             "RequestInit",
-            "RequestMode",
             "RequestRedirect",
             "ResizeObserver",
             "Response",
-            "RtcConfiguration",
-            "RtcIceGatheringState",
-            "RtcIceServer",
-            "RtcPeerConnection",
-            "RtcPeerConnectionState",
-            "RtcRtpTransceiver",
-            "RtcRtpTransceiverDirection",
-            "RtcRtpTransceiverInit",
-            "RtcSdpType",
-            "RtcSessionDescription",
-            "RtcSessionDescriptionInit",
-            "RtcTrackEvent",
             "ScrollBehavior",
             "ScrollToOptions",
             "SecurityPolicyViolationEvent",
@@ -52777,9 +52665,6 @@
             "ValidityState",
             "WheelEvent",
             "Window",
-            "XmlHttpRequest",
-            "XmlHttpRequestEventTarget",
-            "XmlHttpRequestUpload",
             "console",
             "default",
             "std"
@@ -52981,7 +52866,6 @@
         "src/foundation/memory/indexed-arena": {
           "features": [
             "default",
-            "rayon",
             "std"
           ],
           "name": "blog-memory-indexed-arena",
@@ -53148,12 +53032,8 @@
         },
         "src/foundation/network/request-router": {
           "features": [
-            "default",
-            "form",
             "http1",
             "json",
-            "matched-path",
-            "original-uri",
             "query",
             "tokio",
             "tower-log",
@@ -53284,26 +53164,14 @@
         "src/foundation/runtime/async-toolkit": {
           "features": [
             "alloc",
-            "async-await",
-            "async-await-macro",
             "channel",
-            "default",
             "executor",
-            "io",
             "shared-state",
             "sink",
             "std",
             "utilities"
           ],
           "name": "blog-runtime-async-toolkit",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/future-macros": {
-          "features": [],
-          "name": "blog-runtime-future-macros",
           "roles": [
             "compile"
           ],
@@ -53316,14 +53184,6 @@
             "os-poll"
           ],
           "name": "blog-runtime-io-poller",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/runtime/parallel-iterator": {
-          "features": [],
-          "name": "blog-runtime-parallel-iterator",
           "roles": [
             "compile"
           ],
@@ -53391,14 +53251,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/runtime/worker-pool": {
-          "features": [],
-          "name": "blog-runtime-worker-pool",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/storage/record-derive": {
           "features": [
             "default"
@@ -53411,7 +53263,6 @@
         },
         "src/foundation/storage/sqlite-access": {
           "features": [
-            "chrono",
             "derive",
             "json",
             "serde",
@@ -54080,11 +53931,8 @@
         },
         "src/foundation/wasm/module-decoder": {
           "features": [
-            "component-model",
-            "default",
             "features",
             "hash-collections",
-            "serde",
             "simd",
             "std",
             "validate"
@@ -54097,8 +53945,6 @@
         },
         "src/foundation/wasm/module-encoder": {
           "features": [
-            "component-model",
-            "default",
             "std"
           ],
           "name": "blog-wasm-module-encoder",
@@ -54108,10 +53954,7 @@
           "version": "0.0.0"
         },
         "src/foundation/wasm/module-transform": {
-          "features": [
-            "parallel",
-            "rayon"
-          ],
+          "features": [],
           "name": "blog-wasm-module-transform",
           "roles": [
             "compile"

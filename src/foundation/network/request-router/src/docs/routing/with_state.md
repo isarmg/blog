@@ -232,7 +232,7 @@ let app = Router::new()
 This is not required but it gives axum a chance to update some internals in the router
 which may impact performance and reduce allocations.
 
-Note that [`Router::into_make_service`] and [`Router::into_make_service_with_connect_info`]
-do this automatically.
+[`Router::into_make_service`] does this automatically, as does
+`Router::into_make_service_with_connect_info` when the `tokio` feature is enabled.
 
 [`Extension`]: crate::Extension

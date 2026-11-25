@@ -31,7 +31,7 @@ impl<H, T, S> HandlerService<H, T, S> {
         &self.state
     }
 
-    /// Convert the handler into a [`MakeService`].
+    /// Convert the handler into an [`IntoMakeService`].
     ///
     /// This allows you to serve a single handler if you don't need any routing:
     ///
@@ -58,8 +58,6 @@ impl<H, T, S> HandlerService<H, T, S> {
     /// http_routing::serve(listener, app.into_make_service()).await.unwrap();
     /// # };
     /// ```
-    ///
-    /// [`MakeService`]: service_stack::make::MakeService
     pub fn into_make_service(self) -> IntoMakeService<HandlerService<H, T, S>> {
         IntoMakeService::new(self)
     }

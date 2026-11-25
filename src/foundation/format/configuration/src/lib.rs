@@ -66,8 +66,8 @@
 //!
 //! This means that you can use Serde to deserialize/serialize the
 //! [`Table`] type as well as [`Value`] and [`Datetime`] type in this crate. You can also
-//! use the [`Deserializer`], [`Serializer`], or [`Table`] type itself to act as
-//! a deserializer/serializer for arbitrary types.
+//! use `Deserializer` to parse TOML text and, with the `display` feature,
+//! `Serializer` to format it.
 //!
 //! An example of deserializing with TOML is:
 //!
@@ -147,7 +147,7 @@
 #![warn(clippy::print_stderr)]
 #![warn(clippy::print_stdout)]
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", feature = "write"))]
 extern crate alloc;
 /// TOML date and time primitives, with no parser or editor dependency.
 #[forbid(unsafe_code)]

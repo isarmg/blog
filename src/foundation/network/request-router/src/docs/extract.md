@@ -600,7 +600,7 @@ let app = Router::new().route("/", get(handler)).layer(Extension(state));
 
 For security reasons, [`Bytes`] will, by default, not accept bodies larger than
 2MB. This also applies to extractors that uses [`Bytes`] internally such as
-`String`, [`Json`], and [`Form`].
+`String` or the optional `Json` and `Form` extractors.
 
 For more details, including how to disable this limit, see [`DefaultBodyLimit`].
 

@@ -346,18 +346,14 @@ where
 
 /// Extension trait for [`Handler`]s that don't have state.
 ///
-/// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`MakeService`].
-///
-/// [`MakeService`]: service_stack::make::MakeService
+/// This provides convenience methods to convert the [`Handler`] into a [`Service`] or [`IntoMakeService`].
 pub trait HandlerWithoutStateExt<T>: Handler<T, ()> {
     /// Convert the handler into a [`Service`] and no state.
     fn into_service(self) -> HandlerService<Self, T, ()>;
 
-    /// Convert the handler into a [`MakeService`] and no state.
+    /// Wrap the stateless handler in an [`IntoMakeService`].
     ///
     /// See [`HandlerService::into_make_service`] for more details.
-    ///
-    /// [`MakeService`]: service_stack::make::MakeService
     fn into_make_service(self) -> IntoMakeService<HandlerService<Self, T, ()>>;
 
     /// Convert the handler into a [`MakeService`] which stores information

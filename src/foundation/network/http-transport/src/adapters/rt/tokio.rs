@@ -29,8 +29,8 @@
 //! | [`WithTokioIo<H>`] | ✅ **true**      | ✅ **true**       | ✅ **true**  | ✅ **true**  |
 //!
 //! For most situations, [`TokioIo<I>`] is the proper choice. This should be
-//! constructed, wrapping some underlying [the HTTP transport](crate) or [`tokio`] IO, at the
-//! call-site of a function like [`crate::client::conn::http1::handshake`].
+//! constructed at the boundary between Tokio and the HTTP transport, for example
+//! when passing a Tokio stream to an HTTP/1 connection builder.
 //!
 //! [`TokioIo<I>`] switches across these ecosystems, but notably does not
 //! preserve the existing IO trait implementations of its underlying IO. If

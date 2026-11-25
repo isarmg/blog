@@ -101,7 +101,6 @@ dependencies = [
  "blog-collections-inline-string",
  "blog-collections-inline-vector",
  "blog-diagnostics-event-facade",
- "blog-diagnostics-typed-error",
  "blog-encoding-byte-search",
  "blog-encoding-integer-format",
  "blog-encoding-script-float-format",
@@ -143,8 +142,6 @@ dependencies = [
  "blog-diagnostics-event-facade",
  "blog-encoding-integer-format",
  "blog-encoding-radix-codecs",
- "blog-format-data-model",
- "blog-format-json",
  "blog-lookup-script-table",
  "blog-sync-lazy-global",
  "blog-syntax-style-iterators",
@@ -224,10 +221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-cli-terminal-format"
-version = "0.0.0"
-
-[[package]]
 name = "blog-cli-terminal-style"
 version = "0.0.0"
 dependencies = [
@@ -255,7 +248,6 @@ version = "0.0.0"
 dependencies = [
  "blog-collections-fast-hash",
  "blog-collections-key-equivalence",
- "blog-format-data-model",
  "blog-memory-allocator",
 ]
 
@@ -284,9 +276,6 @@ dependencies = [
 [[package]]
 name = "blog-collections-inline-vector"
 version = "0.0.0"
-dependencies = [
- "blog-format-data-model",
-]
 
 [[package]]
 name = "blog-collections-key-equivalence"
@@ -315,7 +304,6 @@ version = "0.0.0"
 dependencies = [
  "blog-collections-hash-table",
  "blog-collections-key-equivalence",
- "blog-format-data-model",
 ]
 
 [[package]]
@@ -465,7 +453,6 @@ version = "0.0.0"
 name = "blog-diagnostics-structured-events"
 version = "0.0.0"
 dependencies = [
- "blog-cli-terminal-format",
  "blog-collections-concurrent-slab",
  "blog-collections-inline-vector",
  "blog-diagnostics-event-facade",
@@ -638,10 +625,8 @@ name = "blog-format-date-time"
 version = "0.0.0"
 dependencies = [
  "blog-format-data-model",
- "blog-interface-javascript-api",
  "blog-math-numeric-traits",
  "blog-platform-local-time-zone",
- "blog-wasm-browser-bridge",
 ]
 
 [[package]]
@@ -681,10 +666,6 @@ version = "0.0.0"
 dependencies = [
  "blog-encoding-byte-search",
 ]
-
-[[package]]
-name = "blog-format-release-identity"
-version = "0.0.0"
 
 [[package]]
 name = "blog-interface"
@@ -829,9 +810,6 @@ version = "0.0.0"
 [[package]]
 name = "blog-memory-indexed-arena"
 version = "0.0.0"
-dependencies = [
- "blog-runtime-parallel-iterator",
-]
 
 [[package]]
 name = "blog-memory-owned-borrow"
@@ -1052,18 +1030,7 @@ name = "blog-runtime-async-toolkit"
 version = "0.0.0"
 dependencies = [
  "blog-collections-slot-storage",
- "blog-encoding-byte-search",
- "blog-runtime-future-macros",
  "blog-sync-pinned-projection",
-]
-
-[[package]]
-name = "blog-runtime-future-macros"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-rust-parser",
- "blog-syntax-token-stream",
- "blog-syntax-token-templates",
 ]
 
 [[package]]
@@ -1071,14 +1038,6 @@ name = "blog-runtime-io-poller"
 version = "0.0.0"
 dependencies = [
  "blog-platform-system-abi",
-]
-
-[[package]]
-name = "blog-runtime-parallel-iterator"
-version = "0.0.0"
-dependencies = [
- "blog-runtime-worker-pool",
- "blog-syntax-alternative",
 ]
 
 [[package]]
@@ -1129,13 +1088,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-runtime-worker-pool"
-version = "0.0.0"
-dependencies = [
- "blog-sync-concurrent-collections",
-]
-
-[[package]]
 name = "blog-setup"
 version = "3.0.1"
 dependencies = [
@@ -1168,7 +1120,6 @@ dependencies = [
  "blog-diagnostics-typed-error",
  "blog-encoding-byte-buffer",
  "blog-format-data-model",
- "blog-format-date-time",
  "blog-format-json",
  "blog-network-web-address",
  "blog-runtime-async-toolkit",
@@ -1640,8 +1591,6 @@ dependencies = [
  "blog-collections-bit-set",
  "blog-collections-database-hash-table",
  "blog-collections-ordered-map",
- "blog-format-data-model",
- "blog-format-release-identity",
 ]
 
 [[package]]
@@ -1659,7 +1608,6 @@ dependencies = [
  "blog-diagnostics-error-context",
  "blog-diagnostics-event-facade",
  "blog-memory-indexed-arena",
- "blog-runtime-parallel-iterator",
  "blog-wasm-module-decoder",
  "blog-wasm-module-encoder",
  "blog-wasm-module-transform-derive",

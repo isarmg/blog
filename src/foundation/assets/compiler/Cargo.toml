@@ -23,7 +23,7 @@ default-features = true
 [dependencies.smallvec]
 package = "blog-collections-inline-vector"
 path = "../../collections/inline-vector"
-features = ["serde", "union"]
+features = ["union"]
 default-features = true
 
 [dependencies.itoa]
@@ -47,12 +47,6 @@ default-features = true
 [dependencies.serde]
 package = "blog-format-data-model"
 path = "../../format/data-model"
-features = ["derive"]
-default-features = true
-
-[dependencies.thiserror]
-package = "blog-diagnostics-typed-error"
-path = "../../diagnostics/typed-error"
 features = []
 default-features = true
 

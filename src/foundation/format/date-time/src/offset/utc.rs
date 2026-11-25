@@ -55,10 +55,8 @@ impl Utc {
 
     /// Returns a `DateTime<Utc>` which corresponds to the current date and time in UTC.
     ///
-    /// See also the similar [`Local::now()`] which returns `DateTime<Local>`, i.e. the local date
-    /// and time including offset from UTC.
-    ///
-    /// [`Local::now()`]: crate::Local::now
+    /// With the `clock` feature, `Local::now()` returns the local date and time
+    /// including its offset from UTC.
     ///
     /// # Example
     ///

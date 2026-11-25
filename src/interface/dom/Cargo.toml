@@ -41,8 +41,14 @@ default-features = false
 [dependencies.futures]
 package = "blog-runtime-async-toolkit"
 path = "../../foundation/runtime/async-toolkit"
-default-features = true
-features = ["async-await-macro", "channel", "executor", "io", "shared-state", "sink", "std", "utilities"]
+default-features = false
+features = ["channel", "std", "utilities"]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies.futures]
+package = "blog-runtime-async-toolkit"
+path = "../../foundation/runtime/async-toolkit"
+default-features = false
+features = ["executor"]
 
 [dependencies.indexmap]
 package = "blog-collections-ordered-map"
@@ -52,7 +58,8 @@ default-features = true
 [dependencies.js-sys]
 package = "blog-interface-javascript-api"
 path = "../../foundation/interface/javascript-api"
-default-features = true
+default-features = false
+features = ["std"]
 
 [dependencies.pin-project-lite]
 package = "blog-sync-pinned-projection"

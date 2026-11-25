@@ -59,7 +59,7 @@ define_rejection! {
 define_rejection! {
     #[status = UNSUPPORTED_MEDIA_TYPE]
     #[body = "Form requests must have `Content-Type: application/x-www-form-urlencoded`"]
-    /// Rejection type for [`Form`](super::Form) or [`RawForm`](super::RawForm)
+    /// Rejection type for the optional `Form` extractor or [`RawForm`](super::RawForm)
     /// used if the `Content-Type` header is missing
     /// or its value is not `application/x-www-form-urlencoded`.
     pub struct InvalidFormContentType;

@@ -4,7 +4,7 @@
 
 ## 资源编译
 
-`blog-assets` 直接消费两个独立编译器：`assets/compiler` 处理 JavaScript 的解析、AST、语义、生成与压缩；`assets/style-compiler` 处理 CSS 的解析、选择器、目标浏览器转换和压缩。各自的类型与派生宏归属对应管线，修改一条管线不要求另一条重新编译。
+`blog-assets` 直接消费两个独立编译器：`assets/compiler` 处理 JavaScript 的解析、AST、语义、生成与压缩；`assets/style-compiler` 处理 CSS 的解析、选择器、目标浏览器转换和压缩。两者有各自的 AST 和编译入口，共用[静态查找表](data-structures.md#数值随机与静态表)。
 
 CSS 编译入口见[样式表接口](../../src/foundation/assets/style-compiler/parts/style_optimizer/src/stylesheet.rs)。来源说明见[Lightning CSS](origins/lightningcss-1.0.0-alpha.71/README.md)。生产入口使用 Rust `blog-assets`，命令、配置、输出目录和资源收据见[构建工具](../../src/tools/assets/README.md)。构建输入使用内容摘要，每次构建建立新快照；进程内复用解析结果仍必须对应同一源码快照。
 

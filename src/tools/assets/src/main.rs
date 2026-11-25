@@ -165,7 +165,10 @@ fn run() -> Result<()> {
                 .unwrap_or_else(|| "127.0.0.1:5173".into())
                 .parse()?;
             let proxies = values.get("--proxy").cloned().unwrap_or_default();
-            tokio::runtime::Runtime::new()?.block_on(blog_assets::dev::serve(
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            runtime.block_on(blog_assets::dev::serve(
                 options,
                 bind,
                 proxies,

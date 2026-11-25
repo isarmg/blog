@@ -52,10 +52,15 @@ path = "../module-transform-derive"
 package = "blog-wasm-module-transform-derive"
 
 [dependencies.wasm-encoder]
+default-features = false
+features = ["std"]
 path = "../module-encoder"
 package = "blog-wasm-module-encoder"
 
 [dependencies.wasmparser]
+# The browser artifact is a core module. Keep full validation for its core instructions.
+default-features = false
+features = ["std", "validate", "features", "hash-collections", "simd"]
 path = "../module-decoder"
 package = "blog-wasm-module-decoder"
 
