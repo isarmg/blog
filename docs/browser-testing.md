@@ -1,28 +1,28 @@
 # 浏览器验证
 
-浏览器测试使用 Node 26.7.0、Playwright 和 axe，执行 Chromium 与 Firefox。版本由 `src/web/package.json` 和 `src/web/package-lock.json` 锁定；浏览器二进制及系统库单独安装。生产资源由 Rust 构建，测试工具只用于驱动和检查页面。
+浏览器测试用 Playwright 驱动 Chromium 和 Firefox，用 axe 检查无障碍规则。[.node-version](../.node-version) 与 CI 固定 Node 26.7.0；[package.json](../src/web/package.json) 声明支持 `>=26.7.0 <27`，测试依赖版本由 [package-lock.json](../src/web/package-lock.json) 锁定。浏览器二进制及系统库单独安装。生产资源由 Rust 构建，测试工具只用于驱动和检查页面。
 
 ## 准备与执行
 
 先按[开发说明](development.md)准备 Rust、WASM 目标和 Linux 编译环境，再从根目录执行：
 
 ```sh
-cd src/web
-npm ci
-npx playwright install --with-deps chromium firefox
-npm run test:unit
-npm run test:browser:blog-interface
+(cd src/web && npm ci && npx playwright install --with-deps chromium firefox)
+npm --prefix src/web run test:unit
+npm --prefix src/web run test:browser:blog-interface
 ```
 
 `npm ci` 和浏览器安装可能联网。固定版本、依赖关系及常用 API 见[测试工具说明](dependencies/testing.md)。
 
+表中 `npm run …` 从 `src/web` 运行；其余路径相对于仓库根。
+
 | 入口 | 检查范围 | 数据来源 |
 | --- | --- | --- |
 | `npm run test:unit` | 工具链合同、Rust 域测试、浏览器 fixture 单测 | 本地测试输入 |
-| `npm run test:browser:blog-interface` | WASM 运行、异步状态、流取消、阅读交互和页面冒烟 | 脚本指定的 API fixture 或独立原生服务 |
+| `npm run test:browser:blog-interface` | WASM 运行、异步状态、流取消、阅读交互和页面冒烟 | 默认使用 API fixture，不启动原生后端 |
 | `npm run test:admin` | 管理布局、账号设置、幂等提交确认与表单恢复 | API fixture |
 | `npm run test:public` | 公开布局、读取错误恢复、分页、语言、弹窗和匿名评论行为 | API fixture |
-| `bash test/operations/smoke.sh`（根目录） | 真实 HTTP、SQLite、登录、公开页面与重启持久化 | 独立可丢弃 ROOT |
+| `bash test/operations/smoke.sh` | 真实 HTTP、SQLite、登录、重启，以及公开页面和管理员写入 | 脚本创建临时 ROOT、启动已编译的服务，并调用浏览器 |
 | CI `installed_candidate` | 候选包完整性、安装、凭据、权限与实例隔离 | 独立安装和真实后端 |
 
 `test/browser/admin-recovery.mjs` 和 `test/browser/public-recovery.mjs` 覆盖丢失响应、原提交确认、可编辑草稿、并发分页、语言链接及原生弹窗的键盘行为。
@@ -41,7 +41,7 @@ DOM 边界回归先运行 `bash test/interface/dom/browser/build.sh`，再执行
 
 在仓库根运行 `bash test/interface/browser/build.sh` 和 `node test/interface/browser/corner-listener-lifecycle.mjs`，可通过公开圆角 API 验证 iframe 导航、停止与析构。用例覆盖同源窗口转为跨源后释放，以及浏览器移除监听器失败时的原始错误和回调生命周期。
 
-页面脚本会执行管理写入或创建可丢弃数据，应使用专用测试实例。`test/browser/rust-native-domain.mjs` 使用真实生成资源，API 和剪贴板使用 fixture；持久化与真实数据库行为由后端和安装测试覆盖。
+需要验证真实持久化时，先按[开发说明](development.md)构建前端、服务端并安装测试浏览器，再从仓库根运行 `bash test/operations/smoke.sh`。它默认读取 `target/debug/blog`（或 `$CARGO_TARGET_DIR/debug/blog`），可用 `BLOG_SMOKE_BINARY` 指定其他已构建的程序。不应将 `BLOG_SMOKE_URL` 指向生产实例：部分页面脚本会创建、修改或删除内容。`test/browser/rust-native-domain.mjs` 使用真实生成资源，API 和剪贴板使用 fixture；持久化与真实数据库行为由后端和安装测试覆盖。
 
 ## WASM 启动检查
 
@@ -51,4 +51,4 @@ DOM 边界回归先运行 `bash test/interface/dom/browser/build.sh`，再执行
 
 ## CI 分组
 
-`.github/workflows/ci.yml` 分别运行服务端、Chromium/Firefox 的管理与公开页面组，以及独立安装测试，聚合门禁要求各组成功。构建检查、fixture 页面测试、真实后端写入和安装测试各自验证对应边界；具体命令以工作流和 `src/web/package.json` 为准。
+[CI 工作流](../.github/workflows/ci.yml) 把页面测试按 `admin` 和 `public` 分组，不是按浏览器引擎拆分。各脚本选择执行的引擎；例如 `browser-smoke.mjs` 使用 Chromium，`management-native.mjs` 默认执行 Chromium 和 Firefox。聚合任务 `build-and-smoke` 要求 `server-and-smoke`、两个浏览器组及 `installed_candidate` 全部成功。构建检查、fixture 页面测试、真实后端写入和安装测试各自验证对应边界；具体命令以工作流和 `src/web/package.json` 为准。

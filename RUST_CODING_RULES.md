@@ -7,7 +7,7 @@
 | 事项 | 本项目约束 |
 | --- | --- |
 | 工具链与平台 | edition 2024、Rust 1.100.0；原生 Linux AMD64 GNU/glibc，浏览器 WASM |
-| 源码与测试 | 业务在 `src/`，测试在 `test/`，私有单元测试通过 `#[path]` 接线；第 15.1 节的目录示例按此布局执行 |
+| 源码与测试 | 业务在 `src/`，测试在 `test/`，私有单元测试通过 `#[path]` 接线；详见[测试目录](test/README.md) |
 | 本地依赖 | 维护现有职责包和本地路径依赖；原始归档、许可证与来源身份由 `compliance/` 保留，安全审计使用原始身份；第 19 章的供应链目标通过这些入口实现 |
 | 持久化版本 | 只接受当前数据库和格式，不新增旧版本迁移或兼容分支 |
 | 授权与并发 | 已认证类型证明入口身份；等待写锁或哈希之后，提交事务仍核验可撤销的会话、权限和数据版本 |
@@ -886,7 +886,7 @@ codegen-units = 1
 1. **外部输入的 DTO 加 `#[serde(deny_unknown_fields)]`**。注意它不能与 `#[serde(flatten)]` 同时使用。
 2. **枚举的序列化格式统一用 serde 属性指定**（`rename_all`、`tag`、`content`），不要为了一点格式差异手写 `Visitor`。只有在 serde 属性确实无法表达时才手写，并且只写一个通用宏，不要每个类型各写一份。
 3. **验证在反序列化时完成**：用 `try_from` 或在字段上使用验证后的 newtype，反序列化成功即意味着数据合法。
-4. **持久化格式带版本号**：例如 `{"version": 2, ...}` 或 enum 外层标签。读取时显式迁移旧版本，不要用 `#[serde(default)]` 悄悄兼容一切。
+4. **持久化格式带版本号**：例如 `{"version": 2, ...}` 或 enum 外层标签。承诺兼容旧版的项目应显式迁移，不要用 `#[serde(default)]` 悄悄兼容一切。本仓库只接受当前结构，旧格式在打开时拒绝。
 5. **u64 序列化为字符串只在面向 JavaScript 的 JSON API 中需要**（JS 的 Number 精度只有 53 位）。Rust 进程之间的本地 IPC 和二进制格式不需要这样做。
 6. **内部高频通信和二进制日志**，使用 `postcard`、`bincode` 或定长的二进制结构，哈希值存为 `[u8; 32]`，而不是 64 个字符的十六进制字符串。
 
@@ -894,7 +894,7 @@ codegen-units = 1
 
 ## 第 15 章　测试
 
-1. **单元测试与被测代码放在同一文件**，写在 `#[cfg(test)] mod tests { use super::*; ... }` 中。集成测试放在 crate 的 `tests/` 目录下。这是社区惯例，读者能就近找到测试。
+1. **测试文件按仓库约定组织**。本仓库在 `test/` 放测试实现，业务文件仅用 `#[cfg(test)]` 和 `#[path]` 接入私有单元测试，集成测试入口在 Cargo manifest 中显式声明。
 2. **测试行为而非实现**：通过公开 API 测试，断言可观测的结果，不断言内部调用了几次某个函数。
 3. **为边界写测试**：每个验证规则都要有对应的拒绝用例和接受用例；错误路径和成功路径都要覆盖。内部函数的"非法输入"不需要测试，因为类型已经保证不会出现。
 4. **属性测试**：用 `proptest` 测试往返性质（`parse(x.to_string()) == x`）、不变量（任意操作序列之后，索引与数据一致）、等价性（新实现与参考实现输出相同）。
@@ -1007,6 +1007,8 @@ too-many-arguments-threshold = 5
 
 ### 18.4 CI 流水线
 
+以下为通用工具示例。本仓库用 Cargo 测试，并分开验证原生、浏览器 WASM 与维护库；实际门禁和命令见 [CI 工作流](.github/workflows/ci.yml) 与[开发说明](docs/development.md)。
+
 1. `cargo fmt --all --check`
 2. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
 3. `cargo nextest run --workspace`，以及 `cargo test --doc`
@@ -1030,6 +1032,8 @@ clippy 覆盖不到的模式，可以用简单的 grep 规则在 CI 中报警，
 ---
 
 ## 第 19 章　依赖管理
+
+以下为采用 registry 依赖时的通用建议。本仓库从本地路径构建，保留原归档及身份供审计；不要用 `cargo vendor`、`[patch.crates-io]` 或示例 MSRV 替换[当前源码与工具链约束](docs/source-layout.md)。
 
 1. **优先使用标准库和社区公认的成熟 crate**：serde、thiserror、anyhow、tokio、tracing、axum、rusqlite 或 sqlx、uuid、bytes 等。
 2. **不要 fork 并改名第三方 crate**。确实需要修改时，用 `[patch.crates-io]` 指向自己的 fork，保留原名，记录与上游的差异，并尽量把修改合并回上游。改名会让安全审计工具（基于 crate 名和版本匹配 RustSec 公告）失效，也会让你无法通过 `cargo update` 获得安全修复。

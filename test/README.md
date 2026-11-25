@@ -17,15 +17,25 @@ Rust 单元测试通过 `#[cfg(test)]` 和模块路径声明挂接到原业务�
 python3 test/check-layout.py
 python3 -I -B test/tools/test-layout.py
 python3 -I -B test/server/query-indexes.py
+cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
 cargo +1.100.0 test --locked --offline
 cargo +1.100.0 test --locked --offline -p blog-assets -p blog-browser-domain-tests
 bash test/run-maintained.sh
-bash test/operations/smoke.sh
 python3 -I -B test/operations/test-package-release.py
 python3 -I -B test/tools/rust-sources/test_manage.py
 node --test test/operations/check-ci-parallelism.test.mjs
 ```
 
-浏览器测试依赖由 `src/web/package.json` 和锁文件固定。先在 `src/web` 执行 `npm ci` 并安装 Playwright 的 Chromium、Firefox，再运行 `npm --prefix src/web run test:unit` 或对应页面测试命令。完整环境和测试边界见[开发说明](../docs/development.md)及[浏览器测试](../docs/browser-testing.md)。
+上述 Rust 检查需准备项目指定的 Rust 工具链和 WASM 目标；构建器的生成代码测试还需 PATH 中有 Node。页面测试依赖由 `src/web/package.json` 和锁文件固定。以下命令同样从仓库根目录运行：
+
+```sh
+(cd src/web && npm ci && npx playwright install --with-deps chromium firefox)
+npm --prefix src/web run test:unit
+npm --prefix src/web run test:browser:blog-interface
+cargo +1.100.0 build --locked --offline --bin blog
+bash test/operations/smoke.sh
+```
+
+页面脚本默认使用测试 API；`smoke.sh` 单独启动真实服务并验证重启后的数据。完整环境和测试边界见[开发说明](../docs/development.md)及[浏览器测试](../docs/browser-testing.md)。
 
 测试会创建可丢弃实例和数据。页面写入测试应连接专用测试实例；生产实例的运行与管理方法见[部署说明](../deploy/linux-x86_64/README.md)。

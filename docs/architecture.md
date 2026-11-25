@@ -4,7 +4,7 @@ blog 的服务端、浏览器业务和构建工具使用 Rust。原生服务与�
 
 ## 源码职责
 
-产品、基础实现与工具源码集中在 `src/`，测试实现与专用输入集中在 `test/`。全部 Rust 包共用根 Cargo workspace 和唯一的 Cargo.lock，依赖通过本仓库的路径解析。基础实现按用途位于 `src/foundation/<layer>/<purpose>`。
+产品、基础实现与工具源码集中在 `src/`，测试实现与专用输入集中在 `test/`。根 [Cargo.toml](../Cargo.toml) 把产品、工具和浏览器域测试列为 workspace 成员，默认成员是 `blog`、`blog-application` 和 `blog-setup`。基础实现位于 `src/foundation/<layer>/<purpose>`，是由本地路径引入的依赖，不是 workspace 成员；从根构建时共用唯一的 Cargo.lock。
 
 | 目录 | 职责 |
 | --- | --- |
@@ -47,8 +47,8 @@ Rust 单元测试通过条件模块声明连接到 `test/<组件>/unit/`，保�
 | --- | --- |
 | 密码输入 | `admin_auth::Password::new` 验证策略，哈希作业接收 `Password`；熵源与哈希运算失败保留错误来源 |
 | 实例 ROOT | `server_layout::Layout::new` 验证路径，私有根字段保证派生目录；打开文件时继续验证描述符、权限和身份 |
-| HTTP 请求体 | 入口限制格式、字节数、读取时长和并发数；信号量许可随读取结束或取消释放 |
-| 内容与媒体写入 | `ShortContent`、`IdempotencyKey`、`MediaUpload` 和 `MediaFilename` 在入口解析约束；事务提交仍检查可撤销权限、记录版本和媒体引用 |
+| HTTP 请求体 | `ContractJson` 在内容接口限制 JSON 格式、大小和读取时长；公开 POST 的容量由单独的中间件控制，持续到处理结束或取消 |
+| 内容与媒体写入 | `ShortContent`、`IdempotencyKey`、`MediaUpload` 和 `MediaFilename` 在入口解析约束；写事务中复核会话是否有效，按操作检查分类归属、既有提交收据或媒体引用 |
 | 配置文件与环境 | 解码保留具体失败来源，公开错误只携带安全分类和字段路径；缺省值与非法值分开处理 |
 | 私有日志 | 打开时验证已有目录与文件并持有排他写锁；后续写入和轮转复用目录描述符、活动文件和字节计数，处理真实 I/O 失败 |
 | 浏览器 HTTP 响应 | 合同与模型在解码时验证；栏目来源、错误码和请求 ID 用类型表达，未知合法远端错误码保留原值 |
@@ -59,15 +59,15 @@ Rust 单元测试通过条件模块声明连接到 `test/<组件>/unit/`，保�
 
 ## 服务端
 
-`src/server` 实现内容业务和 HTTP API，`src/application` 提供认证、会话、SQLite、文件和生命周期能力。管理员密码使用 Argon2id；会话、CSRF、文章权限和匿名提交幂等由服务端执行。当前业务与数据约束见[行为合同](contracts.md)。
+`src/server` 实现内容业务和 HTTP API，`src/application` 提供认证、会话、SQLite、文件和生命周期能力。管理员密码使用 Argon2id；会话、CSRF 和文章访问权限由服务端检查。文章、留言板和祝福板的评论支持幂等重试，留言板弹幕没有提交收据。各接口的限制见[行为合同](contracts.md)。
 
-`src/server/src/content/mod.rs` 组合公开和管理员路由；文章、分类、评论、站点设置等私有功能模块各自拥有同一业务的读取、写入与校验。站点媒体 URL 的规范化属于站点设置模块。业务处理直接使用 application 的事务、认证和文件能力，路由组合层不另建一套服务或存储抽象。
+[app.rs](../src/server/src/app.rs) 挂载页面入口、静态资源、媒体、健康检查及各组 API。内容路由在 [content/mod.rs](../src/server/src/content/mod.rs) 中注册，首页栏目由 `home.rs` 提供；文章、分类、评论、站点设置等私有功能模块各自拥有同一业务的读取、写入与校验。站点媒体 URL 的规范化属于站点设置模块。业务处理直接使用 application 的事务、认证和文件能力，路由组合层不另建一套服务或存储抽象。
 
 管理员内容入口将私有字段的 `AuthenticatedIdentity` 传入写操作。内容与账号管理共用 `session_authorized_on_connection`；取得 `BEGIN IMMEDIATE` 写锁后读取当前时钟，在同一事务中复核会话撤销、到期、账号启用状态与会话版本，再开始业务副作用。
 
 `src/server/src/media.rs` 保留上传、删除的完整协调流程，私有的 `formats`、`references` 和 `storage` 模块分别负责格式与限额、站内引用检查、文件发布和删除恢复。格式描述统一决定字节识别、文件扩展名及资源类型。删除先在 SQLite 写事务中检查引用，再暂存文件、提交数据库并清理；文件系统与 SQLite 通过删除暂存标记和启动恢复协调。持久化操作由应用工作域接管，客户端断开不会中途取消已接纳的提交。
 
-SQLite 随源码固定编译。访问层提供 Tokio 连接池、事务、预处理语句、实际类型编解码和 `FromRow`。行可跨线程移动，其解码状态不允许并发共享。配置、数据库、媒体、日志和运行快照统一位于显式指定的 ROOT；安装与运行布局见[部署说明](../deploy/linux-x86_64/README.md)。
+SQLite 随源码固定编译。访问层提供 Tokio 连接池、事务、预处理语句、实际类型编解码和 `FromRow`。行可跨线程移动，其解码状态不允许并发共享。配置、日志和运行快照位于实例 ROOT。数据库与媒体默认也在 ROOT 下，但运行程序接受显式配置的外置目录；随包安装器和 systemd 单元使用 ROOT 内的布局。详见[配置参考](configuration.md)和[部署说明](../deploy/linux-x86_64/README.md)。
 
 初始化工具通过服务端的 `maintenance` 特性调用产品维护入口，复用运行服务的 schema、配置与安装合同。`config_definition.rs` 拥有产品默认 ROOT、状态目录和数据库文件名；运行配置与导出的安装计划使用同一组定义。application 保留可复用的合同与校验能力，产品默认值由服务端决定。
 
@@ -75,7 +75,7 @@ Linux 系统层使用固定 ABI、原始系统调用、epoll/eventfd 和系统�
 
 ## 浏览器
 
-浏览器应用采用 CSR。Rust 负责路由、页面、业务状态、请求、日期、Markdown 和交互；DOM 层负责构建、更新、挂载与拆卸，提供响应式状态、动态列表、context、Portal 和错误边界。
+浏览器应用采用客户端渲染（CSR）。Rust 负责路由、页面、业务状态、请求、日期、Markdown 和交互；DOM 层负责构建、更新、挂载与拆卸，提供响应式状态、动态列表、context、Portal 和错误边界。
 
 `public/mod.rs` 选择公开页面，`admin.rs` 定义后台导航并分派页面；各自的私有功能模块拥有页面状态与视图。`common` 按请求、写操作、分页、导航、表单和灯箱等职责提供共享原语。读取状态管理加载、错误、上次结果和刷新。JSON 写入和文件上传共用同一套执行、完成及取消流程。请求随页面所有者释放而取消，完成回调触发导航时由取消流程释放旧请求的状态。
 

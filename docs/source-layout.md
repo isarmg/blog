@@ -1,6 +1,6 @@
 # 源码组织与校验
 
-项目使用一个根 Cargo workspace 和一份根 Cargo.lock。产品和工具包位于 `src/`，测试实现、测试数据和独立测试包位于 `test/`；基础 Rust 实现按用途位于 `src/foundation/<layer>/<purpose>`。全部依赖声明使用本仓库的 `path`，或继承根 workspace 中的本地路径。
+项目使用一个根 Cargo workspace 和一份根 Cargo.lock。产品和工具包位于 `src/`，测试实现、测试数据和独立测试包位于 `test/`；基础 Rust 实现按用途位于 `src/foundation/<layer>/<purpose>`。[根 manifest](../Cargo.toml) 的 `members` 列出产品、工具和浏览器域测试包，`exclude` 列出 foundation 包。后者是本地路径依赖，不会因执行 `cargo test --workspace` 就运行自己的测试；基础库回归由 [test/run-maintained.sh](../test/run-maintained.sh) 显式选择。
 
 [架构说明](architecture.md)介绍各层职责，[依赖文档](dependencies/README.md)提供本地参考资料；精确的当前包与来源映射见[源码清单](THIRD_PARTY_RUST_SOURCES.md)和[用途关系](RUST_SOURCE_ARCHITECTURE.md)。
 
@@ -65,7 +65,7 @@ python3 src/tools/rust-sources/manage.py verify --metadata
 python3 src/tools/check-independence.py
 ```
 
-`verify` 只检查已有收据；`refresh` 显式接纳当前文件内容，并重新生成源码清单与用途关系。生成文档不手工编辑。原始 origin、归档和许可材料保持原字节；新增来源可追加。
+`verify` 只检查已有收据；`refresh` 显式接纳当前文件内容，并重新生成源码清单与用途关系。生成文档不手工编辑。如果改动包目录、用途或来源说明，运行 `python3 src/tools/rust-sources/docs.py` 重建 [本地包目录](dependencies/catalog.md) 和 [来源资料索引](dependencies/origins/README.md)，再用 `--check` 核对；这两个索引不由 `manage.py refresh` 更新。原始 origin、归档和许可材料保持原字节；新增来源可追加。
 
 `local-modifications.json` 使用 schema 1 的 `changes` 数组，每项包含 `directory`、非空 `reason`，以及可选的 `file` 或 `files`。新声明使用当前用途目录；已登记项只允许追加。路径必须是安全的仓库相对路径。
 
@@ -93,6 +93,8 @@ python3 src/tools/check-independence.py
 Rust 工具链、标准库、目标组件、C/C++ 编译器和系统构建材料由环境提供。浏览器绑定生成已整合进 `blog-assets`。Node/npm、Playwright、浏览器、字体等非 Rust 输入和审计工具有各自来源与准备步骤；它们不属于 Cargo 本地源码解析图。
 
 ## 安全审计
+
+先按[测试工具说明](dependencies/testing.md#cargo-审计工具)安装 CI 固定版本的 `cargo-audit`，再从仓库根执行：
 
 ```sh
 python3 src/tools/rust-sources/audit.py

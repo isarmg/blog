@@ -6,13 +6,19 @@
 
 ## 构建环境
 
-准备 Rust 1.100.0（含 rustfmt、Clippy）、`wasm32-unknown-unknown` 标准库、Python 3.11+ 以及 AMD64 Linux GNU/glibc 的 C 编译环境。原生目标为 `x86_64-unknown-linux-gnu`，浏览器目标为 `wasm32-unknown-unknown`；构建脚本会检查宿主和目标。
+准备 Rust 1.100.0（含 rustfmt、Clippy）、`wasm32-unknown-unknown` 标准库、Python 3.11+ 以及 AMD64 Linux GNU/glibc 的 C 编译环境。构建宿主和服务端目标均为 `x86_64-unknown-linux-gnu`；浏览器交付目标是 `wasm32-unknown-unknown`。首次准备可执行：
 
-所有 Rust 源码通过本仓库路径解析，共用根 workspace 和唯一 Cargo.lock。Cargo 默认离线。Rust 工具链、目标标准库和系统构建材料需由环境提供；完整边界见[源码组织与校验](source-layout.md)。
+```sh
+rustup toolchain install 1.100.0 --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+```
+
+生产资源构建不需要 Node；运行完整测试另需 Node 26.7.0、npm 和浏览器。所有 Rust 依赖由根 workspace 通过本地路径解析，使用唯一的 Cargo.lock。Cargo 默认离线。Rust 工具链、目标标准库和系统构建材料需由环境提供；完整边界见[源码组织与校验](source-layout.md)。
 
 开发构建使用 Cargo 默认的增量编译。磁盘受限的验证环境可设置 `CARGO_INCREMENTAL=0`；测试和发行构建使用各自的 profile。产品、应用、浏览器与组件门面继承 workspace 的 `unused_must_use`、`unnecessary_wraps` 和 unsafe 规则，构建器与界面库另外禁止 unsafe。DOM 基础实现保留其独立的 cfg 和 unsafe 边界，通过维护库与实际消费者验证。
 
 workspace 还检查丢弃必须处理的结果、无说明的 `unwrap`、可简化的控制流、冗余克隆及有限枚举的通配分支。CI 使用 `-D warnings`；测试函数可按 `clippy.toml` 使用 `unwrap`，外部非穷尽枚举的语言要求通过局部且注明原因的 `#[expect]` 表达。
+
+先生成静态资源，再编译原生服务和离线工具：[服务端构建脚本](../src/server/build.rs) 会读取并嵌入前端产物。
 
 ```sh
 python3 src/tools/rust-sources/manage.py verify --metadata
@@ -32,21 +38,22 @@ cargo +1.100.0 build --locked --offline -p blog-setup
 
 ## 本机运行
 
-创建独立的开发 ROOT。以下配置允许回环 HTTP，初始化密码从标准输入读取：
+使用上面构建的 debug 程序。本例创建全新的临时 ROOT，不覆盖已有配置；管理员密码为 12 至 1024 个 UTF-8 字节，不能含 ASCII 控制字符。配置只允许回环 HTTP，密码从标准输入读取：
 
 ```bash
-BLOG_ROOT="$(pwd)/.local-run/site"
+BLOG_ROOT="$(mktemp -d /tmp/blog-dev.XXXXXXXX)"
+printf '实例目录：%s\n' "$BLOG_ROOT"
 install -d -m 0700 "$BLOG_ROOT/config"
 printf '%s\n' '{"bind":"127.0.0.1:18091","development":true}' > "$BLOG_ROOT/config/config.json"
 chmod 0600 "$BLOG_ROOT/config/config.json"
-read -r -s -p "管理员密码: " blog_password
+IFS= read -r -s -p "管理员密码: " blog_password
 printf '\n'
-printf '%s\n' "$blog_password" | cargo +1.100.0 run --locked --offline -p blog-setup -- --root "$BLOG_ROOT" initialize --username admin
+printf '%s\n' "$blog_password" | "${CARGO_TARGET_DIR:-target}/debug/blog-setup" --root "$BLOG_ROOT" initialize --username admin
 unset blog_password
-./target/debug/blog --root "$BLOG_ROOT"
+"${CARGO_TARGET_DIR:-target}/debug/blog" --root "$BLOG_ROOT"
 ```
 
-打开 `http://127.0.0.1:18091/` 和 `/admin`。已有实例使用 `blog-setup --root ROOT check` 检查；初始化只用于新实例。配置字段见[配置参考](configuration.md)。
+打开 `http://127.0.0.1:18091/` 和 `/admin`。下次用同一个 ROOT 启动即可，不要重复初始化。停止服务后才能用 `blog-setup --root ROOT check` 检查已有实例。配置字段见[配置参考](configuration.md)。
 
 ## 资源构建与预览
 
@@ -58,7 +65,7 @@ cargo +1.100.0 run --locked --offline -p blog-assets -- serve --product-root . -
 cargo +1.100.0 run --locked --offline -p blog-assets -- server --product-root . --config blog-assets.json --mode development --offline
 ```
 
-`serve` 提供开发资源和变更监控；需要后台 API 时启动本机服务，并用 `--proxy /api=http://127.0.0.1:18091` 配置转发。`preview` 只读提供已有资源。`server` 按根 `blog-assets.json` 协调前端与服务端构建。前端源码固定为 `src/web`，该文件的 `web.dist` 只选择静态输出目录；资源编译直接调用 Rust 构建器。具体选项见[构建器说明](../src/tools/assets/README.md)。
+`serve` 构建资源并监控变更；`preview` 直接提供已有资源，不重新构建或监控。两者都会读取 [rust-web.toml](../src/web/rust-web.toml) 的代理配置，默认把 `/api` 转发到 `127.0.0.1:8081`。要连接上面的临时实例，追加 `--proxy /api=http://127.0.0.1:18091`；预览页面中的写入也会转发，不要指向生产实例。`server` 按根 `blog-assets.json` 协调前端与服务端构建。前端源码固定为 `src/web`，该文件的 `web.dist` 只选择静态输出目录；资源编译直接调用 Rust 构建器。具体选项见[构建器说明](../src/tools/assets/README.md)。
 
 | 输入或输出 | 用途 |
 | --- | --- |
@@ -97,19 +104,18 @@ cargo +1.100.0 test --locked --offline
 cargo +1.100.0 test --locked --offline -p blog-assets -p blog-browser-domain-tests
 bash test/run-maintained.sh
 cargo +1.100.0 run --locked --offline -p blog-assets -- test --product-root . --offline
-bash test/operations/smoke.sh
 ```
 
-`blog-assets` 的 Rust 测试会调用 PATH 中的 Node 26.7.0，检查实际生成的 JavaScript/WASM 初始化合同；这部分不需要 npm 包或浏览器。`test/run-maintained.sh` 运行已登记的基础库和消费者回归。`smoke.sh` 创建可丢弃实例，执行真实 HTTP、SQLite 写入和重启检查。
+`blog-assets` 的 Rust 测试会调用 PATH 中的 Node 26.7.0，检查实际生成的 JavaScript/WASM 初始化合同；这部分不需要 npm 包或浏览器。`test/run-maintained.sh` 运行已登记的基础库和消费者回归。
 
-浏览器验证还需安装锁定测试工具及 Chromium、Firefox：
+下列步骤从仓库根运行。先安装锁定测试工具及 Chromium、Firefox，再跑端到端冒烟；该脚本使用已构建的 debug 服务，检查真实 HTTP、SQLite 写入、重启和浏览器操作：
 
 ```sh
-cd src/web
-npm ci
-npx playwright install --with-deps chromium firefox
-npm run test:unit
-npm run test:browser:blog-interface
+(cd src/web && npm ci && npx playwright install --with-deps chromium firefox)
+npm --prefix src/web run test:unit
+npm --prefix src/web run test:browser:blog-interface
+cargo +1.100.0 build --locked --offline --bin blog
+bash test/operations/smoke.sh
 ```
 
 完整入口和测试边界见[浏览器验证](browser-testing.md)。
@@ -126,6 +132,6 @@ python3 src/tools/check-independence.py
 
 新增、合并或拆分包时同时更新用途映射和来源身份，字段见[源码组织与校验](source-layout.md)。
 
-`blog-assets server --mode candidate` 使用真实 HEAD 并记录未提交源码；`--mode release` 要求干净源码。正式打包脚本 `src/operations/package-linux-x86_64.sh --output-dir ABSOLUTE` 还要求与 HEAD、产品版本一致的注解 tag `vVERSION`。包内服务、初始化工具、资源和源码摘要共同绑定发行身份。安装与验证见[Linux 部署说明](../deploy/linux-x86_64/README.md)。
+`blog-assets server --mode candidate` 使用真实 HEAD 并记录未提交源码；`--mode release` 要求干净源码。正式打包脚本 `src/operations/package-linux-x86_64.sh --output-dir ABSOLUTE` 还要求目标目录已存在、其中没有同名发行包或 `SHA256SUMS`，并要求注解 tag `vVERSION` 与产品版本一致且指向 HEAD。包内服务、初始化工具、资源和源码摘要共同绑定发行身份。安装与验证见[Linux 部署说明](../deploy/linux-x86_64/README.md)。
 
 推送版本 tag 后，发布工作流执行验证并上传安装包及 `SHA256SUMS`，将附注 tag 的说明发布到 GitHub Releases。仓库文档描述当前用法，版本变更记录由 [GitHub Releases](https://github.com/isarmg/blog/releases) 提供。
