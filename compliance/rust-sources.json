@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "dd55eb45a21369107b40fcab85def3c20ed3f286087a1eae50d908272e04c272"
+    "Cargo.lock": "3e1d013c147776b8aa6eff59fa5e93682f45119405e53669c2e912b84a8f6f4b"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6088,7 +6088,7 @@
     "src/foundation/diagnostics/event-facade/Cargo.toml": "f8b971384a677fdeac18066ade8461573157a686a6eef8db9d786e78c8801c7f",
     "src/foundation/diagnostics/event-instrumentation/Cargo.toml": "5fd3d402da4caadd3e26ac4fdb494f7ff869e431b88e057f5554f91bc730256d",
     "src/foundation/diagnostics/object-clone/Cargo.toml": "d3ffe6ecd44fdd1844abeae96ee2133d93d64177a8b27e8a24c93bf9e68b29ac",
-    "src/foundation/diagnostics/structured-events/Cargo.toml": "4be1f023c7ab9fe4f668e7eb852598a4f95cbb2c7c3a44137aa1423cc617985c",
+    "src/foundation/diagnostics/structured-events/Cargo.toml": "eff3ed81723b26e1a7465215986bd5089cffd455457ed10b0a29b2e711d99207",
     "src/foundation/diagnostics/symbol-decoder/Cargo.toml": "003ca3f59eeb0b6431056729c1c7f0821fc699a9c854e8158a8da9d78ea127d6",
     "src/foundation/diagnostics/typed-error-derive/Cargo.toml": "f45fd6d9db199366c0b100827494a02438ce96c2b43fb28d9a575795c6c5412b",
     "src/foundation/diagnostics/typed-error/Cargo.toml": "87b82516ccf5440bb1ea9c513e6298c554863ce002f3d905a1d0b83b78304d71",
@@ -34424,7 +34424,7 @@
         "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
         "src/dates.rs": "e74422fb4ada91d800f3d4a3b0ca3ddc46776fd6cf99a88f4a77081b677a5f1e",
-        "src/editor.rs": "03c0475985f8c4a8e27647dc85af50025db53a28297c59bc8ba042567d0a3c88",
+        "src/editor.rs": "d900453b5b439f79d0a3ad9fd2acd55876f96edad2be349335c2b4879fe9515e",
         "src/editor/insertion.rs": "f83fb8295c9753d863728da53ef265bcac4a2541571ededaf567573ebfc22fb5",
         "src/lib.rs": "a0c8349911140a65c7eea34d44e5a8dee103f56fb256d889386494e7dd514762",
         "src/markdown.rs": "a4573f58260a81123c21ec5fc460616842b7bcca5399c35c05782ff20b3bc602",
@@ -37154,7 +37154,6 @@
         "src/foundation/diagnostics/event-instrumentation",
         "src/foundation/format/data-model",
         "src/foundation/format/json",
-        "src/foundation/sync/initialization",
         "src/foundation/sync/mutex",
         "src/foundation/sync/pinned-projection",
         "src/foundation/sync/thread-storage",
@@ -37162,7 +37161,7 @@
       ],
       "directory": "src/foundation/diagnostics/structured-events",
       "files_sha256": {
-        "Cargo.toml": "4be1f023c7ab9fe4f668e7eb852598a4f95cbb2c7c3a44137aa1423cc617985c",
+        "Cargo.toml": "eff3ed81723b26e1a7465215986bd5089cffd455457ed10b0a29b2e711d99207",
         "src/collector/field/debug.rs": "1d060427b5ed097c6db66976766ca552bdf931b6af39e1d7d7de9174e84c7dec",
         "src/collector/field/delimited.rs": "f7b3c2f0397adddc166cbeaf028d32567853d976406b71b014225747d6dd2198",
         "src/collector/field/display.rs": "f9e0b6aaeb9107fed83a1e24ff16aa411378535e5f7c72cc9b6224bfc64f7ce1",
@@ -37202,13 +37201,13 @@
         "src/level_filters.rs": "5fde9f7ab1ce1c2197e9cfdbddd0a66aee6ec43e2c031212ac14a34e72c582b8",
         "src/lib.rs": "2672bf143a3c65e39feaf4c2270f8ea58c88c170b4204955633749bafad14fb2",
         "src/log_bridge/log_tracer.rs": "909891cc44d66643b0a3a5e2cd54b964a6dfb481777fd61c91ec05ce7aad0d52",
-        "src/log_bridge/mod.rs": "4e2211c42339fd2d522dfc466fb9a81eb48272e2df5c2a2702078c9abd4707e5",
+        "src/log_bridge/mod.rs": "dcd180ea09aae0b3ad90860600cde86ef078381f66271b3d953d297e159634fc",
         "src/macros.rs": "4d2728202359e7fb4f7824a17e299b968a2a3eb3f00abcce1ce060a1a44db349",
         "src/primitives/callsite.rs": "538191e8f9c23da23e4e6e9972b0ebab68edc8068673a8098b953fd18d01056c",
         "src/primitives/dispatcher.rs": "415ae4e4c80ab9caf44721a49f311ba60ff97e07c9a5f14eb890e0a80856f9b3",
         "src/primitives/event.rs": "6a674cc1722641a459b78058905a53fec2efa1de616574eddcfe3c6dd00ebf25",
         "src/primitives/field.rs": "68642c259e0626b847371c0c6d342bd1b2c7bf7cf475bbb0eeffe3c8e78d840a",
-        "src/primitives/lazy.rs": "4b53424a25a323a35b1f355f8b5b533863dd811d244f02e1fab34e2678f611df",
+        "src/primitives/lazy.rs": "bb875469db05b88ebdefb0345d69711f3d4b18b78ab633900f52f7b4f7b88265",
         "src/primitives/metadata.rs": "b53e096de39cc9bff6c8f0ad30135798b3fa7046501210581ab9ec4a657c9fcb",
         "src/primitives/mod.rs": "ec4b55170856a9e0fa767ca2f267f9ac7ef7a2162b3311806872e69346acf7b0",
         "src/primitives/parent.rs": "09af451a989b3ad2546b201694b70cadbd5832be314b09b0e1ac0364a3ee76aa",
@@ -47825,7 +47824,7 @@
         "src/content/catalog.rs": "1c0f5f6b896f20b167cc731886bbae7b5dae73a43be6d58eb9dbaa12cd3847da",
         "src/content/comments.rs": "b9d19db7d1610bf43e2c3e6e933537f42a26071bebd23d2879e38aa0489cfbb2",
         "src/content/family.rs": "d8e3ac7edaf53f38e8de459de73b4017f24de8059fe0689079a35ea9829b55b1",
-        "src/content/guestbook.rs": "36f05b37e2a8cef38528174ee98a52247170078d41631fb55719b5ca165ebcb4",
+        "src/content/guestbook.rs": "312c8d69059f37f33e5912e2237655d81173d19102b3381bad39ac6009b7a3e6",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
         "src/content/letter.rs": "0ee63cf6547973a87251519012dbe16802f801be54ad8bb2ba9a953fc96bf0c7",
         "src/content/links.rs": "66a56657071430eaaef03a30c88ce8c9f2a3e1414a68badc4b2362500f2c972f",
@@ -49164,20 +49163,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/sync/initialization": {
-          "features": [
-            "alloc",
-            "default",
-            "race",
-            "std"
-          ],
-          "name": "blog-sync-initialization",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/message-channel": {
           "features": [
             "async",
@@ -49942,9 +49927,7 @@
         "src/foundation/sync/initialization": {
           "features": [
             "alloc",
-            "default",
-            "race",
-            "std"
+            "race"
           ],
           "name": "blog-sync-initialization",
           "roles": [
@@ -51145,9 +51128,7 @@
         "src/foundation/sync/initialization": {
           "features": [
             "alloc",
-            "default",
-            "race",
-            "std"
+            "race"
           ],
           "name": "blog-sync-initialization",
           "roles": [
@@ -53533,9 +53514,7 @@
         "src/foundation/sync/initialization": {
           "features": [
             "alloc",
-            "default",
-            "race",
-            "std"
+            "race"
           ],
           "name": "blog-sync-initialization",
           "roles": [

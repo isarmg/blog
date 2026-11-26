@@ -51,10 +51,9 @@
     unused_parens,
     while_true
 )]
-use once_cell::sync::Lazy;
 use std::prelude::v1::*;
 
-use std::{fmt, io};
+use std::{fmt, io, sync::LazyLock as Lazy};
 
 use tracing::primitives::{
     callsite::{self, Callsite},

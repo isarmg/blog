@@ -435,7 +435,6 @@ dependencies = [
  "blog-collections-concurrent-slab",
  "blog-collections-inline-vector",
  "blog-diagnostics-event-facade",
- "blog-sync-initialization",
  "blog-sync-pinned-projection",
  "blog-sync-thread-storage",
 ]

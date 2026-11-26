@@ -15,6 +15,8 @@ pub(super) struct TreeHole {
     image_path: Option<String>,
     create_time: Option<String>,
 }
+const TREE_HOLE_PAGE: &str = "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT ? OFFSET ?";
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct TreeHoleQuery {
@@ -27,12 +29,11 @@ pub(super) async fn tree_hole(
 ) -> ApiResult<Vec<TreeHole>> {
     const MAX_SIZE: i64 = 100;
     Ok(Json(
-        sqlx::query_as::<_, TreeHole>(
-            "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT ?",
-        )
-        .bind(query.size.unwrap_or(MAX_SIZE).clamp(1, MAX_SIZE))
-        .fetch_all(&state.pool)
-        .await?,
+        sqlx::query_as(TREE_HOLE_PAGE)
+            .bind(query.size.unwrap_or(MAX_SIZE).clamp(1, MAX_SIZE))
+            .bind(0_i64)
+            .fetch_all(&state.pool)
+            .await?,
     ))
 }
 #[derive(Deserialize)]
@@ -70,13 +71,11 @@ pub(super) async fn content_tree_hole(
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tree_hole")
         .fetch_one(&mut *transaction)
         .await?;
-    let items = sqlx::query_as::<_, TreeHole>(
-        "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT ? OFFSET ?",
-    )
-    .bind(pagination.size)
-    .bind(pagination.offset())
-    .fetch_all(&mut *transaction)
-    .await?;
+    let items = sqlx::query_as(TREE_HOLE_PAGE)
+        .bind(pagination.size)
+        .bind(pagination.offset())
+        .fetch_all(&mut *transaction)
+        .await?;
     transaction.commit().await?;
     Ok(Json(pagination.result(items, total)))
 }

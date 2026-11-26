@@ -843,6 +843,73 @@ fn editor_table<const N: usize>(
         .aria_label(t("数据表格", "Data table"))
 }
 
+#[derive(Clone, Copy)]
+struct ContentDraft {
+    form: RwSignal<Value>,
+    original: RwSignal<Value>,
+    editing: RwSignal<Option<i64>>,
+}
+
+impl ContentDraft {
+    fn new(empty: Value) -> Self {
+        Self {
+            form: RwSignal::new(empty.clone()),
+            original: RwSignal::new(empty),
+            editing: RwSignal::new(None),
+        }
+    }
+
+    fn replace(self, value: Value, editing: Option<i64>) {
+        self.form.set(value.clone());
+        self.original.set(value);
+        self.editing.set(editing);
+    }
+
+    fn dirty(self) -> bool {
+        self.form
+            .with(|form| self.original.with(|original| form != original))
+    }
+
+    fn can_discard(self, prompt: (&str, &str)) -> bool {
+        self.form
+            .with_untracked(|form| self.original.with_untracked(|original| form == original))
+            || window()
+                .confirm_with_message(&t(prompt.0, prompt.1))
+                .unwrap_or(false)
+    }
+}
+
+fn cancel_editing(
+    show: impl Fn() -> bool + Send + 'static,
+    blocked: impl Fn() -> bool + Copy + Send + 'static,
+    accept: impl Fn() -> bool + Copy + Send + 'static,
+    reset: Callback<()>,
+) -> impl IntoView {
+    move || {
+        show().then(|| {
+            html::button()
+                .child(t("取消编辑", "Cancel editing"))
+                .class("blog-button")
+                .r#type("button")
+                .disabled(blocked)
+                .on(ev::click, move |_| {
+                    if accept() {
+                        reset.run(());
+                    }
+                })
+        })
+    }
+}
+
+const DISCARD_UPDATE: (&str, &str) = (
+    "放弃当前未保存的进展修改？",
+    "Discard the current unsaved update changes?",
+);
+const DISCARD_NOTE: (&str, &str) = (
+    "放弃当前未保存的随笔修改？",
+    "Discard the current unsaved note changes?",
+);
+
 #[component]
 fn NewsEditor(id: i64) -> impl IntoView {
     let page = RwSignal::new(1u64);
@@ -852,9 +919,9 @@ fn NewsEditor(id: i64) -> impl IntoView {
             page.get()
         )
     }));
-    let form = RwSignal::new(json!({"content":"","create_time":""}));
-    let original = RwSignal::new(json!({"content":"","create_time":""}));
-    let editing = RwSignal::new(None::<i64>);
+    let draft = ContentDraft::new(json!({"content":"","create_time":""}));
+    let form = draft.form;
+    let editing = draft.editing;
     let save = Action::new();
     let receipt = creation_receipt(save);
     let validation = RwSignal::new(String::new());
@@ -862,10 +929,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
         if receipt.with_untracked(Option::is_some) {
             return;
         }
-        let empty = json!({"content":"","create_time":""});
-        form.set(empty.clone());
-        original.set(empty);
-        editing.set(None);
+        draft.replace(json!({"content":"","create_time":""}), None);
         validation.set(String::new());
     });
     let locked = move || save.busy.get() || receipt.with(Option::is_some);
@@ -888,23 +952,14 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                 .class("blog-button")
                                 .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
-                                    if form.get_untracked() != original.get_untracked()
-                                        && !window()
-                                            .confirm_with_message(&t(
-                                                "放弃当前未保存的进展修改？",
-                                                "Discard the current unsaved update changes?",
-                                            ))
-                                            .unwrap_or(false)
-                                    {
+                                    if !draft.can_discard(DISCARD_UPDATE) {
                                         return;
                                     }
                                     let f = json!({
                                         "content": content,
                                         "create_time": crate::dates::input(create_time.as_deref().unwrap_or_default())
                                     });
-                                    form.set(f.clone());
-                                    original.set(f);
-                                    editing.set(Some(entry_id));
+                                    draft.replace(f, Some(entry_id));
                                 }),
                             blog_interface::html::button()
                                 .child(t("删除", "Delete"))
@@ -975,32 +1030,12 @@ fn NewsEditor(id: i64) -> impl IntoView {
                     } else if editing.get().is_some() { t("保存修改",
                     "Save changes") } else { t("发布进展", "Publish update") }).class("blog-button").r#type("submit")
                     .formnovalidate(move || receipt.with(Option::is_some)),
-                    move | | (editing.get().is_some() || form.get() != original
-                    .get()).then(| | View::new(
-    blog_interface::html::button()
-        .child(
-
-            t("取消编辑", "Cancel editing"),
-        )
-        .class("blog-button")
-        .r#type("button")
-        .disabled(move || receipt.with(Option::is_some))
-        .on(
-            blog_interface::ev::click,
-            move |_| if form.get_untracked() == original.get_untracked()
-                    || window()
-                        .confirm_with_message(
-                            &t(
-                                "放弃当前未保存的进展修改？",
-                                "Discard the current unsaved update changes?",
-                            ),
-                        )
-                        .unwrap_or(false)
-                {
-                    reset.run(());
-                },
-        ),
-)),)).class("blog-actions blog-flow"),))
+                    cancel_editing(
+                        move || editing.get().is_some() || draft.dirty(),
+                        move || receipt.with(Option::is_some),
+                        move || draft.can_discard(DISCARD_UPDATE),
+                        reset,
+                    ),)).class("blog-actions blog-flow"),))
                     .class("blog-fieldset blog-stack")
                     .disabled(move
                     | | save.busy.get() || data.with_current(|page| page.is_none())))
@@ -1039,7 +1074,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             let current_body = json!({"content":text(&current,"content"),"create_time":crate::dates::iso(&text(&current,"create_time"))});
                             if target.is_none() && current_body != submitted {
                                 editing.set(Some(num(&v,"id")));
-                                original.set(json!({"content":v["content"],"create_time":crate::dates::input(&text(&v,"create_time"))}));
+                                draft.original.set(json!({"content":v["content"],"create_time":crate::dates::input(&text(&v,"create_time"))}));
                                 notify(t("原进展已确认，较新的修改可继续保存。", "Original update confirmed. Your newer edits are ready to save."));
                             } else {
                                 reset.run(());
@@ -1090,9 +1125,9 @@ pub fn Notes() -> impl IntoView {
     let data = load(Signal::derive(move || {
         format!("/api/v1/content/notes?page={}&size=20", page.get())
     }));
-    let form = RwSignal::new(empty_note());
-    let original = RwSignal::new(empty_note());
-    let editing = RwSignal::new(None::<i64>);
+    let draft = ContentDraft::new(empty_note());
+    let form = draft.form;
+    let editing = draft.editing;
     let save = Action::new();
     let receipt = creation_receipt(save);
     let upload = Action::new();
@@ -1104,9 +1139,7 @@ pub fn Notes() -> impl IntoView {
             return;
         }
         upload.abort();
-        form.set(empty_note());
-        original.set(empty_note());
-        editing.set(None);
+        draft.replace(empty_note(), None);
         filename.set(String::new());
         validation.set(String::new());
     });
@@ -1147,20 +1180,10 @@ pub fn Notes() -> impl IntoView {
                                 .class("blog-button")
                                 .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
-                                    if form.get_untracked() != original.get_untracked()
-                                        && !window()
-                                            .confirm_with_message(&t(
-                                                "放弃当前未保存的随笔修改？",
-                                                "Discard the current unsaved note changes?",
-                                            ))
-                                            .unwrap_or(false)
-                                    {
+                                    if !draft.can_discard(DISCARD_NOTE) {
                                         return;
                                     }
-                                    let f = edit.as_ref().clone();
-                                    form.set(f.clone());
-                                    original.set(f);
-                                    editing.set(Some(id));
+                                    draft.replace(edit.as_ref().clone(), Some(id));
                                     filename.set(String::new());
                                 }),
                             blog_interface::html::button()
@@ -1171,11 +1194,7 @@ pub fn Notes() -> impl IntoView {
                                 })
                                 .class("blog-button")
                                 .disabled(move || {
-                                    locked()
-                                        || editing.get() == Some(id)
-                                            && form.with(|form| {
-                                                original.with(|original| form != original)
-                                            })
+                                    locked() || editing.get() == Some(id) && draft.dirty()
                                 })
                                 .on(blog_interface::ev::click, move |_| {
                                     let visible = !is_public;
@@ -1188,7 +1207,8 @@ pub fn Notes() -> impl IntoView {
                                         move |v| {
                                             if editing.get_untracked() == Some(id) {
                                                 form.update(|f| f["is_public"] = json!(visible));
-                                                original
+                                                draft
+                                                    .original
                                                     .update(|f| f["is_public"] = json!(visible));
                                             }
                                             if num(&v, "id") != id
@@ -1287,34 +1307,12 @@ pub fn Notes() -> impl IntoView {
                     .formnovalidate(move || receipt.with(Option::is_some))
                     .disabled(move
                     | | save.busy.get() || upload.busy.get()),
-                    move | | (editing.get().is_some() || form.get() != original.get()
-                    || upload.busy.get()).then(| | View::new(
-    blog_interface::html::button()
-        .child(
-
-            t("取消编辑", "Cancel editing"),
-        )
-        .class("blog-button")
-        .r#type("button")
-        .disabled(
-            move || save.busy.get() || receipt.with(Option::is_some),
-        )
-        .on(
-            blog_interface::ev::click,
-            move |_| if form.get_untracked() == original.get_untracked()
-                    || window()
-                        .confirm_with_message(
-                            &t(
-                                "放弃当前未保存的随笔修改？",
-                                "Discard the current unsaved note changes?",
-                            ),
-                        )
-                        .unwrap_or(false)
-                {
-                    reset.run(());
-                },
-        ),
-)),)).class("blog-actions blog-flow"),))
+                    cancel_editing(
+                        move || editing.get().is_some() || draft.dirty() || upload.busy.get(),
+                        move || save.busy.get() || receipt.with(Option::is_some),
+                        move || draft.can_discard(DISCARD_NOTE),
+                        reset,
+                    ),)).class("blog-actions blog-flow"),))
                     .class("blog-fieldset blog-stack")
                     .disabled(move
                     | | save.busy.get())).class("editor-form blog-frame blog-frame--padded blog-stack")
@@ -1351,7 +1349,7 @@ pub fn Notes() -> impl IntoView {
                             receipt.set(None);
                             if target.is_none() && form.get_untracked() != submitted {
                                 editing.set(Some(num(&v,"id")));
-                                original.set(note_fields(&v, flag(&v, "is_public")));
+                                draft.original.set(note_fields(&v, flag(&v, "is_public")));
                                 notify(t("原随笔已确认，较新的修改可继续保存。", "Original note confirmed. Your newer edits are ready to save."));
                             } else {
                                 reset.run(());

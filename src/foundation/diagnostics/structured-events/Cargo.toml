@@ -1,7 +1,7 @@
 # Project-owned consolidation; immutable upstream origins remain in compliance.
 [package]
 edition = "2018"
-rust-version = "1.65.0"
+rust-version = "1.80.0"
 build = false
 autolib = false
 autobins = false
@@ -42,10 +42,7 @@ release_max_level_info = []
 release_max_level_off = []
 release_max_level_trace = []
 release_max_level_warn = []
-std = [
-    "alloc",
-    "dep:once_cell",
-]
+std = ["alloc"]
 alloc = []
 collector = [
     "alloc",
@@ -73,7 +70,6 @@ log-bridge = [
     "std",
     "dep:log",
     "log/std",
-    "dep:once_cell",
 ]
 log-tracer = [
     "log-bridge",
@@ -123,11 +119,6 @@ package = "blog-diagnostics-event-instrumentation"
 optional = true
 path = "../../cli/terminal-format"
 package = "blog-cli-terminal-format"
-
-[dependencies.once_cell]
-optional = true
-path = "../../sync/initialization"
-package = "blog-sync-initialization"
 
 [dependencies.synchronization]
 optional = true

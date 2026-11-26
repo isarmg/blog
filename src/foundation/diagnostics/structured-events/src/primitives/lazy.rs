@@ -1,5 +1,5 @@
 #[cfg(feature = "std")]
-pub(crate) use once_cell::sync::Lazy;
+pub(crate) use std::sync::LazyLock as Lazy;
 
 #[cfg(not(feature = "std"))]
 pub(crate) use self::spin::Lazy;
