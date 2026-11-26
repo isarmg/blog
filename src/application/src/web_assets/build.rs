@@ -2,7 +2,7 @@
 //! so the manifest and `include_bytes!` always describe the same resource bytes.
 
 use crate::web_assets::{
-    AssetManifest, AssetPath, AssetRecord, DirectoryAssets, Error, MANIFEST_FORMAT, MAX_FILES,
+    AssetDirectory, AssetManifest, AssetPath, AssetRecord, Error, MANIFEST_FORMAT, MAX_FILES,
     MAX_TOTAL_BYTES, Result, content_type, safe_relative, sha256, valid_digest,
 };
 use std::{env, fs, path::Path};
@@ -226,8 +226,8 @@ pub(crate) fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<
     } else {
         env::current_dir()?.join(root)
     };
-    let directory = DirectoryAssets::open(&root)?;
-    let paths = collect_paths(&root, true)?;
+    let directory = AssetDirectory::open(&root)?;
+    let paths = collect_paths(&root)?;
     if paths.is_empty() {
         return Err(Error::EmptyDirectory);
     }
@@ -278,10 +278,10 @@ pub(crate) fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<
     Ok(())
 }
 
-pub(crate) fn collect_paths(root: &Path, watch: bool) -> Result<Vec<String>> {
+fn collect_paths(root: &Path) -> Result<Vec<String>> {
     let mut paths = Vec::new();
     let mut visited = 0_usize;
-    collect(root, root, &mut paths, &mut visited, watch)?;
+    collect(root, root, &mut paths, &mut visited)?;
     paths.sort();
     Ok(paths)
 }
@@ -291,11 +291,8 @@ fn collect(
     directory: &Path,
     paths: &mut Vec<String>,
     visited: &mut usize,
-    watch: bool,
 ) -> Result<()> {
-    if watch {
-        println!("cargo:rerun-if-changed={}", directory.display());
-    }
+    println!("cargo:rerun-if-changed={}", directory.display());
     for entry in fs::read_dir(directory)? {
         *visited += 1;
         if *visited > MAX_FILES {
@@ -315,15 +312,13 @@ fn collect(
             return Err(Error::UnsafeFile);
         }
         if metadata.is_dir() {
-            collect(root, &path, paths, visited, watch)?;
+            collect(root, &path, paths, visited)?;
         } else {
             use std::os::unix::fs::MetadataExt;
             if !metadata.is_file() || metadata.nlink() != 1 {
                 return Err(Error::UnsafeFile);
             }
-            if watch {
-                println!("cargo:rerun-if-changed={}", path.display());
-            }
+            println!("cargo:rerun-if-changed={}", path.display());
             paths.push(relative);
         }
     }

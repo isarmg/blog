@@ -1,8 +1,7 @@
 //! Build-bound Web resources and shared HTTP semantics, independent of the server framework.
 //!
 //! Use [`build::generate`] in `build.rs` and include its generated source at runtime.
-//! [`DirectoryAssets`] is an explicitly selected development provider. It never replaces
-//! embedded resources automatically, and rereads each requested file for hot reload.
+//! The generator snapshots each file through its opened asset directory.
 
 use bytes::Bytes;
 use http::{HeaderMap, Method, Response, StatusCode, header};
@@ -11,8 +10,7 @@ use sha2::{Digest, Sha256};
 use std::{
     fs::File,
     io::Read,
-    path::{Component, Path, PathBuf},
-    sync::Arc,
+    path::{Component, Path},
 };
 
 pub mod build;
@@ -160,28 +158,11 @@ pub fn response(
     )
 }
 
-/// Descriptor-bound development root, with no-follow reads on Unix.
-/// File changes are visible on the next request. Symlinks, hardlinks, special files,
-/// unsafe paths, and oversized reads are rejected instead of being served.
-#[derive(Clone, Debug)]
-pub struct DirectoryAssets {
-    root: PathBuf,
-    directory: Arc<File>,
-}
+/// Descriptor-bound reads for the build-time asset snapshot.
+#[derive(Debug)]
+struct AssetDirectory(File);
 
-impl DirectoryAssets {
-    /// Open an absolute development directory. No production mode is selected here.
-    /// # Errors
-    /// The path is not a safe absolute directory or cannot be opened.
-    pub fn new(root: impl AsRef<Path>) -> Result<Self> {
-        let root = root.as_ref();
-        let result = Self::open(root)?;
-        // Fail configuration early for unsafe initial trees; later reads still
-        // validate descriptors because the development tree can change.
-        build::collect_paths(root, false)?;
-        Ok(result)
-    }
-
+impl AssetDirectory {
     fn open(root: &Path) -> Result<Self> {
         if !root.is_absolute() {
             return Err(Error::RelativeDirectory);
@@ -192,51 +173,12 @@ impl DirectoryAssets {
         {
             return Err(Error::UnsafeDirectory);
         }
-        Ok(Self {
-            root: root.to_path_buf(),
-            directory: Arc::new(open_directory(root)?),
-        })
-    }
-
-    #[must_use]
-    pub fn root(&self) -> &Path {
-        &self.root
-    }
-
-    pub fn response(&self, path: &str, method: &Method, headers: &HeaderMap) -> Response<Bytes> {
-        if method != Method::GET && method != Method::HEAD {
-            return error_response(StatusCode::METHOD_NOT_ALLOWED, method);
-        }
-        let Some(path) = request_path(path) else {
-            return error_response(StatusCode::NOT_FOUND, method);
-        };
-        match self.read(path) {
-            Ok(bytes) => {
-                let digest = sha256(&bytes);
-                asset_response(
-                    Bytes::from(bytes),
-                    content_type(path.0),
-                    &digest,
-                    method,
-                    headers,
-                )
-            }
-            Err(Error::UnsafeFile | Error::AssetBudget) => {
-                error_response(StatusCode::NOT_FOUND, method)
-            }
-            Err(Error::Descriptor(
-                rustix::io::Errno::NOENT | rustix::io::Errno::NOTDIR | rustix::io::Errno::LOOP,
-            )) => error_response(StatusCode::NOT_FOUND, method),
-            Err(error) => {
-                tracing::error!(error = ?error, "development asset read failed");
-                error_response(StatusCode::INTERNAL_SERVER_ERROR, method)
-            }
-        }
+        Ok(Self(open_directory(root)?))
     }
 
     fn read(&self, path: AssetPath<'_>) -> Result<Vec<u8>> {
         use rustix::fs::{FileType, Mode, OFlags, fstat, openat};
-        let mut parent = self.directory.try_clone()?;
+        let mut parent = self.0.try_clone()?;
         let mut components = Path::new(path.0).components().peekable();
         while let Some(Component::Normal(name)) = components.next() {
             if components.peek().is_some() {

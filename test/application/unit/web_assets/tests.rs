@@ -181,13 +181,18 @@ fn external_metadata_and_filesystem_errors_keep_their_source() {
     assert!(error.source().unwrap().is::<serde_json::Error>());
 
     let root = tempfile::tempdir().unwrap();
-    let error = DirectoryAssets::new(root.path().join("missing")).unwrap_err();
+    let error = AssetDirectory::open(&root.path().join("missing")).unwrap_err();
     assert!(matches!(error, Error::Descriptor(rustix::io::Errno::NOENT)));
     assert!(error.source().unwrap().is::<rustix::io::Errno>());
 
-    let directory = DirectoryAssets::new(root.path()).unwrap();
-    let missing = directory.response("/missing.js", &Method::GET, &HeaderMap::new());
-    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+    let directory = AssetDirectory::open(root.path()).unwrap();
+    let missing = directory
+        .read(AssetPath::parse("missing.js").unwrap())
+        .unwrap_err();
+    assert!(matches!(
+        missing,
+        Error::Descriptor(rustix::io::Errno::NOENT)
+    ));
 }
 
 #[test]
@@ -236,20 +241,15 @@ fn generated_inventory_is_deterministic_and_snapshots_exact_bytes() {
 }
 
 #[test]
-fn development_provider_refreshes_bytes_and_validators() {
+fn asset_directory_reads_current_source_bytes() {
     let input = directory();
-    let directory = DirectoryAssets::new(input.path()).unwrap();
-    let before = directory.response("/assets/app.js", &Method::GET, &HeaderMap::new());
+    let directory = AssetDirectory::open(input.path()).unwrap();
+    let path = AssetPath::parse("assets/app.js").unwrap();
+    let before = directory.read(path).unwrap();
     fs::write(input.path().join("assets/app.js"), b"updated").unwrap();
-    let after = directory.response("/assets/app.js", &Method::GET, &HeaderMap::new());
-    assert_eq!(after.body().as_ref(), b"updated");
-    assert_ne!(
-        before.headers()[header::ETAG],
-        after.headers()[header::ETAG]
-    );
-    let head = directory.response("/assets/app.js", &Method::HEAD, &HeaderMap::new());
-    assert!(head.body().is_empty());
-    assert_eq!(head.headers(), after.headers());
+    let after = directory.read(path).unwrap();
+    assert_eq!(after, b"updated");
+    assert_ne!(before, after);
 }
 
 #[test]
@@ -264,23 +264,21 @@ fn generation_rejects_unsafe_names_and_empty_trees() {
 
 #[cfg(unix)]
 #[test]
-fn links_are_rejected_during_generation_and_hot_reload() {
+fn generation_and_asset_reader_reject_links() {
     use std::os::unix::fs::symlink;
     let input = directory();
     let output = tempfile::tempdir().unwrap();
-    let directory = DirectoryAssets::new(input.path()).unwrap();
+    let directory = AssetDirectory::open(input.path()).unwrap();
     fs::hard_link(
         input.path().join("index.html"),
         input.path().join("hard.html"),
     )
     .unwrap();
     assert!(build::generate_at(input.path(), output.path(), "web.rs").is_err());
-    assert_eq!(
-        directory
-            .response("/hard.html", &Method::GET, &HeaderMap::new())
-            .status(),
-        StatusCode::NOT_FOUND
-    );
+    assert!(matches!(
+        directory.read(AssetPath::parse("hard.html").unwrap()),
+        Err(Error::UnsafeFile)
+    ));
     fs::remove_file(input.path().join("hard.html")).unwrap();
     fs::remove_file(input.path().join("assets/app.js")).unwrap();
     symlink(
@@ -289,37 +287,35 @@ fn links_are_rejected_during_generation_and_hot_reload() {
     )
     .unwrap();
     assert!(build::generate_at(input.path(), output.path(), "web.rs").is_err());
-    assert_eq!(
+    assert!(
         directory
-            .response("/assets/app.js", &Method::GET, &HeaderMap::new())
-            .status(),
-        StatusCode::NOT_FOUND
+            .read(AssetPath::parse("assets/app.js").unwrap())
+            .is_err()
     );
     let aliased_root = input.path().with_extension("alias");
     symlink(input.path(), &aliased_root).unwrap();
-    assert!(DirectoryAssets::new(&aliased_root).is_err());
+    assert!(AssetDirectory::open(&aliased_root).is_err());
     fs::remove_file(aliased_root).unwrap();
 }
 
 #[cfg(unix)]
 #[test]
-fn replaced_directory_cannot_redirect_dev_reads() {
+fn descriptor_read_rejects_a_replaced_directory_alias() {
     use std::os::unix::fs::symlink;
     let input = directory();
     let outside = tempfile::tempdir().unwrap();
     fs::write(outside.path().join("app.js"), b"must not serve").unwrap();
-    let directory = DirectoryAssets::new(input.path()).unwrap();
+    let directory = AssetDirectory::open(input.path()).unwrap();
     fs::rename(
         input.path().join("assets"),
         input.path().join("original-assets"),
     )
     .unwrap();
     symlink(outside.path(), input.path().join("assets")).unwrap();
-    assert_eq!(
+    assert!(
         directory
-            .response("/assets/app.js", &Method::GET, &HeaderMap::new())
-            .status(),
-        StatusCode::NOT_FOUND
+            .read(AssetPath::parse("assets/app.js").unwrap())
+            .is_err()
     );
 }
 
