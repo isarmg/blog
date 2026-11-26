@@ -44,8 +44,8 @@ features = []
 default-features = true
 
 [dependencies.itertools]
-package = "blog-syntax-style-iterators"
-path = "../../syntax/style-iterators"
+package = "blog-syntax-compiler-iterators"
+path = "../../syntax/compiler-iterators"
 features = []
 default-features = true
 

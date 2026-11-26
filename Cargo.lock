@@ -143,7 +143,7 @@ dependencies = [
  "blog-encoding-application-base-encoding",
  "blog-encoding-integer-format",
  "blog-lookup-script-table",
- "blog-syntax-style-iterators",
+ "blog-syntax-compiler-iterators",
  "blog-syntax-token-concat",
  "blog-text-compile-time-text",
 ]
@@ -1214,13 +1214,6 @@ dependencies = [
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
  "blog-text-rust-identifiers",
-]
-
-[[package]]
-name = "blog-syntax-style-iterators"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-alternative",
 ]
 
 [[package]]

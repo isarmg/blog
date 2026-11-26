@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "7a9d8451fb4e102d09e1371ff6f3461ae842ef17ae0852a284b87ebb62223d0d"
+    "Cargo.lock": "13ed6ce41665cce5fcf851e62025009ae58c368e0b87586742b360de887e73fe"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6048,7 +6048,7 @@
     "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
     "src/foundation/assets/compiler/Cargo.toml": "ffbf8e462f4ae93554fcc24bd0ec7cad4fafe58703e5a412fe655dbf96ff76db",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
-    "src/foundation/assets/style-compiler/Cargo.toml": "c2556622a5effcbd6c0dea94e33483251955cfd44a35253dd20b1cd3240a77ad",
+    "src/foundation/assets/style-compiler/Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
     "src/foundation/assets/style-value-derive/Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
@@ -34439,7 +34439,7 @@
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
         "src/public/photos.rs": "59be1503acf00f1bda4945df555bd325befacffaf38d9b601e4eac1de0b4e662",
         "src/public/shell.rs": "fd5ad242f9b22f3244f5eeb93b6f2e1c776da840062a0e362e2eb5f962842ccb",
-        "src/public/toolbox.rs": "931ae8d6b1f360311c135034be58e434bed1a8c1e1c5c1758fdc9a80efd609b8",
+        "src/public/toolbox.rs": "7185a47b4ee49f70af929b2c546db6b235b1bcce8472c049c8385002c7381550",
         "src/select.rs": "e5e8fb575165c79304b6826b53694d4775d845226b4331112f7a6b9fc04a61ea"
       },
       "layer": "product",
@@ -35232,13 +35232,13 @@
         "src/foundation/encoding/application-base-encoding",
         "src/foundation/encoding/integer-format",
         "src/foundation/lookup/script-table",
-        "src/foundation/syntax/style-iterators",
+        "src/foundation/syntax/compiler-iterators",
         "src/foundation/syntax/token-concat",
         "src/foundation/text/compile-time-text"
       ],
       "directory": "src/foundation/assets/style-compiler",
       "files_sha256": {
-        "Cargo.toml": "c2556622a5effcbd6c0dea94e33483251955cfd44a35253dd20b1cd3240a77ad",
+        "Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
         "parts/cached_hash/src/lib.rs": "079a5f369a82b4573cca488a8c52a8427546e9050c89964a7b554215dd4da5f1",
         "parts/float_format/.cargo_vcs_info.json": "c745454c84bcf2144e28b355f7e63c480768bbd013043293a35bca550ec73094",
         "parts/float_format/src/diyfp.rs": "0c5c1be29ffe1d2623226bbae145d9998abf6542d633a368c1536b8d197b3301",
@@ -47832,7 +47832,7 @@
         "src/content/guestbook.rs": "36f05b37e2a8cef38528174ee98a52247170078d41631fb55719b5ca165ebcb4",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
         "src/content/letter.rs": "a43b2b08718247477f3698d84853a67a2eb0c2eaa84dee124aa32705dfcdabf3",
-        "src/content/links.rs": "548603ede258b6b423354e221b97c51b2c79267e020722e50b108a226fee9671",
+        "src/content/links.rs": "66a56657071430eaaef03a30c88ce8c9f2a3e1414a68badc4b2362500f2c972f",
         "src/content/mod.rs": "7a54c3213fa6de82c6e2e053987172b5802e25f0561b68759184e9500f6008c8",
         "src/content/notes.rs": "36de5f35daca88c128e5411b91c0152afebb6cbc1c81c9947d878c7e02826b76",
         "src/content/resources.rs": "2230b67a3fac4ccf5519052646bc9b419e9c380c97e1e502248deee6f5705e56",
@@ -51285,18 +51285,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/syntax/style-iterators": {
-          "features": [
-            "default",
-            "use_alloc",
-            "use_std"
-          ],
-          "name": "blog-syntax-style-iterators",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/syntax/token-concat": {
           "features": [],
           "name": "blog-syntax-token-concat",
@@ -53762,18 +53750,6 @@
             "visit-mut"
           ],
           "name": "blog-syntax-rust-parser",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/syntax/style-iterators": {
-          "features": [
-            "default",
-            "use_alloc",
-            "use_std"
-          ],
-          "name": "blog-syntax-style-iterators",
           "roles": [
             "compile"
           ],
