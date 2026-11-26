@@ -528,10 +528,6 @@ name = "blog-encoding-integer-format"
 version = "0.0.0"
 
 [[package]]
-name = "blog-encoding-roundtrip-float-format"
-version = "0.0.0"
-
-[[package]]
 name = "blog-encoding-script-float-format"
 version = "0.0.0"
 
@@ -836,8 +832,6 @@ dependencies = [
 name = "blog-network-form-data"
 version = "0.0.0"
 dependencies = [
- "blog-encoding-integer-format",
- "blog-encoding-roundtrip-float-format",
  "blog-format-data-model",
  "blog-network-web-address",
 ]

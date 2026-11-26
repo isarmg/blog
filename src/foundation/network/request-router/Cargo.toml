@@ -28,7 +28,7 @@ default = [
 form = [
     "url-encoding/form",
     "url-encoding/std",
-    "dep:form-codec",
+    "form-codec/serialize",
     "serde/error-path",
 ]
 http1 = [
@@ -123,6 +123,7 @@ package = "blog-format-json"
 
 [dependencies.form-codec]
 optional = true
+default-features = false
 path = "../form-data"
 package = "blog-network-form-data"
 

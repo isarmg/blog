@@ -619,14 +619,15 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
     site["background_image"] = " https://images.example.test/home.jpg ".into();
     site["avatar"] = "/media/owner.png".into();
     site["random_cover"] = "https://images.example.test/one.jpg\n/media/two.jpg".into();
+    let mut expected_media = empty["media"].clone();
     for (index, key) in keys.into_iter().enumerate() {
-        site["media"][key] = if key == "toolbox_video" {
-            " /media/clip.mp4 ".into()
+        let url = if key == "toolbox_video" {
+            "/media/clip.mp4".to_owned()
         } else {
-            json!(format!(
-                " https://images.example.test/{index}.jpg?q=a'b&size=(2) "
-            ))
+            format!("https://images.example.test/{index}.jpg?q=a'b&size=(2)")
         };
+        site["media"][key] = format!(" {url} ").into();
+        expected_media[key] = url.into();
     }
     let response = admin(&app, &session, "PUT", "/api/v1/content/site", site).await;
     assert_eq!(response.status(), StatusCode::OK);
@@ -635,11 +636,7 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
         saved["background_image"],
         "https://images.example.test/home.jpg"
     );
-    assert_eq!(saved["media"]["toolbox_video"], "/media/clip.mp4");
-    assert_eq!(
-        saved["media"]["logo"],
-        "https://images.example.test/0.jpg?q=a'b&size=(2)"
-    );
+    assert_eq!(saved["media"], expected_media);
     assert_eq!(public(&app, "/api/v1/site").await["media"], saved["media"]);
     let (persisted, status): (String, i64) = sqlx::query_as("SELECT media,status FROM web_info")
         .fetch_one(&pool)

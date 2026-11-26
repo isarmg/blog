@@ -20,14 +20,20 @@ autotests = false
 autobenches = false
 autoexamples = false
 
+[features]
+default = ["serialize"]
+serialize = ["dep:itoa", "dep:ryu"]
+
 [lib]
 test = false
 name = "blog_network_form_data"
 [dependencies.itoa]
+optional = true
 path = "../../encoding/integer-format"
 package = "blog-encoding-integer-format"
 
 [dependencies.ryu]
+optional = true
 path = "../../encoding/roundtrip-float-format"
 package = "blog-encoding-roundtrip-float-format"
 

@@ -5,6 +5,7 @@ use crate::common::{
 use blog_interface::component::component_props_builder;
 use blog_interface::prelude::*;
 use blog_interface::thread_bound::SendWrapper;
+use blog_interface::{ev, html};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -23,32 +24,26 @@ impl CommentKind {
         }
     }
 }
-fn commenter(v: &Value) -> String {
-    let name = text(v, "username");
+fn commenter(name: &str) -> String {
     if name.is_empty() {
         t("匿名访客", "Anonymous guest")
     } else {
-        name
+        name.into()
     }
 }
 
-#[derive(Clone, Serialize)]
-struct PendingSubmission {
-    request_id: String,
-    content: String,
-    parent_comment_id: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    article_id: Option<i64>,
-}
-
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct PendingFields {
+struct PendingSubmission {
     request_id: String,
     content: String,
     #[serde(deserialize_with = "required_parent")]
     parent_comment_id: Option<i64>,
-    #[serde(default, deserialize_with = "present_article")]
+    #[serde(
+        default,
+        deserialize_with = "present_article",
+        skip_serializing_if = "Option::is_none"
+    )]
     article_id: Option<i64>,
 }
 
@@ -64,7 +59,7 @@ impl PendingSubmission {
     fn parse(raw: &str, target: Option<i64>) -> Result<Self, PendingError> {
         struct PendingObject;
         impl<'de> serde::de::Visitor<'de> for PendingObject {
-            type Value = PendingFields;
+            type Value = PendingSubmission;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("a pending comment object")
@@ -74,17 +69,13 @@ impl PendingSubmission {
                 self,
                 map: M,
             ) -> Result<Self::Value, M::Error> {
-                PendingFields::deserialize(serde::de::value::MapAccessDeserializer::new(map))
+                PendingSubmission::deserialize(serde::de::value::MapAccessDeserializer::new(map))
             }
         }
         let mut decoder = serde_json::Deserializer::from_str(raw);
-        let PendingFields {
-            request_id,
-            content,
-            parent_comment_id,
-            article_id,
-        } = decoder.deserialize_map(PendingObject)?;
+        let submission = decoder.deserialize_map(PendingObject)?;
         decoder.end()?;
+        let request_id = &submission.request_id;
         let valid_request = request_id.len() == 36
             && request_id
                 .bytes()
@@ -97,20 +88,15 @@ impl PendingSubmission {
                 });
         let valid_id = |id: i64| (1..=9_007_199_254_740_991).contains(&id);
         if !valid_request
-            || content.trim().is_empty()
-            || content.chars().count() > 1024
-            || parent_comment_id.is_some_and(|id| !valid_id(id))
-            || article_id.is_some_and(|id| !valid_id(id))
-            || article_id != target
+            || submission.content.trim().is_empty()
+            || submission.content.chars().count() > 1024
+            || submission.parent_comment_id.is_some_and(|id| !valid_id(id))
+            || submission.article_id.is_some_and(|id| !valid_id(id))
+            || submission.article_id != target
         {
             return Err(PendingError::InvalidSubmission);
         }
-        Ok(Self {
-            request_id,
-            content,
-            parent_comment_id,
-            article_id,
-        })
+        Ok(submission)
     }
 
     fn json(&self) -> Value {
@@ -153,6 +139,12 @@ fn read_pending(key: &str, target: Option<i64>) -> Result<Option<PendingSubmissi
     };
     PendingSubmission::parse(&raw, target).map(Some)
 }
+#[derive(Clone)]
+struct ReplyTarget {
+    id: i64,
+    username: String,
+}
+
 #[component]
 pub(crate) fn Comments(
     #[prop(default = CommentKind::Article)] kind: CommentKind,
@@ -169,10 +161,10 @@ pub(crate) fn Comments(
         Ok(pending) => (pending, false),
         Err(_) => (None, true),
     };
+    let draft = RwSignal::new(restored.as_ref().map_or_default(|v| v.content.clone()));
     let pending = RwSignal::new(restored);
     let storage_failure = RwSignal::new(unavailable);
-    let draft = RwSignal::new(pending.get_untracked().map_or_default(|v| v.content));
-    let reply = RwSignal::new(None::<Value>);
+    let reply = RwSignal::new(None::<ReplyTarget>);
     let failure = RwSignal::new(String::new());
     let feedback = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
@@ -198,9 +190,9 @@ pub(crate) fn Comments(
         });
     });
     let key = StoredValue::new(key);
-    let choose = Callback::new(move |v: Value| {
+    let choose = Callback::new(move |v: ReplyTarget| {
         if !busy.get_untracked()
-            && pending.get_untracked().is_none()
+            && pending.with_untracked(Option::is_none)
             && !storage_failure.get_untracked()
         {
             reply.set(Some(v));
@@ -225,9 +217,8 @@ pub(crate) fn Comments(
                     },
                 )),
                 move || {
-                    (!failure.get().is_empty()).then(|| {
-                        View::new(blog_interface::html::p().child(failure.get()).role("alert"))
-                    })
+                    let message = failure.get();
+                    (!message.is_empty()).then(|| html::p().child(message).role("alert"))
                 },
                 data.public_feedback(Some(t("评论加载失败", "Unable to load comments"))),
                 move || {
@@ -245,7 +236,7 @@ pub(crate) fn Comments(
                     })
                 },
                 move || {
-                    (pending.get().is_some() && failure.get().is_empty()).then(|| {
+                    (pending.with(Option::is_some) && failure.with(String::is_empty)).then(|| {
                         View::new(blog_interface::html::p().child(t("有一条评论等待确认，请继续确认原提交。", "A comment is awaiting confirmation. Continue confirming the original submission.")).role("status"))
                     })
                 },
@@ -256,12 +247,7 @@ pub(crate) fn Comments(
                         View::new(
                             blog_interface::html::div()
                                 .child((
-                                    CommentEntry(
-                                        component_props_builder(&CommentEntry)
-                                            .item(item.clone())
-                                            .reply(choose)
-                                            .build(),
-                                    ),
+                                    comment_entry(&item, choose),
                                     Replies(
                                         component_props_builder(&Replies)
                                             .root(item)
@@ -301,25 +287,17 @@ pub(crate) fn Comments(
                             .child(t("无需登录，以匿名访客身份发表评论。", "Post a comment as an anonymous guest. No account is needed."))
                             .class("comment-identity"),
                         move || {
-                            reply.get().map(|v| {
-                                View::new(
-                                    blog_interface::html::button()
-                                        .child(format!(
-                                            "{}{} · {}",
-                                            t("回复 ", "Reply to "),
-                                            commenter(&v),
-                                            t("取消", "Cancel")
-                                        ))
-                                        .class("text-action")
-                                        .r#type("button")
-                                        .disabled(move || busy.get() || pending.get().is_some())
-                                        .on(blog_interface::ev::click, move |_| reply.set(None)),
-                                )
-                            })
+                            let name = reply.with(|reply| reply.as_ref().map(|reply| commenter(&reply.username)))?;
+                            Some(html::button()
+                                .child(format!("{}{} · {}", t("回复 ", "Reply to "), name, t("取消", "Cancel")))
+                                .class("text-action")
+                                .r#type("button")
+                                .disabled(move || busy.get() || pending.with(Option::is_some))
+                                .on(ev::click, move |_| reply.set(None)))
                         },
                         blog_interface::html::textarea()
                             .disabled(move || {
-                                busy.get() || pending.get().is_some() || storage_failure.get()
+                                busy.get() || pending.with(Option::is_some) || storage_failure.get()
                             })
                             .aria_label(t("写下你的想法", "Write your thoughts"))
                             .required(true)
@@ -333,7 +311,7 @@ pub(crate) fn Comments(
                             .child(move || {
                                 if busy.get() {
                                     t("发表中…", "Posting…")
-                                } else if pending.get().is_some() {
+                                } else if pending.with(Option::is_some) {
                                     t("确认原提交", "Confirm original submission")
                                 } else {
                                     t("匿名发表评论", "Post anonymous comment")
@@ -343,10 +321,10 @@ pub(crate) fn Comments(
                             .disabled(move || {
                                 busy.get()
                                     || storage_failure.get()
-                                    || (pending.get().is_none() && draft.get().trim().is_empty())
+                                    || (pending.with(Option::is_none) && draft.with(|draft| draft.trim().is_empty()))
                             }),
                         move || {
-                            (pending.get().is_some() || storage_failure.get()).then(|| {
+                            (pending.with(Option::is_some) || storage_failure.get()).then(|| {
                                 View::new(
                                     blog_interface::html::button()
                                         .child(t("清除待确认状态", "Clear pending submission"))
@@ -374,13 +352,8 @@ pub(crate) fn Comments(
                             })
                         },
                         move || {
-                            (!feedback.get().is_empty()).then(|| {
-                                View::new(
-                                    blog_interface::html::p()
-                                        .child(feedback.get())
-                                        .role("status"),
-                                )
-                            })
+                            let message = feedback.get();
+                            (!message.is_empty()).then(|| html::p().child(message).role("status"))
                         },
                     ))
                     .class("comment-form")
@@ -390,7 +363,7 @@ pub(crate) fn Comments(
                             return;
                         }
                         let (submission, retry) = if let Some(submission) = pending.get_untracked() { (submission, true) } else {
-                            let content = draft.get_untracked().trim().to_owned();
+                            let content = draft.with_untracked(|draft| draft.trim().to_owned());
                             if content.is_empty() {
                                 return;
                             }
@@ -404,7 +377,7 @@ pub(crate) fn Comments(
                             let submission = PendingSubmission {
                                 request_id: window().crypto().expect("invariant: the application window exposes browser crypto").random_uuid(),
                                 content,
-                                parent_comment_id: reply.get_untracked().map(|v| num(&v, "id")),
+                                parent_comment_id: reply.with_untracked(|reply| reply.as_ref().map(|target| target.id)),
                                 article_id: target,
                             };
                             (submission, false)
@@ -477,52 +450,48 @@ pub(crate) fn Comments(
             .class("article-comments"),
     )
 }
-#[component]
-fn CommentEntry(item: Value, reply: Callback<Value>) -> impl IntoView {
-    let target = item.clone();
-    View::new(
-        blog_interface::html::article()
-            .child((
-                blog_interface::html::div()
-                    .child((
-                        safe_url(&text(&item, "avatar"), true)
-                            .map(|url| View::new(blog_interface::html::img().src(url).alt(""))),
-                        blog_interface::html::div().child((
-                            blog_interface::html::strong().child(commenter(&item)),
-                            blog_interface::html::small()
-                                .child(crate::dates::format(&text(&item, "create_time"))),
-                        )),
-                    ))
-                    .class("public-comment-head"),
-                blog_interface::html::p().child((
-                    (!text(&item, "parent_username").is_empty()).then(|| {
-                        View::new(
-                            blog_interface::html::span()
-                                .child(format!("@{} ", text(&item, "parent_username")))
-                                .class("comment-mention"),
-                        )
-                    }),
-                    text(&item, "comment_content"),
-                )),
-                blog_interface::html::div()
-                    .child(
-                        blog_interface::html::button()
-                            .child(t("回复", "Reply"))
-                            .r#type("button")
-                            .on(blog_interface::ev::click, move |_| {
-                                reply.run(target.clone());
-                            }),
-                    )
-                    .class("comment-actions"),
-            ))
-            .class("public-comment"),
-    )
+fn comment_entry(item: &Value, reply: Callback<ReplyTarget>) -> impl IntoView + use<> {
+    let target = ReplyTarget {
+        id: num(item, "id"),
+        username: text(item, "username"),
+    };
+    let parent = text(item, "parent_username");
+    html::article()
+        .child((
+            html::div()
+                .child((
+                    safe_url(&text(item, "avatar"), true).map(|url| html::img().src(url).alt("")),
+                    html::div().child((
+                        html::strong().child(commenter(&target.username)),
+                        html::small().child(crate::dates::format(&text(item, "create_time"))),
+                    )),
+                ))
+                .class("public-comment-head"),
+            html::p().child((
+                (!parent.is_empty()).then(|| {
+                    html::span()
+                        .child(format!("@{parent} "))
+                        .class("comment-mention")
+                }),
+                text(item, "comment_content"),
+            )),
+            html::div()
+                .child(
+                    html::button()
+                        .child(t("回复", "Reply"))
+                        .r#type("button")
+                        .on(ev::click, move |_| reply.run(target.clone())),
+                )
+                .class("comment-actions"),
+        ))
+        .class("public-comment")
 }
+
 #[component]
 fn Replies(
     root: Value,
     kind: CommentKind,
-    choose: Callback<Value>,
+    choose: Callback<ReplyTarget>,
     refresh: RwSignal<u64>,
 ) -> impl IntoView {
     let id = num(&root, "id");
@@ -558,27 +527,21 @@ fn Replies(
         !data.busy.get() && data.with_current(|v| v.is_some_and(|v| remaining(v) > 0))
     });
     View::new(
-        blog_interface::html::div()
+        html::div()
             .child((
                 data.public_feedback(None),
                 move || {
-                    items
-                        .get()
-                        .into_iter()
-                        .map(|item| {
-                            View::new(CommentEntry(
-                                component_props_builder(&CommentEntry)
-                                    .item(item)
-                                    .reply(choose)
-                                    .build(),
-                            ))
-                        })
-                        .collect_view()
+                    items.with(|items| {
+                        items
+                            .iter()
+                            .map(|item| comment_entry(item, choose))
+                            .collect_view()
+                    })
                 },
                 move || {
                     expandable.get().then(|| {
                         View::new(
-                            blog_interface::html::button()
+                            html::button()
                                 .child(move || {
                                     let remaining = data.with_latest(|v| v.map_or(0, remaining));
                                     if remaining == 0 {
@@ -595,7 +558,7 @@ fn Replies(
                                 .class("comment-more")
                                 .r#type("button")
                                 .aria_disabled(move || (!can_load.get()).to_string())
-                                .on(blog_interface::ev::click, move |_| {
+                                .on(ev::click, move |_| {
                                     if can_load.get_untracked() {
                                         page.update(|p| *p += 1);
                                     }

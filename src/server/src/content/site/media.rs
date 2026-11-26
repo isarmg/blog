@@ -3,51 +3,34 @@ use crate::{AppError, invalid};
 use serde::{Deserialize, Serialize};
 use url_encoding::address::Url;
 
-#[derive(Default, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub(super) struct SiteMedia {
-    logo: Option<String>,
-    journey_background: Option<String>,
-    journal_background: Option<String>,
-    guestbook_background: Option<String>,
-    love_letter_background: Option<String>,
-    love_moments_cover: Option<String>,
-    love_photos_cover: Option<String>,
-    love_wishes_cover: Option<String>,
-    toolbox_background: Option<String>,
-    toolbox_video: Option<String>,
+macro_rules! site_media {
+    ($($field:ident),+ $(,)?) => {
+        #[derive(Default, Deserialize, Serialize)]
+        #[serde(deny_unknown_fields)]
+        pub(super) struct SiteMedia {
+            $($field: Option<String>,)+
+        }
+
+        impl SiteMedia {
+            pub(super) fn normalize(&mut self) -> Result<(), AppError> {
+                $(normalize_url(&mut self.$field)?;)+
+                Ok(())
+            }
+        }
+    };
 }
 
-impl SiteMedia {
-    pub(super) fn normalize(&mut self) -> Result<(), AppError> {
-        let Self {
-            logo,
-            journey_background,
-            journal_background,
-            guestbook_background,
-            love_letter_background,
-            love_moments_cover,
-            love_photos_cover,
-            love_wishes_cover,
-            toolbox_background,
-            toolbox_video,
-        } = self;
-        for field in [
-            logo,
-            journey_background,
-            journal_background,
-            guestbook_background,
-            love_letter_background,
-            love_moments_cover,
-            love_photos_cover,
-            love_wishes_cover,
-            toolbox_background,
-            toolbox_video,
-        ] {
-            normalize_url(field)?;
-        }
-        Ok(())
-    }
+site_media! {
+    logo,
+    journey_background,
+    journal_background,
+    guestbook_background,
+    love_letter_background,
+    love_moments_cover,
+    love_photos_cover,
+    love_wishes_cover,
+    toolbox_background,
+    toolbox_video,
 }
 
 pub(super) fn normalize_url(field: &mut Option<String>) -> Result<(), AppError> {
