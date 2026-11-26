@@ -1,4 +1,4 @@
-use super::{PageBounds, PageQuery, PageResult, input::ShortContent};
+use super::{PageQuery, PageResult, input::ShortContent};
 use crate::{ApiResult, AppError, AppState, absent, invalid};
 use axum::{Json, extract::State};
 use blog_application::admin_core::AuthenticatedIdentity;
@@ -156,55 +156,51 @@ async fn create_anonymous_comment(
             .bind(&input.request_id)
             .fetch_optional(&mut *transaction)
             .await?;
-    if let Some((previous_hash, comment_id)) = previous {
+    let id = if let Some((previous_hash, comment_id)) = previous {
         if previous_hash != request_hash {
             return Err(AppError::Public(
                 HttpStatus::Conflict,
                 "评论请求标识已用于不同内容",
             ));
         }
-        let id = comment_id.ok_or(AppError::Public(
+        comment_id.ok_or(AppError::Public(
             HttpStatus::Conflict,
             "原评论已删除，不会重复发表",
-        ))?;
-        let comment = sqlx::query_as::<_, PublicComment>(sqlx::AssertSqlSafe(format!(
-            "{COMMENT_SQL} WHERE c.id=?"
-        )))
-        .bind(id)
-        .fetch_one(&mut *transaction)
-        .await?;
-        transaction.commit().await?;
-        return Ok(Json(comment));
-    }
-    let (floor, parent_user) = if parent > 0 {
-        let row: Option<(Option<i64>, Option<i64>, Option<i64>)> = sqlx::query_as("SELECT parent_comment_id,floor_comment_id,user_id FROM comment WHERE id=? AND source=? AND type=?")
-            .bind(parent).bind(source).bind(kind).fetch_optional(&mut *transaction).await?;
-        let Some((parent_parent, parent_floor, user)) = row else {
-            return Err(invalid("回复目标不存在"));
-        };
-        (
-            Some(if parent_parent.unwrap_or(0) == 0 {
-                parent
-            } else {
-                parent_floor.ok_or(AppError::Public(
-                    HttpStatus::Conflict,
-                    "回复目标的楼层信息无效",
-                ))?
-            }),
-            user,
-        )
+        ))?
     } else {
-        (None, None)
-    };
-    let id = sqlx::query("INSERT INTO comment(source,type,parent_comment_id,user_id,floor_comment_id,parent_user_id,comment_content) VALUES(?,?,?,NULL,?,?,?)")
-        .bind(source).bind(kind).bind(parent).bind(floor).bind(parent_user).bind(content)
-        .execute(&mut *transaction).await?.last_insert_rowid();
-    sqlx::query("INSERT INTO comment_submission(request_id,request_hash,comment_id) VALUES(?,?,?)")
+        let (floor, parent_user) = if parent > 0 {
+            let row: Option<(Option<i64>, Option<i64>, Option<i64>)> = sqlx::query_as("SELECT parent_comment_id,floor_comment_id,user_id FROM comment WHERE id=? AND source=? AND type=?")
+                .bind(parent).bind(source).bind(kind).fetch_optional(&mut *transaction).await?;
+            let Some((parent_parent, parent_floor, user)) = row else {
+                return Err(invalid("回复目标不存在"));
+            };
+            (
+                Some(if parent_parent.unwrap_or(0) == 0 {
+                    parent
+                } else {
+                    parent_floor.ok_or(AppError::Public(
+                        HttpStatus::Conflict,
+                        "回复目标的楼层信息无效",
+                    ))?
+                }),
+                user,
+            )
+        } else {
+            (None, None)
+        };
+        let id = sqlx::query("INSERT INTO comment(source,type,parent_comment_id,user_id,floor_comment_id,parent_user_id,comment_content) VALUES(?,?,?,NULL,?,?,?)")
+            .bind(source).bind(kind).bind(parent).bind(floor).bind(parent_user).bind(content)
+            .execute(&mut *transaction).await?.last_insert_rowid();
+        sqlx::query(
+            "INSERT INTO comment_submission(request_id,request_hash,comment_id) VALUES(?,?,?)",
+        )
         .bind(&input.request_id)
         .bind(request_hash)
         .bind(id)
         .execute(&mut *transaction)
         .await?;
+        id
+    };
     let comment = sqlx::query_as::<_, PublicComment>(sqlx::AssertSqlSafe(format!(
         "{COMMENT_SQL} WHERE c.id=?"
     )))
@@ -243,29 +239,29 @@ async fn visible_comment_article(
     connection: &mut sqlx::SqliteConnection,
     id: i64,
 ) -> Result<(), AppError> {
-    let visible: Option<i64> = sqlx::query_scalar(
+    sqlx::query_scalar::<_, i64>(
         "SELECT id FROM article WHERE id=? AND deleted=0 AND view_status=1 AND password IS NULL",
     )
     .bind(id)
-    .fetch_optional(&mut *connection)
-    .await?;
-    if visible.is_none() {
-        return Err(absent());
-    }
+    .fetch_optional(connection)
+    .await?
+    .ok_or_else(absent)?;
     Ok(())
 }
+
 async fn read_root_comments(
-    connection: &mut sqlx::SqliteConnection,
+    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
     target: CommentTarget,
-    pagination: PageBounds,
-) -> Result<PageResult<PublicComment>, AppError> {
+    query: PageQuery,
+) -> ApiResult<PageResult<PublicComment>> {
+    let pagination = query.bounds(10, 50);
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
     )
     .bind(target.source())
     .bind(target.as_str())
-    .fetch_one(&mut *connection)
+    .fetch_one(&mut *transaction)
     .await?;
     let items = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "{COMMENT_SQL} WHERE c.source=? AND c.type=?
@@ -276,24 +272,26 @@ async fn read_root_comments(
     .bind(target.as_str())
     .bind(pagination.size)
     .bind(pagination.offset())
-    .fetch_all(connection)
+    .fetch_all(&mut *transaction)
     .await?;
-    Ok(pagination.result(items, total))
+    transaction.commit().await?;
+    Ok(Json(pagination.result(items, total)))
 }
 
 async fn read_comment_replies(
-    connection: &mut sqlx::SqliteConnection,
+    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
     target: CommentTarget,
     id: i64,
-    pagination: PageBounds,
-) -> Result<PageResult<PublicComment>, AppError> {
+    query: PageQuery,
+) -> ApiResult<PageResult<PublicComment>> {
+    let pagination = query.bounds(5, 50);
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE floor_comment_id=? AND source=? AND type=?",
     )
     .bind(id)
     .bind(target.source())
     .bind(target.as_str())
-    .fetch_one(&mut *connection)
+    .fetch_one(&mut *transaction)
     .await?;
     let items = sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "{COMMENT_SQL} WHERE c.floor_comment_id=? AND c.source=? AND c.type=?
@@ -304,9 +302,10 @@ async fn read_comment_replies(
     .bind(target.as_str())
     .bind(pagination.size)
     .bind(pagination.offset())
-    .fetch_all(connection)
+    .fetch_all(&mut *transaction)
     .await?;
-    Ok(pagination.result(items, total))
+    transaction.commit().await?;
+    Ok(Json(pagination.result(items, total)))
 }
 
 pub(super) async fn comments(
@@ -319,16 +318,13 @@ pub(super) async fn comments(
     let pagination = PageQuery {
         page: query.page,
         size: query.size,
-    }
-    .bounds(10, 50);
-    let result = read_root_comments(
-        &mut transaction,
+    };
+    read_root_comments(
+        transaction,
         CommentTarget::Article(query.article_id),
         pagination,
     )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    .await
 }
 
 pub(super) async fn comment_replies(
@@ -346,30 +342,14 @@ pub(super) async fn comment_replies(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(absent)?;
-    let result = read_comment_replies(
-        &mut transaction,
-        CommentTarget::Article(article),
-        id,
-        query.bounds(5, 50),
-    )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    read_comment_replies(transaction, CommentTarget::Article(article), id, query).await
 }
 
 pub(super) async fn message_comments(
     State(state): State<AppState>,
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<PublicComment>> {
-    let mut transaction = state.pool.begin().await?;
-    let result = read_root_comments(
-        &mut transaction,
-        CommentTarget::Message,
-        query.bounds(10, 50),
-    )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    read_root_comments(state.pool.begin().await?, CommentTarget::Message, query).await
 }
 
 pub(super) async fn message_comment_replies(
@@ -377,26 +357,7 @@ pub(super) async fn message_comment_replies(
     Path(id): Path<i64>,
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<PublicComment>> {
-    let mut transaction = state.pool.begin().await?;
-    let root: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM comment WHERE id=? AND source=0 AND type='message'
-            AND (parent_comment_id IS NULL OR parent_comment_id=0)",
-    )
-    .bind(id)
-    .fetch_optional(&mut *transaction)
-    .await?;
-    if root.is_none() {
-        return Err(absent());
-    }
-    let result = read_comment_replies(
-        &mut transaction,
-        CommentTarget::Message,
-        id,
-        query.bounds(5, 50),
-    )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    site_comment_replies(state.pool.begin().await?, CommentTarget::Message, id, query).await
 }
 
 pub(super) async fn love_comments(
@@ -405,14 +366,7 @@ pub(super) async fn love_comments(
 ) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
-    let result = read_root_comments(
-        &mut transaction,
-        CommentTarget::Love(source),
-        query.bounds(10, 50),
-    )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    read_root_comments(transaction, CommentTarget::Love(source), query).await
 }
 
 pub(super) async fn love_comment_replies(
@@ -422,26 +376,26 @@ pub(super) async fn love_comment_replies(
 ) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
-    let root: Option<i64> = sqlx::query_scalar(
-        "SELECT id FROM comment WHERE id=? AND source=? AND type='love'
+    site_comment_replies(transaction, CommentTarget::Love(source), id, query).await
+}
+
+async fn site_comment_replies(
+    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    target: CommentTarget,
+    id: i64,
+    query: PageQuery,
+) -> ApiResult<PageResult<PublicComment>> {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT id FROM comment WHERE id=? AND source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
     )
     .bind(id)
-    .bind(source)
+    .bind(target.source())
+    .bind(target.as_str())
     .fetch_optional(&mut *transaction)
-    .await?;
-    if root.is_none() {
-        return Err(absent());
-    }
-    let result = read_comment_replies(
-        &mut transaction,
-        CommentTarget::Love(source),
-        id,
-        query.bounds(5, 50),
-    )
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(result))
+    .await?
+    .ok_or_else(absent)?;
+    read_comment_replies(transaction, target, id, query).await
 }
 
 #[derive(Serialize, sqlx::FromRow)]

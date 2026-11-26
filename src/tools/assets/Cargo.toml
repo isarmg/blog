@@ -13,7 +13,7 @@ thiserror = { path = "../../foundation/diagnostics/typed-error", package = "blog
 anyhow = { path = "../../foundation/diagnostics/error-context",package = "blog-diagnostics-error-context"}
 memchr = { path = "../../foundation/encoding/byte-search",package = "blog-encoding-byte-search"}
 mime_guess = { path = "../../foundation/network/media-detection",package = "blog-network-media-detection"}
-regex = { path = "../../foundation/text/pattern-search",package = "blog-text-pattern-search",features = ["matcher"]}
+regex = { path = "../../foundation/text/pattern-search", package = "blog-text-pattern-search", default-features = false, features = ["matcher", "perf", "std", "unicode-perl"] }
 rustix = { path = "../../foundation/platform/system-calls", package = "blog-platform-system-calls", features = ["fs", "process"] }
 hyper = { default-features = false, features = ["client-legacy", "http1", "tokio"], path = "../../foundation/network/http-transport", package = "blog-network-http-transport" }
 serde = {  features = ["derive"], path = "../../foundation/format/data-model",package = "blog-format-data-model"}

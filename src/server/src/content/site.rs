@@ -45,21 +45,17 @@ pub(super) async fn admin_site(State(state): State<AppState>) -> ApiResult<Admin
         .bind(author)
         .fetch_one(&mut *transaction)
         .await?;
-    let site = load_admin_site(&mut transaction, author_name.unwrap_or_default()).await?;
-    transaction.commit().await?;
-    Ok(Json(site))
-}
-
-async fn load_admin_site(
-    connection: &mut sqlx::SqliteConnection,
-    author_name: String,
-) -> Result<AdminSite, AppError> {
     let site = sqlx::query_as(READ_SITE)
-        .fetch_optional(connection)
+        .fetch_optional(&mut *transaction)
         .await?
         .unwrap_or_default();
-    Ok(AdminSite { author_name, site })
+    transaction.commit().await?;
+    Ok(Json(AdminSite {
+        author_name: author_name.unwrap_or_default(),
+        site,
+    }))
 }
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct SiteInput {
@@ -81,7 +77,7 @@ pub(super) async fn update_site(
     media::normalize_url(&mut input.background_image)?;
     media::normalize_url(&mut input.avatar)?;
     media::normalize_covers(&mut input.random_cover)?;
-    let author_name = input.author_name.trim().to_owned();
+    let author_name = input.author_name.trim();
     if author_name.is_empty()
         || author_name.chars().count() > 100
         || input.web_name.trim().is_empty()
@@ -98,33 +94,38 @@ pub(super) async fn update_site(
     }
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
     let author = crate::site_author_id(&mut *transaction).await?;
-    let name_used: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM user WHERE username=? AND id<>?)")
-            .bind(&author_name)
-            .bind(author)
-            .fetch_one(&mut *transaction)
-            .await?;
-    if name_used {
+    let author_updated = sqlx::query(
+        "UPDATE user SET username=?1,update_time=CURRENT_TIMESTAMP WHERE id=?2
+         AND NOT EXISTS (SELECT 1 FROM user WHERE username=?1 AND id<>?2)",
+    )
+    .bind(author_name)
+    .bind(author)
+    .execute(&mut *transaction)
+    .await?;
+    if author_updated.rows_affected() == 0 {
         return Err(AppError::Public(HttpStatus::Conflict, "作者展示名已被使用"));
     }
-    sqlx::query("UPDATE user SET username=?,update_time=CURRENT_TIMESTAMP WHERE id=?")
-        .bind(&author_name)
-        .bind(author)
-        .execute(&mut *transaction)
-        .await?;
-    let id: Option<i64> = sqlx::query_scalar("SELECT id FROM web_info ORDER BY id LIMIT 1")
-        .fetch_optional(&mut *transaction)
-        .await?;
-    if let Some(id) = id {
-        sqlx::query("UPDATE web_info SET web_name=?,web_title=?,notices=?,background_image=?,avatar=?,random_cover=?,media=? WHERE id=?")
-            .bind(input.web_name).bind(input.web_title).bind(input.notices).bind(input.background_image).bind(input.avatar).bind(input.random_cover).bind(sqlx::types::Json(input.media)).bind(id)
-            .execute(&mut *transaction).await?;
-    } else {
-        sqlx::query("INSERT INTO web_info(web_name,web_title,notices,background_image,avatar,random_cover,media,status) VALUES(?,?,?,?,?,?,?,1)")
-            .bind(input.web_name).bind(input.web_title).bind(input.notices).bind(input.background_image).bind(input.avatar).bind(input.random_cover).bind(sqlx::types::Json(input.media))
-            .execute(&mut *transaction).await?;
-    }
-    let site = load_admin_site(&mut transaction, author_name).await?;
+    // A NULL rowid creates the first site row; otherwise update the same row read by READ_SITE.
+    let site = sqlx::query_as(
+        "INSERT INTO web_info(id,web_name,web_title,notices,background_image,avatar,random_cover,media,status)
+         VALUES((SELECT id FROM web_info ORDER BY id LIMIT 1),?,?,?,?,?,?,?,1)
+         ON CONFLICT(id) DO UPDATE SET web_name=excluded.web_name,web_title=excluded.web_title,
+         notices=excluded.notices,background_image=excluded.background_image,avatar=excluded.avatar,
+         random_cover=excluded.random_cover,media=excluded.media
+         RETURNING web_name,web_title,notices,background_image,avatar,random_cover,media",
+    )
+    .bind(input.web_name)
+    .bind(input.web_title)
+    .bind(input.notices)
+    .bind(input.background_image)
+    .bind(input.avatar)
+    .bind(input.random_cover)
+    .bind(sqlx::types::Json(input.media))
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
-    Ok(Json(site))
+    Ok(Json(AdminSite {
+        author_name: author_name.to_owned(),
+        site,
+    }))
 }

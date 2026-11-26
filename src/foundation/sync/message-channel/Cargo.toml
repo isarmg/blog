@@ -52,11 +52,10 @@ path = "src/lib.rs"
 fastrand = { features = ["std"], optional = true, path = "../../math/fast-random",package = "blog-math-fast-random"}
 
 [dependencies.spin1]
-features = ["mutex"]
+default-features = false
+features = ["spin_mutex"]
 package = "blog-sync-spin-lock"
 path = "../spin-lock"
-
-
 
 [lints.rust.unexpected_cfgs]
 level = "warn"

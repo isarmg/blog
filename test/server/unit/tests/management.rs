@@ -641,7 +641,7 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
         "https://images.example.test/0.jpg?q=a'b&size=(2)"
     );
     assert_eq!(public(&app, "/api/v1/site").await["media"], saved["media"]);
-    let persisted: String = sqlx::query_scalar("SELECT media FROM web_info")
+    let (persisted, status): (String, i64) = sqlx::query_as("SELECT media,status FROM web_info")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -651,6 +651,15 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
     );
     let response = admin(&app, &session, "GET", "/api/v1/content/site", json!({})).await;
     assert_eq!(body_json(response).await["media"], saved["media"]);
+
+    assert_eq!(status, 1);
+    sqlx::raw_sql(
+        "UPDATE web_info SET id=9,footer='kept',status=0;
+         INSERT INTO web_info(id,web_name) VALUES(10,'other')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let mut cleared = saved;
     cleared["background_image"] = " ".into();
@@ -667,6 +676,18 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
     assert!(cleared["random_cover"].is_null());
     assert_eq!(cleared["media"], empty["media"]);
     assert_eq!(public(&app, "/api/v1/site").await["media"], empty["media"]);
+    let rows: Vec<(i64, String, Option<String>, Option<i64>)> =
+        sqlx::query_as("SELECT id,web_name,footer,status FROM web_info ORDER BY id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        rows,
+        [
+            (9, "Configurable media".into(), Some("kept".into()), Some(0)),
+            (10, "other".into(), None, None)
+        ]
+    );
 }
 
 #[tokio::test]

@@ -1170,16 +1170,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-sync-mutex"
-version = "0.0.0"
-dependencies = [
- "blog-collections-inline-vector",
- "blog-native-target-conditions",
- "blog-platform-system-abi",
- "blog-sync-scope-cleanup",
-]
-
-[[package]]
 name = "blog-sync-notification"
 version = "0.0.0"
 dependencies = [
@@ -1192,15 +1182,8 @@ name = "blog-sync-pinned-projection"
 version = "0.0.0"
 
 [[package]]
-name = "blog-sync-scope-cleanup"
-version = "0.0.0"
-
-[[package]]
 name = "blog-sync-spin-lock"
 version = "0.0.0"
-dependencies = [
- "blog-sync-mutex",
-]
 
 [[package]]
 name = "blog-sync-thread-storage"

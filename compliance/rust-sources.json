@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "52511507d6227031abf6ea77189bc1151bc4381af7f0cd445ea6157b217bc8bc"
+    "Cargo.lock": "8b4d69ea6447833595d0b94f19b072dbd463c2ba23bc4c424e7af5f5c12acefd"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6184,7 +6184,7 @@
     "src/foundation/sync/exclusive-value/Cargo.toml": "029b276b8684699a5d5acc34b766adb87d99bd2df2d98c3ada9c612af6a93657",
     "src/foundation/sync/initialization/Cargo.toml": "f5f6b19e57e1fa58a16a1f631784943d9a003bbed3bd13c4e8a730cc0409f64b",
     "src/foundation/sync/lazy-global/Cargo.toml": "fcc018429a057a471eb67218674e951b7123674239f56f3349e2b41de8e3d754",
-    "src/foundation/sync/message-channel/Cargo.toml": "8d9ddce0a218b59214b145057f379e3689ed550c69ea02f721ae9e781ab19a49",
+    "src/foundation/sync/message-channel/Cargo.toml": "11f0bc41a02734d6df9eb399b02fe00b23efafa2c1b03c831a3e5e356411c0bd",
     "src/foundation/sync/mutex/Cargo.toml": "3c41d58923bbde13d4138bc2fc01c3a01047af172b2eab2ea6fc648de5d55e54",
     "src/foundation/sync/notification/Cargo.toml": "f06048d2b436571bf61a768a77cd702acc341e2208c9353c9d70f969251b3b55",
     "src/foundation/sync/pinned-projection/Cargo.toml": "212e585074a7c83c7ec2f03ebb8b2f33c92ae9d5799a525861a7d89fcf5be8df",
@@ -6247,7 +6247,7 @@
     "src/interface/dom/Cargo.toml": "3c2266870f2d5c5546af2e726d4c19e7158e04a38fc1b1ff8a2f4a06b177fd35",
     "src/interface/macros/Cargo.toml": "8fbb1bd5629a6f57dfc713fae9c300e0347bc962de7a625b21e90caa47cd90c3",
     "src/server/Cargo.toml": "8289a40c099801eacbca914ecfc9758867a17e9ff69cdb64fde0aa037a26f0b7",
-    "src/tools/assets/Cargo.toml": "3c939d2efbb778f334a9f45ac74620a06fe08298423c23a8e87d572dc55f7b1f",
+    "src/tools/assets/Cargo.toml": "e2b282bc203185f29a3e7615cfa24768e5e37a7a755e41e6446dc2d7523fa6bd",
     "src/tools/setup/Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
     "test/browser-domain/Cargo.toml": "a8960cc84bf02373c106ffdc6f501659768e979774076041ca45d3a9769b6477"
   },
@@ -34422,7 +34422,7 @@
         "src/common/paged_list.rs": "b1925984f65c4866e2851807f35e111c97de77b35618a86f14357f04d7d6ae1b",
         "src/common/pagination.rs": "65e096b1e1f35c4f761b3d57e53ee39db66b7a17cff310db4bf237bca89780cd",
         "src/common/request.rs": "d07d65e10117d433dcb8035627e1b7be0b80ecc2b568038ddafd3da6d0db835e",
-        "src/contracts.rs": "ab7d1b981f84f695cd384552fd6f0477df115817038abe92eddc59e89ed6dcc1",
+        "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
         "src/dates.rs": "dd4ddb0b58637e340a4efd6f3c7e4f73999b86fa68936b5cc47289805f206bcf",
         "src/editor.rs": "8c2cf866ce0fa6cf0e3ce82c431c1696dbc1dda3db2ec9f31d81ad4003a21b3c",
@@ -43981,7 +43981,7 @@
       "directory": "src/foundation/sync/message-channel",
       "files_sha256": {
         ".cargo_vcs_info.json": "98c07a51e8209f74c5b858685fd507e7663078fee367c60540544c829b62b8a7",
-        "Cargo.toml": "8d9ddce0a218b59214b145057f379e3689ed550c69ea02f721ae9e781ab19a49",
+        "Cargo.toml": "11f0bc41a02734d6df9eb399b02fe00b23efafa2c1b03c831a3e5e356411c0bd",
         "examples/async.rs": "b1918a542bcc4b7e74d3a520d8559100bb22a799194fa93b8212d5e947efffc7",
         "examples/perf.rs": "52b67c619932a283ad9109c5fe5b47d32f7d3e7533356170047b686dfac330c9",
         "examples/select.rs": "1490d4b25d2cf806f5a8f0ef93a6dccc1425ac3928c8bf7c44bdf20b05b1c2ca",
@@ -47831,7 +47831,7 @@
         "src/content/articles.rs": "25739896077fb2be4082f3cefee323e5603a1a1bbcddc9b543aa5e5ec318bcf9",
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
         "src/content/catalog.rs": "96b2c335d6fd8ce9c4d652b02e0d47c5e5bd5d3d768469757567ae28017db1a3",
-        "src/content/comments.rs": "6119168e78f1dbc07066dcf3f53a75bce30884506c91b9cdfa49a2d7f6616e28",
+        "src/content/comments.rs": "f17fde7b042a7b275f04a7fe665ad1c0d63aed4ffe4683b163fdf4192f7d5f9e",
         "src/content/family.rs": "d8e3ac7edaf53f38e8de459de73b4017f24de8059fe0689079a35ea9829b55b1",
         "src/content/guestbook.rs": "36f05b37e2a8cef38528174ee98a52247170078d41631fb55719b5ca165ebcb4",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
@@ -47840,7 +47840,7 @@
         "src/content/mod.rs": "7a54c3213fa6de82c6e2e053987172b5802e25f0561b68759184e9500f6008c8",
         "src/content/notes.rs": "36de5f35daca88c128e5411b91c0152afebb6cbc1c81c9947d878c7e02826b76",
         "src/content/resources.rs": "2230b67a3fac4ccf5519052646bc9b419e9c380c97e1e502248deee6f5705e56",
-        "src/content/site.rs": "e1f739d51224d3343451946d06c5e315eb4512911b2d9fdcc2c7a818aa3aa4d1",
+        "src/content/site.rs": "ca0f472c79e487673e4b89acc1ec253837206459222598f81e9f75f7820ce62e",
         "src/content/site/media.rs": "1694c833076b5973e971f2f3f11b5243159f7d0233e5acac004a782c7b7b1f1c",
         "src/content/statistics.rs": "a2654a95e608cc3fafd81f27c672d4dae89e4c98cc53e5300962ec38fd0bb893",
         "src/database.rs": "f417b6c62e60603d8053d0d06a3c7ba12c7cfe3dbb80e93b7127bc2ac73e7719",
@@ -47894,7 +47894,7 @@
         "test/server/unit/tests/comment_contracts.rs": "9c91b7ab56d1af67f8d6570f7c4203a64ea5897a61a8675fbe9f206254c6ef05",
         "test/server/unit/tests/commit_responses.rs": "ca91b2eb1098bcd421dfa068044ba03660b9b83bc15764bd0a17d8086be9c3e3",
         "test/server/unit/tests/family.rs": "ee0c5a73daa7edcb8f64061cbdd40b153be10a7aa5737a6a4d5342d850bc933c",
-        "test/server/unit/tests/management.rs": "5bed1e26ebe54d7484865b4cf857a19a09d112882991a3e4774d264085a70e8e",
+        "test/server/unit/tests/management.rs": "c97d1fc00d82d141617f8378fad87e0c17b1cbc4aad02ebc6852ed30b7c29a41",
         "test/server/unit/tests/media_management.rs": "07e75815d876ea675039c58acf948526e0407320338429ae17bda896850fe47b",
         "test/server/unit/tests/media_names.rs": "94db97907fdcf4efd49489c8a71294ab87b9e618804149ad993add6ce49a779a",
         "test/server/unit/tests/news_timestamps.rs": "37c1daee1376c6f85535b1a393c1740f8085db0a4795d625970ad88ef6f6a34f",
@@ -47931,7 +47931,7 @@
       "directory": "src/tools/assets",
       "files_sha256": {
         ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-        "Cargo.toml": "3c939d2efbb778f334a9f45ac74620a06fe08298423c23a8e87d572dc55f7b1f",
+        "Cargo.toml": "e2b282bc203185f29a3e7615cfa24768e5e37a7a755e41e6446dc2d7523fa6bd",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "ORIGIN.json": "93ce2b98016b4bfed5ba1ace17bc948b38f9fa9cfb124a00ea4a19cd0667fb49",
         "README.md": "77a380007c6b7b8cf3d0245436d8b3f8264d4e980d94e293cdce94109b46ba8b",
@@ -49253,21 +49253,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/sync/mutex": {
-          "features": [
-            "atomic_usize",
-            "default",
-            "locks",
-            "parking",
-            "std"
-          ],
-          "name": "blog-sync-mutex",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/notification": {
           "features": [
             "default",
@@ -49290,25 +49275,9 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/sync/scope-cleanup": {
-          "features": [],
-          "name": "blog-sync-scope-cleanup",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/spin-lock": {
           "features": [
-            "barrier",
-            "default",
-            "lazy",
-            "lock_api",
             "mutex",
-            "once",
-            "parking_lot",
-            "rwlock",
             "spin_mutex"
           ],
           "name": "blog-sync-spin-lock",
@@ -50166,7 +50135,6 @@
           "features": [
             "alloc",
             "automata",
-            "default",
             "dfa-onepass",
             "hybrid",
             "literal",
@@ -50187,14 +50155,8 @@
             "perf-onepass",
             "std",
             "syntax",
-            "unicode",
-            "unicode-age",
-            "unicode-bool",
             "unicode-case",
-            "unicode-gencat",
             "unicode-perl",
-            "unicode-script",
-            "unicode-segment",
             "unicode-word-boundary"
           ],
           "name": "blog-text-pattern-search",
@@ -51567,7 +51529,6 @@
           "features": [
             "alloc",
             "automata",
-            "default",
             "dfa-onepass",
             "hybrid",
             "literal",
@@ -51588,14 +51549,8 @@
             "perf-onepass",
             "std",
             "syntax",
-            "unicode",
-            "unicode-age",
-            "unicode-bool",
             "unicode-case",
-            "unicode-gencat",
             "unicode-perl",
-            "unicode-script",
-            "unicode-segment",
             "unicode-word-boundary"
           ],
           "name": "blog-text-pattern-search",
@@ -53871,20 +53826,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/sync/mutex": {
-          "features": [
-            "atomic_usize",
-            "default",
-            "locks",
-            "parking",
-            "std"
-          ],
-          "name": "blog-sync-mutex",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/notification": {
           "features": [
             "default",
@@ -53905,24 +53846,9 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/sync/scope-cleanup": {
-          "features": [],
-          "name": "blog-sync-scope-cleanup",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/sync/spin-lock": {
           "features": [
-            "barrier",
-            "default",
-            "lazy",
-            "lock_api",
             "mutex",
-            "once",
-            "parking_lot",
-            "rwlock",
             "spin_mutex"
           ],
           "name": "blog-sync-spin-lock",
@@ -54175,7 +54101,6 @@
           "features": [
             "alloc",
             "automata",
-            "default",
             "dfa-onepass",
             "hybrid",
             "literal",
@@ -54196,14 +54121,8 @@
             "perf-onepass",
             "std",
             "syntax",
-            "unicode",
-            "unicode-age",
-            "unicode-bool",
             "unicode-case",
-            "unicode-gencat",
             "unicode-perl",
-            "unicode-script",
-            "unicode-segment",
             "unicode-word-boundary"
           ],
           "name": "blog-text-pattern-search",

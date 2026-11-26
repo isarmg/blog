@@ -260,146 +260,98 @@ fn page(v: &Value, query: &str, max_size: u64, test: impl Fn(&Value) -> bool) ->
 fn array(v: &Value, test: impl Fn(&Value) -> bool) -> bool {
     v.as_array().is_some_and(|a| a.iter().all(test))
 }
+fn one_or_array(v: &Value, list: bool, test: impl Fn(&Value) -> bool) -> bool {
+    if list { array(v, test) } else { test(v) }
+}
+
+fn publication_status(v: &Value) -> bool {
+    v.get("status")
+        .is_some_and(|status| status.is_null() || flag(status))
+}
+
 pub fn validate(path: &str, method: &str, v: &Value) -> bool {
     let (base, query) = path.split_once('?').unwrap_or((path, ""));
-    if method == "DELETE" {
-        return v["deleted"] == true;
-    }
-    if base.ends_with("/upload") {
-        return UploadKind::Image.uploaded_path(v).is_some();
-    }
-    if base.ends_with("/upload-video") {
-        return UploadKind::Video.uploaded_path(v).is_some();
-    }
-    if base.ends_with("/site/stats") {
-        return fields(v, &["article_count", "view_count"], count);
-    }
-    if base.ends_with("/statistics") {
-        return fields(v, &["articles", "comments", "members", "categories"], count);
-    }
-    if base.ends_with("/site") {
-        return site(v) && (!base.contains("/content/") || v["author_name"].is_string());
-    }
-    if base.ends_with("/home-sections") {
-        return array(v, home);
-    }
-    if base.ends_with("/categories") {
-        return if method == "GET" {
-            array(v, category)
-        } else {
-            category(v)
-        };
-    }
-    if base.contains("/categories/") {
-        return category(v);
-    }
-    if base.ends_with("/labels") {
-        return if method == "GET" {
-            array(v, |v| {
-                label(v) && (base.contains("/content/") || count(&v["article_count"]))
+    let managed = base.contains("/content/");
+    let read = method == "GET";
+    let check_link = |row: &Value| link(row) && (!managed || publication_status(row));
+    match base {
+        _ if method == "DELETE" => v["deleted"] == true,
+        _ if base.ends_with("/upload") => UploadKind::Image.uploaded_path(v).is_some(),
+        _ if base.ends_with("/upload-video") => UploadKind::Video.uploaded_path(v).is_some(),
+        _ if base.ends_with("/site/stats") => fields(v, &["article_count", "view_count"], count),
+        _ if base.ends_with("/statistics") => {
+            fields(v, &["articles", "comments", "members", "categories"], count)
+        }
+        _ if base.ends_with("/site") => site(v) && (!managed || v["author_name"].is_string()),
+        _ if base.ends_with("/home-sections") => array(v, home),
+        _ if base.ends_with("/categories") => one_or_array(v, read, category),
+        _ if base.contains("/categories/") => category(v),
+        _ if base.ends_with("/labels") => one_or_array(v, read, |row| {
+            label(row) && (!read || managed || count(&row["article_count"]))
+        }),
+        _ if base.contains("/labels/") => label(v),
+        _ if base.ends_with("/letter") => {
+            let valid = fields(v, &["recipient", "sender", "content"], Value::is_string);
+            if managed {
+                valid && v["is_public"].is_boolean()
+            } else {
+                v.is_null() || valid
+            }
+        }
+        _ if base.contains("/news") => {
+            if managed && read && base.ends_with("/news") {
+                page(v, query, 100, news)
+            } else {
+                one_or_array(v, read, news)
+            }
+        }
+        _ if base.ends_with("/access") => {
+            flag(&v["password_required"]) && fields(v, &["tips"], nullable)
+        }
+        _ if base.ends_with("/articles") => {
+            if read {
+                page(v, query, 100, summary)
+            } else {
+                article(v)
+            }
+        }
+        _ if base.contains("/articles/") => article(v),
+        _ if base.ends_with("/links/classes") => {
+            array(v, |v| v["classify"].is_string() && count(&v["count"]))
+        }
+        _ if base.ends_with("/links/page") || read && base.ends_with("/content/links") => {
+            page(v, query, 100, check_link)
+        }
+        _ if base.contains("/links/") || base.ends_with("/links") => check_link(v),
+        _ if base.ends_with("/family") => one_or_array(v, read, |row| {
+            family(row) && (read && !managed || publication_status(row))
+        }),
+        _ if base.contains("/family/") => family(v) && publication_status(v),
+        _ if base.ends_with("/notes/page") || read && base.ends_with("/content/notes") => {
+            let limit = if base == "/api/v1/notes/page" {
+                50
+            } else {
+                100
+            };
+            page(v, query, limit, |row| {
+                note(row) && (managed || count(&row["like_count"]))
             })
-        } else {
-            label(v)
-        };
+        }
+        _ if base.contains("/notes/") || base.ends_with("/notes") => note(v),
+        _ if base.ends_with("/content/resources") => page(v, query, 100, resource),
+        _ if base.ends_with("/content/comments") => page(v, query, 50, admin_comment),
+        _ if base.ends_with("/content/tree-hole") => page(v, query, 100, wall),
+        _ if base.ends_with("/tree-hole") => array(v, wall),
+        _ if base.ends_with("/tree-hole/guest") => wall(v),
+        _ if base.contains("comments") => {
+            if read {
+                page(v, query, 50, comment)
+            } else {
+                comment(v)
+            }
+        }
+        _ => false,
     }
-    if base.contains("/labels/") {
-        return label(v);
-    }
-    if base.ends_with("/letter") {
-        return if base.contains("/content/") {
-            fields(v, &["recipient", "sender", "content"], Value::is_string)
-                && v["is_public"].is_boolean()
-        } else {
-            v.is_null() || fields(v, &["recipient", "sender", "content"], Value::is_string)
-        };
-    }
-    if base.contains("/news") {
-        return if base.contains("/content/") && base.ends_with("/news") && method == "GET" {
-            page(v, query, 100, news)
-        } else if method == "GET" {
-            array(v, news)
-        } else {
-            news(v)
-        };
-    }
-    if base.ends_with("/access") {
-        return flag(&v["password_required"]) && fields(v, &["tips"], nullable);
-    }
-    if base.ends_with("/articles") {
-        return if method == "GET" {
-            page(v, query, 100, summary)
-        } else {
-            article(v)
-        };
-    }
-    if base.contains("/articles/") {
-        return article(v);
-    }
-    if base.ends_with("/links/classes") {
-        return array(v, |v| v["classify"].is_string() && count(&v["count"]));
-    }
-    if base.ends_with("/links/page") || base.ends_with("/content/links") && method == "GET" {
-        return page(v, query, 100, |v| {
-            link(v)
-                && (!base.contains("/content/")
-                    || v.get("status").is_some_and(|n| n.is_null() || flag(n)))
-        });
-    }
-    if base.contains("/links/") || base.ends_with("/links") {
-        return link(v)
-            && (!base.contains("/content/")
-                || v.get("status").is_some_and(|n| n.is_null() || flag(n)));
-    }
-    if base.ends_with("/family") {
-        return if method == "GET" {
-            array(v, |v| {
-                family(v)
-                    && (!base.contains("/content/")
-                        || v.get("status").is_some_and(|n| n.is_null() || flag(n)))
-            })
-        } else {
-            family(v) && v.get("status").is_some_and(|n| n.is_null() || flag(n))
-        };
-    }
-    if base.contains("/family/") {
-        return family(v) && v.get("status").is_some_and(|n| n.is_null() || flag(n));
-    }
-    if base.ends_with("/notes/page") || base.ends_with("/content/notes") && method == "GET" {
-        let max_size = if base == "/api/v1/notes/page" {
-            50
-        } else {
-            100
-        };
-        return page(v, query, max_size, |v| {
-            note(v) && (base.contains("/content/") || count(&v["like_count"]))
-        });
-    }
-    if base.contains("/notes/") || base.ends_with("/notes") {
-        return note(v);
-    }
-    if base.ends_with("/content/resources") {
-        return page(v, query, 100, resource);
-    }
-    if base.ends_with("/content/comments") {
-        return page(v, query, 50, admin_comment);
-    }
-    if base.ends_with("/content/tree-hole") {
-        return page(v, query, 100, wall);
-    }
-    if base.ends_with("/tree-hole") {
-        return array(v, wall);
-    }
-    if base.ends_with("/tree-hole/guest") {
-        return wall(v);
-    }
-    if base.contains("comments") {
-        return if method == "GET" {
-            page(v, query, 50, comment)
-        } else {
-            comment(v)
-        };
-    }
-    false
 }
 #[path = "../../../test/browser/unit/contracts/tests.rs"]
 #[cfg(test)]
