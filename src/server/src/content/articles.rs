@@ -137,6 +137,8 @@ fn article_page_sql(
     audience: ArticleAudience,
     search: &str,
 ) -> (String, String) {
+    const PAGE_IDENTITY: &str = "SELECT id AS article_id,create_time AS page_created_at";
+    const DATE_ORDER: &str = "page_created_at DESC,article_id DESC";
     // Only column names and SQL fragments come from here; user values stay bound.
     let filters = [
         query.sort_id.map_or("?1 IS NULL", |_| "sort_id=?1"),
@@ -148,21 +150,21 @@ fn article_page_sql(
     .join(" AND ");
     let (count, page) = match (audience, search) {
         (ArticleAudience::Public, "") => {
-            // The disjoint visible/protected branches preserve the public contract.
-            // The visible branch can walk article_public_latest in date order.
-            let visible = format!("deleted=0 AND view_status=1 AND {filters}");
-            // Separate index ranges also avoid scanning every visible row merely
-            // to discover that it does not belong to the protected branch.
-            let protected_before =
-                format!("deleted=0 AND view_status<1 AND password IS NOT NULL AND {filters}");
-            let protected_after =
-                format!("deleted=0 AND view_status>1 AND password IS NOT NULL AND {filters}");
+            // Disjoint index ranges keep the public and protected rows in date order.
+            let [visible, protected_before, protected_after] = [
+                "view_status=1",
+                "view_status<1 AND password IS NOT NULL",
+                "view_status>1 AND password IS NOT NULL",
+            ]
+            .map(|visibility| {
+                format!("FROM article WHERE deleted=0 AND {visibility} AND {filters}")
+            });
             (
                 format!(
-                    "SELECT (SELECT COUNT(*) FROM article WHERE {visible}) + (SELECT COUNT(*) FROM article WHERE {protected_before}) + (SELECT COUNT(*) FROM article WHERE {protected_after})"
+                    "SELECT (SELECT COUNT(*) {visible}) + (SELECT COUNT(*) {protected_before}) + (SELECT COUNT(*) {protected_after})"
                 ),
                 format!(
-                    "SELECT id AS article_id,create_time AS page_created_at,0 AS page_search_rank FROM article WHERE {visible} UNION ALL SELECT id AS article_id,create_time AS page_created_at,0 AS page_search_rank FROM article WHERE {protected_before} UNION ALL SELECT id AS article_id,create_time AS page_created_at,0 AS page_search_rank FROM article WHERE {protected_after} ORDER BY page_created_at DESC,article_id DESC LIMIT ?7 OFFSET ?8"
+                    "{PAGE_IDENTITY},0 AS page_search_rank {visible} UNION ALL {PAGE_IDENTITY},0 AS page_search_rank {protected_before} UNION ALL {PAGE_IDENTITY},0 AS page_search_rank {protected_after} ORDER BY {DATE_ORDER} LIMIT ?7 OFFSET ?8"
                 ),
             )
         }
@@ -174,42 +176,40 @@ fn article_page_sql(
                 ),
                 ArticleAudience::Administrator => ("", ""),
             };
-            // With a taxonomy key, let its index drive the query and test FTS membership.
-            // Global trigram searches start from FTS hits, not all undeleted articles.
-            // Leave embedded NUL handling to the original SQLite length/LIKE predicates.
-            let (table, hits) = if search.is_empty() {
-                ("article", "")
-            } else if query.sort_id.is_none()
-                && query.label_id.is_none()
-                && !search.contains('\0')
-                && search.chars().nth(2).is_some()
-            {
-                (
-                    "(SELECT rowid AS hit_id FROM article_search WHERE article_search MATCH ?5) AS hits CROSS JOIN article ON article.id=hits.hit_id",
-                    "",
-                )
+            let (table, text, rank, order) = if search.is_empty() {
+                ("article", String::new(), "0", DATE_ORDER)
             } else {
+                // Prefer a taxonomy index when available; global trigram searches start with FTS.
+                // Embedded NUL still uses the existing SQLite length/LIKE predicates.
+                let (table, hits) = if query.sort_id.is_none()
+                    && query.label_id.is_none()
+                    && !search.contains('\0')
+                    && search.chars().nth(2).is_some()
+                {
+                    (
+                        "(SELECT rowid AS hit_id FROM article_search WHERE article_search MATCH ?5) AS hits CROSS JOIN article ON article.id=hits.hit_id",
+                        "",
+                    )
+                } else {
+                    (
+                        "article",
+                        " AND (length(?2)<3 OR id IN (SELECT rowid FROM article_search WHERE article_search MATCH ?5))",
+                    )
+                };
                 (
-                    "article",
-                    " AND (length(?2)<3 OR id IN (SELECT rowid FROM article_search WHERE article_search MATCH ?5))",
-                )
-            };
-            let (text, rank, order) = if search.is_empty() {
-                (String::new(), "0", "page_created_at DESC,article_id DESC")
-            } else {
-                (
+                    table,
                     format!(
-                        r" AND (article_title LIKE ?3 ESCAPE '\' OR ({body_guard}article_content LIKE ?3 ESCAPE '\'))"
+                        r" AND (article_title LIKE ?3 ESCAPE '\' OR ({body_guard}article_content LIKE ?3 ESCAPE '\')){hits}"
                     ),
                     r"CASE WHEN article_title LIKE ?3 ESCAPE '\' THEN 0 ELSE 1 END",
                     "page_search_rank,page_created_at DESC,article_id DESC",
                 )
             };
-            let from = format!("FROM {table} WHERE deleted=0{visible} AND {filters}{text}{hits}");
+            let from = format!("FROM {table} WHERE deleted=0{visible} AND {filters}{text}");
             (
                 format!("SELECT COUNT(*) {from}"),
                 format!(
-                    "SELECT id AS article_id,create_time AS page_created_at,{rank} AS page_search_rank {from} ORDER BY {order} LIMIT ?7 OFFSET ?8"
+                    "{PAGE_IDENTITY},{rank} AS page_search_rank {from} ORDER BY {order} LIMIT ?7 OFFSET ?8"
                 ),
             )
         }
@@ -557,12 +557,7 @@ pub(super) async fn unlock_article(
             "文章访问权限已变更，请重试",
         ));
     }
-    let article = sqlx::query_as::<_, ArticleDetail>(sqlx::AssertSqlSafe(format!(
-        "SELECT {ARTICLE_PRESENTATION_COLUMNS},{ARTICLE_DETAIL_COLUMNS} FROM article WHERE id=? AND deleted=0"
-    )))
-    .bind(id)
-    .fetch_one(&mut *transaction)
-    .await?;
+    let article = load_article(&mut *transaction, id, ArticleAudience::Administrator).await?;
     transaction.commit().await?;
     Ok(Json(article))
 }

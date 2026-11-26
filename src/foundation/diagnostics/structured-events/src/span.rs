@@ -701,8 +701,7 @@ impl Span {
     ///   }
     ///   ```
     ///
-    /// * The [`#[instrument]` attribute macro][attr] can automatically generate
-    ///   correct code when used on an async function:
+    /// * With the `attributes` feature, `#[instrument]` does this for async functions:
     ///
     ///   ```ignore
     ///   # async fn some_other_async_function() {}
@@ -721,7 +720,6 @@ impl Span {
     /// [syntax]: https://rust-lang.github.io/async-book/01_getting_started/04_async_await_primer.html
     /// [`Span::in_scope`]: Span::in_scope()
     /// [instrument]: crate::Instrument
-    /// [attr]: macro@crate::instrument
     ///
     /// # Examples
     ///

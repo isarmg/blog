@@ -437,15 +437,6 @@ name = "blog-diagnostics-event-facade"
 version = "0.0.0"
 
 [[package]]
-name = "blog-diagnostics-event-instrumentation"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-record-derive-parser",
- "blog-syntax-token-stream",
- "blog-syntax-token-templates",
-]
-
-[[package]]
 name = "blog-diagnostics-object-clone"
 version = "0.0.0"
 
@@ -456,7 +447,6 @@ dependencies = [
  "blog-collections-concurrent-slab",
  "blog-collections-inline-vector",
  "blog-diagnostics-event-facade",
- "blog-diagnostics-event-instrumentation",
  "blog-sync-initialization",
  "blog-sync-pinned-projection",
  "blog-sync-thread-storage",
@@ -1102,7 +1092,7 @@ dependencies = [
 name = "blog-storage-record-derive"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-record-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
  "blog-text-macro-identifier-case",
@@ -1231,15 +1221,6 @@ dependencies = [
 [[package]]
 name = "blog-syntax-index-expansion"
 version = "0.0.0"
-
-[[package]]
-name = "blog-syntax-record-derive-parser"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-token-stream",
- "blog-syntax-token-templates",
- "blog-text-rust-identifiers",
-]
 
 [[package]]
 name = "blog-syntax-rust-parser"

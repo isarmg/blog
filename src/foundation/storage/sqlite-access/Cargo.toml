@@ -134,14 +134,10 @@ features = [
 default-features = true
 
 [dependencies.tracing]
-features = [
-    "attributes",
-    "log",
-    "std",
-]
+features = ["log", "std"]
 path = "../../diagnostics/structured-events"
 package = "blog-diagnostics-structured-events"
-default-features = true
+default-features = false
 
 
 [dependencies.concurrent-collections]

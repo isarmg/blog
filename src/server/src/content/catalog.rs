@@ -181,22 +181,17 @@ pub(super) async fn create_label(
         return Err(invalid("标签名称无效"));
     }
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let exists: Option<i64> = sqlx::query_scalar("SELECT id FROM sort WHERE id=?")
-        .bind(input.sort_id)
-        .fetch_optional(&mut *transaction)
-        .await?;
-    if exists.is_none() {
-        return Err(invalid("分类不存在"));
-    }
     let label = sqlx::query_as(
-        "INSERT INTO label(sort_id,label_name,label_description) VALUES(?,?,?)
+        "INSERT INTO label(sort_id,label_name,label_description)
+         SELECT ?1,?2,?3 WHERE EXISTS(SELECT 1 FROM sort WHERE id=?1)
          RETURNING id,sort_id,label_name,label_description",
     )
     .bind(input.sort_id)
     .bind(input.name.trim())
     .bind(input.description)
-    .fetch_one(&mut *transaction)
-    .await?;
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(|| invalid("分类不存在"))?;
     transaction.commit().await?;
     Ok(Json(label))
 }
@@ -229,23 +224,18 @@ pub(super) async fn update_label(
             ));
         }
     }
-    let category: Option<i64> = sqlx::query_scalar("SELECT id FROM sort WHERE id=?")
-        .bind(input.sort_id)
-        .fetch_optional(&mut *transaction)
-        .await?;
-    if category.is_none() {
-        return Err(invalid("分类不存在"));
-    }
     let label = sqlx::query_as(
-        "UPDATE label SET sort_id=?,label_name=?,label_description=? WHERE id=?
+        "UPDATE label SET sort_id=?1,label_name=?2,label_description=?3 WHERE id=?4
+         AND EXISTS(SELECT 1 FROM sort WHERE id=?1)
          RETURNING id,sort_id,label_name,label_description",
     )
     .bind(input.sort_id)
     .bind(input.name.trim())
     .bind(input.description)
     .bind(id)
-    .fetch_one(&mut *transaction)
-    .await?;
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(|| invalid("分类不存在"))?;
     transaction.commit().await?;
     Ok(Json(label))
 }
