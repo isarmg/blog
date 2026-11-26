@@ -87,11 +87,18 @@ async fn failed_workers_keep_the_join_error_without_exposing_panic_details() {
 
 #[tokio::test]
 async fn database_readiness_reports_closed_pool_without_exposing_a_diagnostic() {
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    assert!(database_ready(&pool).await);
+    use tower::ServiceExt as _;
+
+    let (_fixture, app, pool) = crate::tests::setup().await;
+    let probe = || {
+        Request::get("/readyz")
+            .body(axum::body::Body::empty())
+            .unwrap()
+    };
+    let response = app.clone().oneshot(probe()).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
     pool.close().await;
-    assert!(!database_ready(&pool).await);
-    let response = readiness(State(pool)).await;
+    let response = app.oneshot(probe()).await.unwrap();
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     let bytes = axum::body::to_bytes(response.into_body(), 4096)
         .await

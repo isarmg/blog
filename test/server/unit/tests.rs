@@ -15,7 +15,7 @@ use sqlx::SqlitePool;
 use std::{os::unix::fs::PermissionsExt, sync::Arc};
 use tower::ServiceExt;
 
-async fn setup() -> (tempfile::TempDir, Router, SqlitePool) {
+pub(super) async fn setup() -> (tempfile::TempDir, Router, SqlitePool) {
     setup_with_pool_limit(8).await
 }
 

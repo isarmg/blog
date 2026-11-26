@@ -20,7 +20,7 @@ pub fn derive_visit_children(input: TokenStream) -> TokenStream {
     let options: Vec<VisitOptions> = attrs
         .iter()
         .filter_map(|attr| {
-            if attr.path.is_ident("visit") {
+            if attr.path().is_ident("visit") {
                 let opts: VisitOptions = attr.parse_args().unwrap();
                 Some(opts)
             } else {
@@ -30,7 +30,7 @@ pub fn derive_visit_children(input: TokenStream) -> TokenStream {
         .collect();
 
     let visit_types =
-        if let Some(attr) = attrs.iter().find(|attr| attr.path.is_ident("visit_types")) {
+        if let Some(attr) = attrs.iter().find(|attr| attr.path().is_ident("visit_types")) {
             let types: VisitTypes = attr.parse_args().unwrap();
             let types = types.types;
             Some(quote! { ::blog_assets_style_compiler::visit_types!(#(#types)|*) })
@@ -122,7 +122,7 @@ fn derive(
                 },
             ) in s.fields.iter().enumerate()
             {
-                if attrs.iter().any(|attr| attr.path.is_ident("skip_visit")) {
+                if attrs.iter().any(|attr| attr.path().is_ident("skip_visit")) {
                     continue;
                 }
 
@@ -271,7 +271,7 @@ fn derive(
 }
 
 fn skip_type(attrs: &Vec<Attribute>) -> bool {
-    attrs.iter().any(|attr| attr.path.is_ident("skip_type"))
+    attrs.iter().any(|attr| attr.path().is_ident("skip_type"))
 }
 
 struct VisitOptions {

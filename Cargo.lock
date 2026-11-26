@@ -162,7 +162,7 @@ dependencies = [
 name = "blog-assets-style-value-derive"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-style-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
  "blog-text-style-identifier-case",
@@ -1232,15 +1232,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-syntax-style-derive-parser"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-token-stream",
- "blog-syntax-token-templates",
- "blog-text-rust-identifiers",
-]
-
-[[package]]
 name = "blog-syntax-style-iterators"
 version = "0.0.0"
 dependencies = [
@@ -1280,7 +1271,7 @@ dependencies = [
 name = "blog-text-compile-time-text-macros"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-style-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
 ]

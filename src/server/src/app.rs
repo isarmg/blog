@@ -388,7 +388,7 @@ enum DatabaseProbeFailure {
     Driver,
 }
 
-pub(crate) async fn database_ready(pool: &SqlitePool) -> bool {
+async fn database_ready(pool: &SqlitePool) -> bool {
     match sqlx::query("SELECT 1").execute(pool).await {
         Ok(_) => true,
         Err(error) => {

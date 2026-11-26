@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "26f11963780cd2679a6c25601acf67b0bb785aa9ed55932ecdd2a360c48da958"
+    "Cargo.lock": "a418f72b630fc957b0b20671b43d8075740de1733596dacebfc135f43a65151b"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6050,7 +6050,7 @@
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
     "src/foundation/assets/style-compiler/Cargo.toml": "2d179aae66c30769c32ed86a5cb1b0c7558bf7c8b78b9b27bdc86390d37d14d1",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
-    "src/foundation/assets/style-value-derive/Cargo.toml": "8dfcd2aceeb204452d0e3b407e0e82963da5d4199ad6680a4cbfab08390f51dc",
+    "src/foundation/assets/style-value-derive/Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
     "src/foundation/cli/argument-derive/Cargo.toml": "b17592d40cf40200895fcb14887be2799f045873a7efb0e95777a5ae23ccbc61",
     "src/foundation/cli/arguments/Cargo.toml": "05d91bb9471e848b47998de4f86b28f0126b042e18633198bb6540dc50e538dc",
@@ -6206,7 +6206,7 @@
     "src/foundation/syntax/token-stream/Cargo.toml": "82a0c18f6d41f33ec2789136adeafa0105cbb43d5e87ef64c3ebaf4395824a73",
     "src/foundation/syntax/token-templates/Cargo.toml": "f1cbed3f676abe4fdb2179f859efb2f0a6a3681f3141be52c477e2e70f245001",
     "src/foundation/text/case-insensitive-text/Cargo.toml": "7a48735cc1d7891bd8ad741963bcf53c0f7d6186749dcb4bf8f845b3a44c134e",
-    "src/foundation/text/compile-time-text-macros/Cargo.toml": "fead6f381f1edd854f67640926a970115f9a169d22c23fbdddf24e67720ac66c",
+    "src/foundation/text/compile-time-text-macros/Cargo.toml": "625345ef2db0e01372c988b9bf82ef095d7b7ecf45231fbcfbcc1dea2fef049c",
     "src/foundation/text/compile-time-text/Cargo.toml": "6f796d1d269d032fa3c41e0e39113d4f98f14f50a14045942f691eb0af980d39",
     "src/foundation/text/inline-ascii/Cargo.toml": "8b9056ac99cda852663c68a807b5aba17d7f6f668271ea9bff98c5775b276036",
     "src/foundation/text/line-layout/Cargo.toml": "1e47969cb2f30767f5d1d05ceb115dbfc868b059965bc23224ce5d4016dbfa46",
@@ -34403,7 +34403,7 @@
         "src/admin.rs": "64b58d0fe06354b3f940959d27ed87b7c6b8d488222e1dee1f8f0a87b1467498",
         "src/admin/articles.rs": "e0c5190dd90aec37c618b789ad8c14c808b5963aff2de4960e00d93ee3bf8b96",
         "src/admin/dashboard.rs": "1043d01b24b0fb9f23586ff07715baafe4edf8a5ee84467e4a0ee6a531a1e4ea",
-        "src/admin/family.rs": "ec96c6f4559f77685e70181362a258c3407e354dc35577ab833c8a3fd3b341c5",
+        "src/admin/family.rs": "2fa7f6ce8477a2a6cc398767562fad4a7de0532c90fffcb9fcd6046752c99429",
         "src/admin/home.rs": "f23a0c29b66d75c16a97f53420ed81cd5c33c3c66dcbb04ce436c32c65f95818",
         "src/admin/letter.rs": "69fd34ed608a6d14e103783f250fca77096969d492c6a15402e1eef3a944769f",
         "src/admin/links.rs": "85a75c8e8a77bc98f45df5f3b2ce88dc39bff39397b2cf7700e013df1ad27cc8",
@@ -35447,7 +35447,7 @@
     },
     "src/foundation/assets/style-value-derive": {
       "dependencies": [
-        "src/foundation/syntax/style-derive-parser",
+        "src/foundation/syntax/rust-parser",
         "src/foundation/syntax/token-stream",
         "src/foundation/syntax/token-templates",
         "src/foundation/text/style-identifier-case"
@@ -35455,11 +35455,11 @@
       "directory": "src/foundation/assets/style-value-derive",
       "files_sha256": {
         ".cargo_vcs_info.json": "db973f9a2733250132b9044f1fb04eab41441af8c41201d3b91e47f77f6ea043",
-        "Cargo.toml": "8dfcd2aceeb204452d0e3b407e0e82963da5d4199ad6680a4cbfab08390f51dc",
+        "Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
         "src/lib.rs": "cbd180297c3ff4d6e7cb64121ecbb3b486a5b2250a30c5c29c44315a6604d2f9",
-        "src/parse.rs": "48fd01cacb8fa257f86d44837903632dd28f13b3f0c99ebc9d82159d5246e5c4",
+        "src/parse.rs": "f381727aeaa143a34394edc01c0e9276f47a1cca6e80dc0b0fe9148410dfe9ea",
         "src/to_css.rs": "4c036c5331fd9f4a590d992091a4a737e844a7faceacdf1a145cbee1a124c017",
-        "src/visit.rs": "9a920a7acd38ad362372b4c289950e31a3ec237dd59436bf7244824f72ef654e"
+        "src/visit.rs": "c11e1a56ce574d5454539201b985a491b472c7eb107d895e7938658cf938ef1b"
       },
       "layer": "assets",
       "name": "blog-assets-style-value-derive",
@@ -45235,7 +45235,7 @@
     },
     "src/foundation/text/compile-time-text-macros": {
       "dependencies": [
-        "src/foundation/syntax/style-derive-parser",
+        "src/foundation/syntax/rust-parser",
         "src/foundation/syntax/token-stream",
         "src/foundation/syntax/token-templates",
         "src/foundation/text/pattern-search"
@@ -45243,7 +45243,7 @@
       "directory": "src/foundation/text/compile-time-text-macros",
       "files_sha256": {
         ".cargo_vcs_info.json": "f303ef038eb534e633bbe7d89e14246d2ad447dd5c866fdf77ad5dc771840755",
-        "Cargo.toml": "fead6f381f1edd854f67640926a970115f9a169d22c23fbdddf24e67720ac66c",
+        "Cargo.toml": "625345ef2db0e01372c988b9bf82ef095d7b7ecf45231fbcfbcc1dea2fef049c",
         "src/fmt.rs": "68c00b9f80e4d0c6a2a06c757ff82187cabdfa25c5a169fbd8c9eb5192fc8e66",
         "src/lib.rs": "69fc1aac112fd68960056d84193ba9bb27ae72a3911dad57458f456f115b164e",
         "src/verify_regex.rs": "e99058ea8994b6704cf4ee778549971c200cc77f71753ee71ff8ad5b5caf61a9"
@@ -47824,7 +47824,7 @@
         "schema/initialize-site-author.sql": "fa82753ff3758d95a71df0fd0c0318cfe134b4738137cd7d3f30c93cb2f500af",
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
         "src/administrator.rs": "703bb1615220bf11cd4d949234f607bc185ea0fc518a6c70e02bc07d2fa1ec29",
-        "src/app.rs": "c1d7ab93ef46919f5d8ce4b39dbc5bc422aa27d7d4bfd8643427bd6e594543c2",
+        "src/app.rs": "eaa38043ca7c4a19a7fb8676d9e1458a8874d3aac5c7c966d4ac9212935ee36e",
         "src/config.rs": "cbd22b11aa7aa6a6c3fe22d8311c9192a1ff3a615e11b7fcc23bb66921a17ade",
         "src/config_definition.rs": "ccccd30fef770247ff32d4beedead7ba878efcabc3fb4e357c7de7ca443c21ac",
         "src/content/articles.rs": "b63c75c7c3721488326354c6c74cadb32157151278c46bb3d2d042da5a438302",
@@ -47850,11 +47850,11 @@
         "src/lifecycle.rs": "8757492cf14a15f3635a2225960d3f17118fc184a280d197c8a498a5a37c4f34",
         "src/main.rs": "b587a932c9a90d9780f2a81b784f5bc7342ea8dfd9ce619d87a863f2cdb35ea4",
         "src/maintenance.rs": "350cd9ff57ff46dd753b43364caad68c22ac03ca4a95639441267e687c844f1e",
-        "src/media.rs": "1e3e665717476dce6f60475beb9fc4640a7d790c2caf4310c66d78e671c40abc",
+        "src/media.rs": "80797c6b3b41ffd3f898f6e97e6a242f85672f33e86c25ec3315253aab2ad4fa",
         "src/media/formats.rs": "ef57e892f9dc017e59ceab0ea430fde243bf796c7064d295194f540919677a88",
         "src/media/references.rs": "11882b9dcca1a19c7c144c2dbc72a3fbc74c7b10dc8cb693403daa40a21ed30a",
         "src/media/storage.rs": "44cb32f10788fa08bd46e50afd2d7fbb5562c57cab3cbb9cdcf4f8b9cb9fbc3d",
-        "src/runtime.rs": "dc1bc7e22a60adfb7231316db25521703f3c6d45dc352d7ef664db6560fb7476",
+        "src/runtime.rs": "5f9ad464c3c0c7adb7a3bbd62b710793212cf81c13e7effb893289009bdc0f21",
         "src/schema.rs": "bcdaf13cb66a8a7c4b3f6eb24be32bc60d29633807fecda9612012314e71a72c",
         "src/schema_definition.rs": "8ac18c726b151002f5239750395590ad896aea6e2159f1a5dcf96e30755adfe6",
         "src/static_assets.rs": "5c8ffb12f3ae5265fc7d45ba4941058442cf07f33f020b1b5a878c61fc9ed72c"
@@ -47879,7 +47879,7 @@
         "test/server/integration/sqlite_bindings.rs": "8f334860ef480adecf7c58878b91cde4fba46d83ba9b9f2b81686a0eb4c0b064",
         "test/server/integration/support/database.rs": "7d2260fa25201c91c4bd214c420e9ced200db68ed77481e5470ddf5f4695ffd4",
         "test/server/query-indexes.py": "d4272bf3a82ac93e72868f639f5ad313928afe3567ce6f3c7bd01ae368305b70",
-        "test/server/unit/app_errors.rs": "eda2850821c2b1fa38226b1d7b08ce8806ff17be7cffaa1b1447293c1a7fdab5",
+        "test/server/unit/app_errors.rs": "4fed6f23affb3f8eaafd38a8ef6504e5039a96402686812607eab55049e3553d",
         "test/server/unit/config/tests.rs": "e30d5216dd22a601151e162cb84650ca3fa812b24e44e6ea086772a883de75be",
         "test/server/unit/content/articles/pagination_tests.rs": "bafadb5eb6e63b3613a4655b970d4d4cd8c02c091f159dc00c3cd8b396428c87",
         "test/server/unit/content/input.rs": "65a34ee4d687b18666dbd2aad268e0cad7eae56fe13931bd44f4f36a78b634c9",
@@ -47889,7 +47889,7 @@
         "test/server/unit/media/performance.rs": "47e7680acdb651727a7846b9f97274710499fdd6b3803f2c679d192052240895",
         "test/server/unit/media/references.rs": "2c71aa8af8b9fbe4528e3b43ab8aa52d25d134edd5f92bf38fa3dd013cdc1464",
         "test/server/unit/static_assets/identity_tests.rs": "935e5ac7b5e463345d4763792c87b3c74e5c5fa7df29f077f46c38af9de7cdb8",
-        "test/server/unit/tests.rs": "61bbea936aede190a81d843aac37d86cf177af2075b1a77205f6e7c02343eebc",
+        "test/server/unit/tests.rs": "5a5250f6b4eb66a981bf7c9e0fadb1c0c6603a1caa67ae026f919dd5eb3a5988",
         "test/server/unit/tests/comment_contracts.rs": "9c91b7ab56d1af67f8d6570f7c4203a64ea5897a61a8675fbe9f206254c6ef05",
         "test/server/unit/tests/commit_responses.rs": "ca91b2eb1098bcd421dfa068044ba03660b9b83bc15764bd0a17d8086be9c3e3",
         "test/server/unit/tests/family.rs": "ee0c5a73daa7edcb8f64061cbdd40b153be10a7aa5737a6a4d5342d850bc933c",
@@ -51318,23 +51318,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/syntax/style-derive-parser": {
-          "features": [
-            "clone-impls",
-            "default",
-            "derive",
-            "extra-traits",
-            "parsing",
-            "printing",
-            "proc-macro",
-            "quote"
-          ],
-          "name": "blog-syntax-style-derive-parser",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/syntax/style-iterators": {
           "features": [
             "default",
@@ -53853,23 +53836,6 @@
             "visit-mut"
           ],
           "name": "blog-syntax-rust-parser",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/syntax/style-derive-parser": {
-          "features": [
-            "clone-impls",
-            "default",
-            "derive",
-            "extra-traits",
-            "parsing",
-            "printing",
-            "proc-macro",
-            "quote"
-          ],
-          "name": "blog-syntax-style-derive-parser",
           "roles": [
             "compile"
           ],

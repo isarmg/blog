@@ -13,7 +13,7 @@ pub(crate) use formats::{is_media_filename, is_media_image_path};
 pub(crate) use storage::recover_deletions;
 
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     body::Bytes,
     extract::{DefaultBodyLimit, State},
     http::HeaderMap,
@@ -89,14 +89,14 @@ impl MediaUpload {
 }
 
 pub fn admin_routes() -> Router<AppState> {
+    let upload_route = |kind: MediaKind| {
+        post(upload).layer((Extension(kind), DefaultBodyLimit::max(kind.max_bytes())))
+    };
     Router::new()
-        .route(
-            "/api/v1/content/upload",
-            post(upload).layer(DefaultBodyLimit::max(MediaKind::Image.max_bytes())),
-        )
+        .route("/api/v1/content/upload", upload_route(MediaKind::Image))
         .route(
             "/api/v1/content/upload-video",
-            post(upload_video).layer(DefaultBodyLimit::max(MediaKind::Video.max_bytes())),
+            upload_route(MediaKind::Video),
         )
         .route(
             "/api/v1/content/resources/{id}",
@@ -106,35 +106,15 @@ pub fn admin_routes() -> Router<AppState> {
 
 async fn upload(
     State(state): State<AppState>,
-    axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
+    Extension(identity): Extension<AuthenticatedIdentity>,
+    Extension(kind): Extension<MediaKind>,
     headers: HeaderMap,
     body: Bytes,
 ) -> ApiResult<UploadedMedia> {
-    save_media(&state, headers, body, identity, MediaKind::Image).await
-}
-
-async fn upload_video(
-    State(state): State<AppState>,
-    axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> ApiResult<UploadedMedia> {
-    save_media(&state, headers, body, identity, MediaKind::Video).await
-}
-
-async fn save_media(
-    state: &AppState,
-    headers: HeaderMap,
-    body: Bytes,
-    identity: AuthenticatedIdentity,
-    kind: MediaKind,
-) -> ApiResult<UploadedMedia> {
-    let owned = state.clone();
-    let result = state
-        .scope
-        .commit_tasks
+    let tasks = state.scope.commit_tasks.clone();
+    tasks
         .try_spawn(async move {
-            let _operation = owned.media_operations.lock().await;
+            let _operation = state.media_operations.lock().await;
             // Serializing parsing also bounds the blocking work for large uploads.
             let upload =
                 tokio::task::spawn_blocking(move || MediaUpload::parse(kind, &headers, body))
@@ -143,9 +123,9 @@ async fn save_media(
                         message: "媒体校验失败",
                         source,
                     })??;
-            let mut transaction = crate::content::begin_mutation(&owned.pool, &identity).await?;
+            let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
             let author = crate::site_author_id(&mut *transaction).await?;
-            let result = storage::save(&owned, &mut transaction, upload, author).await?;
+            let result = storage::save(&state, &mut transaction, upload, author).await?;
             transaction.commit().await?;
             Ok::<_, AppError>(result)
         })?
@@ -153,8 +133,8 @@ async fn save_media(
         .map_err(|source| AppError::Task {
             message: "媒体保存失败",
             source,
-        })?;
-    result.map(Json)
+        })?
+        .map(Json)
 }
 
 #[derive(Deserialize)]
@@ -165,7 +145,7 @@ struct DeleteResourceInput {
 
 async fn delete_resource(
     State(state): State<AppState>,
-    axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
+    Extension(identity): Extension<AuthenticatedIdentity>,
     ContractPath(id): ContractPath<i64>,
     crate::ContractJson(input): crate::ContractJson<DeleteResourceInput>,
 ) -> ApiResult<serde_json::Value> {

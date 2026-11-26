@@ -53,7 +53,6 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
         )));
         attach_log_file(&settings)?;
         tracing::info!(event = "common.config.loaded");
-        let health_pool = pool.clone();
         let runtime = blog_application::server_runtime::ServerRuntime::builder(
             blog_application::server_runtime::ProductDescriptor {
                 id: PRODUCT_ID.into(),
@@ -64,13 +63,6 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
             },
         )
         .with_schema_identity(schema::current_identity())
-        .register_health_check(
-            "database",
-            blog_application::server_runtime::health_check(move || {
-                let pool = health_pool.clone();
-                async move { crate::app::database_ready(&pool).await }
-            }),
-        )
         .build()?;
         media::recover_deletions(&pool, &media).await?;
         let state = AppState {
