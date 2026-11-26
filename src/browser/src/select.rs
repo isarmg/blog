@@ -1,9 +1,31 @@
 //! Popup selector ported from xcss Select.tsx: native validation and a painted
 //! top-layer listbox share one controlled value; all selection state is Rust.
 use crate::common::t;
+use blog_interface::events::{EventListener, EventListenerOptions};
 use blog_interface::prelude::*;
 use blog_interface::thread_bound::SendWrapper;
-use wasm_bindgen::{JsCast, closure::Closure};
+use blog_interface::timers::callback::Timeout;
+use blog_interface::{ev, html, svg};
+use wasm_bindgen::{JsCast, JsValue, closure::Closure};
+#[derive(Clone, Copy)]
+struct SelectControl {
+    label: Signal<String>,
+    value: Signal<String>,
+    options: Memo<Vec<(String, String)>>,
+    change: Callback<String>,
+    required: bool,
+    disabled: Signal<bool>,
+    trigger: NodeRef<html::Button>,
+    native: NodeRef<html::Select>,
+    panel: NodeRef<html::Span>,
+    open: RwSignal<bool>,
+    active: RwSignal<usize>,
+    reveal: RwSignal<u64>,
+    message: RwSignal<String>,
+    typed: StoredValue<(String, f64)>,
+    id: StoredValue<String>,
+}
+
 #[component]
 pub fn Select(
     label: Signal<String>,
@@ -13,623 +35,601 @@ pub fn Select(
     #[prop(default = false)] required: bool,
     #[prop(default=Signal::derive(||false))] disabled: Signal<bool>,
 ) -> impl IntoView {
-    let options = Memo::new(move |_| options.get());
-    let trigger = NodeRef::<blog_interface::html::Button>::new();
-    let native = NodeRef::<blog_interface::html::Select>::new();
-    let panel = NodeRef::<blog_interface::html::Span>::new();
-    let open = RwSignal::new(false);
-    let active = RwSignal::new(0usize);
-    // Pointer hover only paints the active option. It must not move the popup
-    // between pointerdown and click (Firefox otherwise retargets the click).
-    let reveal = RwSignal::new(0u64);
-    let message = RwSignal::new(String::new());
-    let typed = StoredValue::new((String::new(), 0f64));
-    let id = StoredValue::new(format!(
-        "blog-select-{}",
-        window()
-            .crypto()
-            .expect("invariant: the application window exposes browser crypto")
-            .random_uuid()
-    ));
-    let close = Callback::new(move |()| {
-        if let Some(p) = panel.get()
+    let control = SelectControl {
+        label,
+        value,
+        options: Memo::new(move |_| options.get()),
+        change,
+        required,
+        disabled,
+        trigger: NodeRef::new(),
+        native: NodeRef::new(),
+        panel: NodeRef::new(),
+        open: RwSignal::new(false),
+        active: RwSignal::new(0),
+        // Pointer hover paints the active option, but only deliberate navigation
+        // reveals it without moving Firefox's click target beneath the pointer.
+        reveal: RwSignal::new(0),
+        message: RwSignal::new(String::new()),
+        typed: StoredValue::new((String::new(), 0.)),
+        id: StoredValue::new(format!(
+            "blog-select-{}",
+            window()
+                .crypto()
+                .expect("invariant: the application window exposes browser crypto")
+                .random_uuid()
+        )),
+    };
+    control.watch_value();
+    control.watch_reveal();
+    control.watch_popup();
+    control.watch_disabled();
+    control.watch_reset();
+    html::span().class("blog-select").child((
+        control.trigger_view(),
+        control.native_view(),
+        control.panel_view(),
+        control.error_view(),
+    ))
+}
+
+fn viewport(value: Result<JsValue, JsValue>) -> f64 {
+    value.ok().and_then(|value| value.as_f64()).unwrap_or(0.)
+}
+
+fn event_node(event: &web_sys::Event) -> Option<web_sys::Node> {
+    event.target().and_then(|target| target.dyn_into().ok())
+}
+
+fn native_disabled(field: &web_sys::HtmlSelectElement) -> bool {
+    field
+        .matches(":disabled")
+        .expect("invariant: :disabled is a valid CSS selector")
+}
+
+impl SelectControl {
+    fn accepts_input(self) -> bool {
+        self.native
+            .get()
+            .is_some_and(|field| !native_disabled(&field))
+    }
+
+    fn dom_id(self, suffix: impl std::fmt::Display) -> String {
+        self.id.with_value(|id| format!("{id}-{suffix}"))
+    }
+
+    fn reveal_index(self, index: usize) {
+        self.active.set(index);
+        self.reveal.update(|revision| *revision += 1);
+    }
+
+    fn native_value<T: AsRef<str> + Default>(self, value: T) -> T {
+        if self.required && value.as_ref() == "0" {
+            T::default()
+        } else {
+            value
+        }
+    }
+
+    fn selected_index(self, options: &[(String, String)]) -> usize {
+        let value = self.value.get_untracked();
+        options.iter().position(|(id, _)| *id == value).unwrap_or(0)
+    }
+
+    fn close(self) {
+        if let Some(p) = self.panel.get()
             && let Err(error) = p.hide_popover()
         {
             web_sys::console::debug_2(&"Selector popup was already detached".into(), &error);
         }
-        open.set(false);
-        typed.set_value((String::new(), 0.));
-    });
-    let position = Callback::new(move |()| {
-        let (Some(anchor), Some(popup)) = (trigger.get(), panel.get()) else {
+        self.open.set(false);
+        self.typed.set_value((String::new(), 0.));
+    }
+
+    fn position(self) {
+        let (Some(anchor), Some(popup)) = (self.trigger.get(), self.panel.get()) else {
             return;
         };
         let rect = anchor.get_bounding_client_rect();
         let win = window();
-        let width = rect.width().min(
-            win.inner_width()
-                .ok()
-                .and_then(|v| v.as_f64())
-                .unwrap_or(0.)
-                - 16.,
-        );
-        let left = rect
-            .left()
-            .min(
-                win.inner_width()
-                    .ok()
-                    .and_then(|v| v.as_f64())
-                    .unwrap_or(0.)
-                    - width
-                    - 8.,
-            )
-            .max(8.);
-        let below = (win
-            .inner_height()
-            .ok()
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.)
-            - rect.bottom()
-            - 12.)
-            .max(0.);
+        let viewport_width = viewport(win.inner_width());
+        let width = rect.width().min(viewport_width - 16.);
+        let left = rect.left().min(viewport_width - width - 8.).max(8.);
+        let below = (viewport(win.inner_height()) - rect.bottom() - 12.).max(0.);
         let above = (rect.top() - 12.).max(0.);
         let upwards = below < 180f64.min(f64::from(popup.scroll_height())) && above > below;
         let style = popup.unchecked_ref::<web_sys::HtmlElement>().style();
-        style
-            .set_property("width", &format!("{width}px"))
-            .expect("invariant: the selector popup owns a writable style declaration");
-        style
-            .set_property("left", &format!("{left}px"))
-            .expect("invariant: the selector popup owns a writable style declaration");
-        style
-            .set_property(
-                "max-height",
-                &format!("{}px", 320f64.min(if upwards { above } else { below })),
-            )
-            .expect("invariant: the selector popup owns a writable style declaration");
-        let height = popup.get_bounding_client_rect().height();
+        let set_px = |property, size| {
+            style
+                .set_property(property, &format!("{size}px"))
+                .expect("invariant: the selector popup owns a writable style declaration");
+        };
+        set_px("width", width);
+        set_px("left", left);
+        set_px(
+            "max-height",
+            320f64.min(if upwards { above } else { below }),
+        );
         let top = if upwards {
-            (rect.top() - 4. - height).max(8.)
+            (rect.top() - 4. - popup.get_bounding_client_rect().height()).max(8.)
         } else {
             rect.bottom() + 4.
         };
-        style
-            .set_property("top", &format!("{top}px"))
-            .expect("invariant: the selector popup owns a writable style declaration");
-    });
-    let show = Callback::new(move |index: Option<usize>| {
-        let Some(field) = native.get() else { return };
-        if field
-            .matches(":disabled")
-            .expect("invariant: :disabled is a valid CSS selector")
-        {
+        set_px("top", top);
+    }
+
+    fn show(self, index: Option<usize>) {
+        if !self.accepts_input() {
             return;
         }
-        let selected = value.get_untracked();
-        let Some(index) = options.with_untracked(|opts| {
-            (!opts.is_empty()).then(|| {
-                let selected = opts.iter().position(|(v, _)| *v == selected).unwrap_or(0);
-                index.unwrap_or(selected).min(opts.len() - 1)
-            })
+        let Some(index) = self.options.with_untracked(|opts| {
+            let last = opts.len().checked_sub(1)?;
+            Some(index.unwrap_or_else(|| self.selected_index(opts)).min(last))
         }) else {
             return;
         };
-        active.set(index);
-        let Some(panel) = panel.get() else { return };
+        self.active.set(index);
+        let Some(panel) = self.panel.get() else {
+            return;
+        };
         if let Err(error) = panel.show_popover() {
             web_sys::console::warn_2(&"Unable to open the selector popup".into(), &error);
             return;
         }
-        position.run(());
-        open.set(true);
-        reveal.update(|n| *n += 1);
-    });
-    let commit = Callback::new(move |index: usize| {
-        let Some(field) = native.get() else { return };
-        if field
-            .matches(":disabled")
-            .expect("invariant: :disabled is a valid CSS selector")
-        {
-            close.run(());
+        self.position();
+        self.open.set(true);
+        self.reveal.update(|n| *n += 1);
+    }
+
+    fn commit(self, index: usize) {
+        let Some(field) = self.native.get() else {
+            return;
+        };
+        if native_disabled(&field) {
+            self.close();
             return;
         }
-        let next = options.with_untracked(|opts| opts.get(index).map(|(next, _)| next.clone()));
+        let next = self
+            .options
+            .with_untracked(|opts| opts.get(index).map(|(next, _)| next.clone()));
         if let Some(next) = next {
             field.set_custom_validity("");
-            message.set(String::new());
-            if next != value.get_untracked() {
-                field.set_value(if required && next == "0" { "" } else { &next });
-                change.run(next);
+            self.message.set(String::new());
+            if self.value.with_untracked(|value| *value != next) {
+                field.set_value(self.native_value(next.as_str()));
+                self.change.run(next);
             }
         }
-        close.run(());
-    });
-    Effect::new(move |_| {
-        value.track();
-        options.track();
-        if let Some(field) = native.get() {
-            let selected = value.get_untracked();
-            field.set_value(if required && selected == "0" {
-                ""
-            } else {
-                &selected
-            });
-            field.set_custom_validity("");
-        }
-        message.set(String::new());
-        if disabled.get() && open.get_untracked() {
-            close.run(());
-        }
-        if open.get() {
-            position.run(());
-        }
-    });
-    Effect::new(move |_| {
-        if !open.get() {
-            return;
-        }
-        reveal.get();
-        if let Some(panel) = panel.get()
-            && let Some(item) = panel
-                .query_selector(&format!(
-                    "[data-option-index=\"{}\"]",
-                    active.get_untracked()
-                ))
-                .expect("invariant: an integer option index forms a valid CSS selector")
-        {
-            let rect = item.get_bounding_client_rect();
-            let outer = panel.get_bounding_client_rect();
-            // Scroll only the listbox, never the document/ancestor fieldset.
-            // scrollIntoView may scroll every ancestor, moving the trigger and
-            // causing a placement flip while a pointer selection is underway.
-            let delta = if rect.top() < outer.top() {
-                rect.top() - outer.top()
-            } else if rect.bottom() > outer.bottom() {
-                rect.bottom() - outer.bottom()
-            } else {
-                0.
-            };
-            panel.scroll_by_with_x_and_y(0., delta.round());
-        }
-    });
-    Effect::new(move |_| {
-        if !open.get() {
-            return;
-        }
-        let outside = move |event: &web_sys::Event| {
-            let target = event
-                .target()
-                .and_then(|t| t.dyn_into::<web_sys::Node>().ok());
-            let inside = target.as_ref().is_some_and(|t| {
-                trigger.get().is_some_and(|e| e.contains(Some(t)))
-                    || panel.get().is_some_and(|e| e.contains(Some(t)))
-            });
-            if !inside {
-                close.run(());
+        self.close();
+    }
+
+    fn watch_value(self) {
+        Effect::new(move |_| {
+            self.value.track();
+            self.options.track();
+            if let Some(field) = self.native.get() {
+                let selected = self.value.get_untracked();
+                field.set_value(self.native_value(selected.as_str()));
+                field.set_custom_validity("");
             }
-        };
-        let win = window();
-        let doc = win
-            .document()
-            .expect("invariant: the application window owns its document");
-        let pointer = SendWrapper::new(blog_interface::events::EventListener::new_with_options(
-            &doc,
-            "pointerdown",
-            blog_interface::events::EventListenerOptions::run_in_capture_phase(),
-            outside,
-        ));
-        let focus = SendWrapper::new(blog_interface::events::EventListener::new(
-            &doc, "focusin", outside,
-        ));
-        let resize = SendWrapper::new(blog_interface::events::EventListener::new(
-            &win,
-            "resize",
-            move |_| position.run(()),
-        ));
-        let scroll = SendWrapper::new(blog_interface::events::EventListener::new_with_options(
-            &doc,
-            "scroll",
-            blog_interface::events::EventListenerOptions::run_in_capture_phase(),
-            move |event| {
-                // Scrolling options cannot change the anchor's viewport position.
-                if event
-                    .target()
-                    .and_then(|target| target.dyn_into::<web_sys::Node>().ok())
-                    .is_some_and(|target| panel.get().is_some_and(|p| p.contains(Some(&target))))
-                {
-                    return;
-                }
-                position.run(());
-            },
-        ));
-        let blur = SendWrapper::new(blog_interface::events::EventListener::new(
-            &win,
-            "blur",
-            move |_| close.run(()),
-        ));
-        on_cleanup(move || {
-            drop(pointer);
-            drop(focus);
-            drop(resize);
-            drop(scroll);
-            drop(blur);
+            self.message.set(String::new());
+            if self.disabled.get() && self.open.get_untracked() {
+                self.close();
+            }
+            if self.open.get() {
+                self.position();
+            }
         });
-    });
-    Effect::new(move |_| {
-        if !open.get() {
-            return;
-        }
-        if let Some(field) = native.get() {
-            let callback =
-                Closure::<dyn FnMut(js_sys::Array, web_sys::MutationObserver)>::new(move |_, _| {
-                    if native.get().is_some_and(|f| {
-                        f.matches(":disabled")
-                            .expect("invariant: :disabled is a valid CSS selector")
-                    }) {
-                        close.run(());
-                    }
+    }
+
+    fn watch_reveal(self) {
+        Effect::new(move |_| {
+            if !self.open.get() {
+                return;
+            }
+            self.reveal.get();
+            if let Some(panel) = self.panel.get()
+                && let Some(item) = panel
+                    .query_selector(&format!(
+                        "[data-option-index=\"{}\"]",
+                        self.active.get_untracked()
+                    ))
+                    .expect("invariant: an integer option index forms a valid CSS selector")
+            {
+                let rect = item.get_bounding_client_rect();
+                let outer = panel.get_bounding_client_rect();
+                // Scroll only the listbox, never the document/ancestor fieldset.
+                // scrollIntoView may scroll every ancestor, moving the trigger and
+                // causing a placement flip while a pointer selection is underway.
+                let delta = if rect.top() < outer.top() {
+                    rect.top() - outer.top()
+                } else {
+                    (rect.bottom() - outer.bottom()).max(0.)
+                };
+                panel.scroll_by_with_x_and_y(0., delta.round());
+            }
+        });
+    }
+
+    fn watch_popup(self) {
+        Effect::new(move |_| {
+            if !self.open.get() {
+                return;
+            }
+            let outside = move |event: &web_sys::Event| {
+                let inside = event_node(event).is_some_and(|target| {
+                    self.trigger
+                        .get()
+                        .is_some_and(|node| node.contains(Some(&target)))
+                        || self
+                            .panel
+                            .get()
+                            .is_some_and(|node| node.contains(Some(&target)))
                 });
-            let observer = web_sys::MutationObserver::new(callback.as_ref().unchecked_ref())
-                .expect("invariant: a mutation observer callback is callable");
-            let opts = web_sys::MutationObserverInit::new();
-            opts.set_attributes(true);
-            let mut ancestor = field.parent_element();
-            while let Some(parent) = ancestor {
-                if parent.tag_name() == "FIELDSET" {
+                if !inside {
+                    self.close();
+                }
+            };
+            let win = window();
+            let doc = win
+                .document()
+                .expect("invariant: the application window owns its document");
+            let capture = EventListenerOptions::run_in_capture_phase();
+            let listeners = SendWrapper::new([
+                EventListener::new_with_options(&doc, "pointerdown", capture, outside),
+                EventListener::new(&doc, "focusin", outside),
+                EventListener::new(&win, "resize", move |_| self.position()),
+                EventListener::new_with_options(&doc, "scroll", capture, move |event| {
+                    // Scrolling options cannot change the anchor's viewport position.
+                    if !event_node(event).is_some_and(|target| {
+                        self.panel
+                            .get()
+                            .is_some_and(|panel| panel.contains(Some(&target)))
+                    }) {
+                        self.position();
+                    }
+                }),
+                EventListener::new(&win, "blur", move |_| self.close()),
+            ]);
+            on_cleanup(move || drop(listeners));
+        });
+    }
+
+    fn watch_disabled(self) {
+        Effect::new(move |_| {
+            if self.open.get()
+                && let Some(field) = self.native.get()
+            {
+                let callback = Closure::<dyn FnMut(js_sys::Array, web_sys::MutationObserver)>::new(
+                    move |_, _| {
+                        if self
+                            .native
+                            .get()
+                            .is_some_and(|field| native_disabled(&field))
+                        {
+                            self.close();
+                        }
+                    },
+                );
+                let observer = web_sys::MutationObserver::new(callback.as_ref().unchecked_ref())
+                    .expect("invariant: a mutation observer callback is callable");
+                let opts = web_sys::MutationObserverInit::new();
+                opts.set_attributes(true);
+                let ancestors =
+                    std::iter::successors(field.parent_element(), |node| node.parent_element());
+                for parent in ancestors.filter(|parent| parent.tag_name() == "FIELDSET") {
                     observer.observe_with_options(&parent, &opts).expect(
                         "invariant: the selector observes ancestor attributes with valid options",
                     );
                 }
-                ancestor = parent.parent_element();
+                let callback = SendWrapper::new(callback);
+                let observer = SendWrapper::new(observer);
+                on_cleanup(move || {
+                    observer.disconnect();
+                    drop(callback);
+                });
             }
-            let callback = SendWrapper::new(callback);
-            let observer = SendWrapper::new(observer);
-            on_cleanup(move || {
-                observer.disconnect();
-                drop(callback);
-            });
-        }
-    });
-    Effect::new(move |_| {
-        if let Some(field) = native.get()
-            && let Some(form) = field.form()
-        {
-            let listener = SendWrapper::new(blog_interface::events::EventListener::new(
-                &form,
-                "reset",
-                move |event| {
+        });
+    }
+
+    fn watch_reset(self) {
+        Effect::new(move |_| {
+            if let Some(field) = self.native.get()
+                && let Some(form) = field.form()
+            {
+                let listener = SendWrapper::new(EventListener::new(&form, "reset", move |event| {
                     let event = SendWrapper::new(event.clone());
                     let field = SendWrapper::new(field.clone());
-                    let selected = value.get_untracked();
-                    blog_interface::timers::callback::Timeout::new(0, move || {
+                    let selected = self.value.get_untracked();
+                    Timeout::new(0, move || {
                         if !event.default_prevented() && field.is_connected() {
                             field.set_custom_validity("");
-                            field.set_value(if required && selected == "0" {
-                                ""
-                            } else {
-                                &selected
-                            });
-                            message.set(String::new());
-                            close.run(());
+                            field.set_value(self.native_value(selected.as_str()));
+                            self.message.set(String::new());
+                            self.close();
                         }
                     })
                     .forget();
-                },
-            ));
-            on_cleanup(move || drop(listener));
-        }
-    });
-    let keydown = move |event: web_sys::KeyboardEvent| {
-        if native.get().is_none_or(|f| {
-            f.matches(":disabled")
-                .expect("invariant: :disabled is a valid CSS selector")
-        }) {
+                }));
+                on_cleanup(move || drop(listener));
+            }
+        });
+    }
+
+    fn keydown(self, event: &web_sys::KeyboardEvent) {
+        if !self.accepts_input() {
             return;
         }
-        let count = options.with_untracked(Vec::len);
+        let count = self.options.with_untracked(Vec::len);
         if count == 0 {
             return;
         }
         let key = event.key();
-        if ["ArrowDown", "ArrowUp", "Home", "End"].contains(&key.as_str()) {
-            event.prevent_default();
-            event.stop_propagation();
-            if !open.get_untracked() {
-                show.run(if key == "Home" {
-                    Some(0)
-                } else if key == "End" {
-                    Some(count - 1)
+        let open = self.open.get_untracked();
+        match key.as_str() {
+            "ArrowDown" | "ArrowUp" | "Home" | "End" => {
+                event.prevent_default();
+                event.stop_propagation();
+                if open {
+                    let next = match key.as_str() {
+                        "Home" => 0,
+                        "End" => count - 1,
+                        "ArrowDown" => (self.active.get_untracked() + 1).min(count - 1),
+                        _ => self.active.get_untracked().saturating_sub(1),
+                    };
+                    self.reveal_index(next);
                 } else {
-                    None
-                });
-                return;
-            }
-            let next = match key.as_str() {
-                "Home" => 0,
-                "End" => count - 1,
-                "ArrowDown" => (active.get_untracked() + 1).min(count - 1),
-                _ => active.get_untracked().saturating_sub(1),
-            };
-            active.set(next);
-            reveal.update(|n| *n += 1);
-            return;
-        }
-        if key == "Enter" || key == " " {
-            event.prevent_default();
-            event.stop_propagation();
-            if open.get_untracked() {
-                commit.run(active.get_untracked());
-            } else {
-                show.run(None);
-            }
-            return;
-        }
-        if key == "Escape" && open.get_untracked() {
-            event.prevent_default();
-            event.stop_propagation();
-            close.run(());
-            return;
-        }
-        if key == "Tab" {
-            if open.get_untracked() {
-                commit.run(active.get_untracked());
-            }
-            return;
-        }
-        if !event.ctrl_key() && !event.alt_key() && !event.meta_key() && key.chars().count() == 1 {
-            event.prevent_default();
-            let now = js_sys::Date::now();
-            let (previous, at) = typed.get_value();
-            let text = format!(
-                "{}{}",
-                if now - at < 750. {
-                    previous
-                } else {
-                    String::new()
-                },
-                key.to_lowercase()
-            );
-            typed.set_value((text.clone(), now));
-            let repeated = text
-                .chars()
-                .next()
-                .is_some_and(|first| text.chars().all(|c| c == first));
-            let term = if repeated {
-                text.chars()
-                    .next()
-                    .expect("invariant: the typeahead text contains the current character")
-                    .to_string()
-            } else {
-                text
-            };
-            let selected = value.get_untracked();
-            let selected = options
-                .with_untracked(|opts| opts.iter().position(|(v, _)| *v == selected).unwrap_or(0));
-            let from = if open.get_untracked() {
-                active.get_untracked()
-            } else {
-                selected
-            };
-            let offset = usize::from(term.chars().count() == 1);
-            let found = options.with_untracked(|opts| {
-                (0..count)
-                    .map(|n| (from + offset + n) % count)
-                    .find(|i| opts[*i].1.to_lowercase().starts_with(&term))
-            });
-            if open.get_untracked() {
-                if let Some(i) = found {
-                    active.set(i);
-                    reveal.update(|n| *n += 1);
+                    self.show(match key.as_str() {
+                        "Home" => Some(0),
+                        "End" => Some(count - 1),
+                        _ => None,
+                    });
                 }
-            } else {
-                show.run(found);
             }
+            "Enter" | " " => {
+                event.prevent_default();
+                event.stop_propagation();
+                if open {
+                    self.commit(self.active.get_untracked());
+                } else {
+                    self.show(None);
+                }
+            }
+            "Escape" if open => {
+                event.prevent_default();
+                event.stop_propagation();
+                self.close();
+            }
+            "Tab" if open => self.commit(self.active.get_untracked()),
+            _ if !event.ctrl_key()
+                && !event.alt_key()
+                && !event.meta_key()
+                && key.chars().count() == 1 =>
+            {
+                event.prevent_default();
+                self.typeahead(&key, count, open);
+            }
+            _ => {}
         }
-    };
-    View::new(
-        blog_interface::html::span()
+    }
+
+    fn typeahead(self, key: &str, count: usize, open: bool) {
+        let now = js_sys::Date::now();
+        let (previous, at) = self.typed.get_value();
+        let mut text = if now - at < 750. {
+            previous
+        } else {
+            String::new()
+        };
+        text.extend(key.chars().flat_map(char::to_lowercase));
+        let first = text
+            .chars()
+            .next()
+            .expect("invariant: the typeahead key is one character");
+        let term = if text.chars().all(|value| value == first) {
+            &text[..first.len_utf8()]
+        } else {
+            text.as_str()
+        };
+        let offset = usize::from(term.chars().count() == 1);
+        let found = self.options.with_untracked(|options| {
+            let from = if open {
+                self.active.get_untracked()
+            } else {
+                self.selected_index(options)
+            };
+            (0..count)
+                .map(|n| (from + offset + n) % count)
+                .find(|index| options[*index].1.to_lowercase().starts_with(term))
+        });
+        self.typed.set_value((text, now));
+        match (open, found) {
+            (true, Some(index)) => self.reveal_index(index),
+            (false, found) => self.show(found),
+            (true, None) => (),
+        }
+    }
+
+    fn trigger_view(self) -> impl IntoView {
+        html::button()
             .child((
-                blog_interface::html::button()
-                    .child((
-                        blog_interface::html::span()
-                            .child(move || {
-                                let selected = value.get();
-                                options.with(|opts| {
-                                    opts.iter()
-                                        .find(|(v, _)| *v == selected)
-                                        .map_or_else(|| "\u{a0}".into(), |(_, label)| label.clone())
-                                })
-                            })
-                            .class("blog-select-value"),
-                        blog_interface::svg::svg()
-                            .child(blog_interface::svg::path().attr("d", "m9 6 6 6-6 6"))
-                            .class("blog-select-arrow")
-                            .attr("aria-hidden", "true")
-                            .attr("width", "16")
-                            .attr("height", "16")
-                            .attr("viewBox", "0 0 24 24")
-                            .attr("fill", "none")
-                            .attr("stroke", "currentColor")
-                            .attr("stroke-width", "1.8"),
-                    ))
-                    .class("blog-input blog-input--compact blog-select-trigger")
-                    .node_ref(trigger)
-                    .id(format!("{}-select", id.get_value()))
-                    .r#type("button")
-                    .role("combobox")
-                    .aria_haspopup("listbox")
-                    .aria_expanded(move || open.get().to_string())
-                    .aria_controls(format!("{}-options", id.get_value()))
-                    .aria_activedescendant(move || {
-                        open.get()
-                            .then(|| format!("{}-options-{}", id.get_value(), active.get()))
-                    })
-                    .aria_label(move || label.get())
-                    .aria_describedby(move || {
-                        (!message.get().is_empty()).then(|| format!("{}-error", id.get_value()))
-                    })
-                    .aria_required(required.to_string())
-                    .aria_invalid(move || (!message.get().is_empty()).to_string())
-                    .disabled(move || disabled.get())
-                    .on(blog_interface::ev::click, move |ev| {
-                        ev.prevent_default();
-                        if open.get_untracked() {
-                            close.run(());
-                        } else {
-                            show.run(None);
-                        }
-                    })
-                    .on(blog_interface::ev::keydown, keydown),
-                blog_interface::html::select()
+                html::span()
                     .child(move || {
-                        options
-                            .get()
-                            .into_iter()
-                            .map(|(v, l)| {
-                                View::new(blog_interface::html::option().child(l).value(
-                                    if required && v == "0" {
-                                        String::new()
-                                    } else {
-                                        v
-                                    },
-                                ))
-                            })
-                            .collect_view()
-                    })
-                    .class("blog-select-native")
-                    .node_ref(native)
-                    .id(format!("{}-native", id.get_value()))
-                    .aria_hidden("true")
-                    .tabindex("-1")
-                    .required(required)
-                    .disabled(move || disabled.get())
-                    .prop("value", move || {
-                        let v = value.get();
-                        if required && v == "0" {
-                            String::new()
-                        } else {
-                            v
-                        }
-                    })
-                    .on(blog_interface::ev::change, move |ev| {
-                        message.set(String::new());
-                        let field = event_target::<web_sys::HtmlSelectElement>(&ev);
-                        field.set_custom_validity("");
-                        change.run(field.value());
-                    })
-                    .on(blog_interface::ev::invalid, move |ev: web_sys::Event| {
-                        ev.prevent_default();
-                        let field = event_target::<web_sys::HtmlSelectElement>(&ev);
-                        let m = t("请填写此项。", "Please fill out this field.");
-                        field.set_custom_validity(&m);
-                        message.set(m);
-                        close.run(());
-                        let field = SendWrapper::new(field);
-                        blog_interface::timers::callback::Timeout::new(0, move || {
-                            if !field.is_connected() {
-                                return;
-                            }
-                            let first = field.form().and_then(|f| {
-                                f.query_selector("input:invalid,select:invalid,textarea:invalid")
-                                    .expect(
-                                        "invariant: the invalid form control selector is valid CSS",
-                                    )
-                            });
-                            if first.is_none_or(|e| {
-                                e == (*field).clone().unchecked_into::<web_sys::Element>()
-                            }) && let Some(trigger) = trigger.get()
-                                && let Err(error) = trigger.focus()
-                            {
-                                web_sys::console::warn_2(
-                                    &"Unable to move browser focus".into(),
-                                    &error,
-                                );
-                            }
+                        let selected = self.value.get();
+                        self.options.with(|opts| {
+                            opts.iter()
+                                .find(|(v, _)| *v == selected)
+                                .map_or_else(|| "\u{a0}".into(), |(_, label)| label.clone())
                         })
-                        .forget();
-                    }),
-                blog_interface::html::span()
-                    .child(move || {
-                        options
-                            .get()
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, (v, l))| {
-                                View::new(
-                                    blog_interface::html::span().child(
-                                        blog_interface::html::span()
-                                            .child((
-                                                blog_interface::html::span().child(l),
-                                                blog_interface::html::span()
-                                                    .child({
-                                                        let v = v.clone();
-                                                        move || {
-                                                            if value.get() == v {
-                                                                "✓"
-                                                            } else {
-                                                                ""
-                                                            }
-                                                        }
-                                                    })
-                                                    .aria_hidden("true"),
-                                            ))
-                                            .class("blog-select-option blog-row blog-row--option")
-                                            .id(format!("{}-options-{i}", id.get_value()))
-                                            .role("option")
-                                            .aria_selected({
-                                                move || (value.get() == v).to_string()
-                                            })
-                                            .attr("data-option-index", i)
-                                            .attr("data-active", move || {
-                                                (active.get() == i).then_some("true")
-                                            })
-                                            .on(blog_interface::ev::pointermove, move |_| {
-                                                active.set(i);
-                                            })
-                                            .on(blog_interface::ev::click, move |ev| {
-                                                ev.prevent_default();
-                                                ev.stop_propagation();
-                                                commit.run(i);
-                                            }),
-                                    ),
-                                )
-                            })
-                            .collect_view()
                     })
-                    .class("blog-select-panel blog-frame")
-                    .node_ref(panel)
-                    .id(format!("{}-options", id.get_value()))
-                    .popover("manual")
-                    .role("listbox")
-                    .aria_label(move || label.get())
-                    .attr("data-blog-select-open", move || {
-                        open.get().then_some("true")
+                    .class("blog-select-value"),
+                svg::svg()
+                    .child(svg::path().attr("d", "m9 6 6 6-6 6"))
+                    .class("blog-select-arrow")
+                    .attr("aria-hidden", "true")
+                    .attr("width", "16")
+                    .attr("height", "16")
+                    .attr("viewBox", "0 0 24 24")
+                    .attr("fill", "none")
+                    .attr("stroke", "currentColor")
+                    .attr("stroke-width", "1.8"),
+            ))
+            .class("blog-input blog-input--compact blog-select-trigger")
+            .node_ref(self.trigger)
+            .id(self.dom_id("select"))
+            .r#type("button")
+            .role("combobox")
+            .aria_haspopup("listbox")
+            .aria_expanded(move || self.open.get().to_string())
+            .aria_controls(self.dom_id("options"))
+            .aria_activedescendant(move || {
+                self.open
+                    .get()
+                    .then(|| self.dom_id(format_args!("options-{}", self.active.get())))
+            })
+            .aria_label(move || self.label.get())
+            .aria_describedby(move || {
+                (!self.message.get().is_empty()).then(|| self.dom_id("error"))
+            })
+            .aria_required(self.required.to_string())
+            .aria_invalid(move || (!self.message.get().is_empty()).to_string())
+            .disabled(move || self.disabled.get())
+            .on(ev::click, move |ev| {
+                ev.prevent_default();
+                if self.open.get_untracked() {
+                    self.close();
+                } else {
+                    self.show(None);
+                }
+            })
+            .on(ev::keydown, move |event| self.keydown(&event))
+    }
+
+    fn native_view(self) -> impl IntoView {
+        html::select()
+            .child(move || {
+                self.options
+                    .get()
+                    .into_iter()
+                    .map(|(value, label)| {
+                        html::option().child(label).value(self.native_value(value))
                     })
-                    .on(blog_interface::ev::pointerdown, move |ev| {
-                        if ev
-                            .target()
-                            .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
-                            .is_some_and(|t| {
-                                t.closest("[role=option]")
-                                    .expect("invariant: the option role selector is valid CSS")
-                                    .is_some()
-                            })
-                        {
-                            ev.prevent_default();
-                        }
-                    }),
-                move || {
-                    (!message.get().is_empty()).then(|| {
-                        View::new(
-                            blog_interface::html::span()
-                                .child(message.get())
-                                .class("blog-select-error")
-                                .id(format!("{}-error", id.get_value()))
-                                .role("alert"),
+                    .collect_view()
+            })
+            .class("blog-select-native")
+            .node_ref(self.native)
+            .id(self.dom_id("native"))
+            .aria_hidden("true")
+            .tabindex("-1")
+            .required(self.required)
+            .disabled(move || self.disabled.get())
+            .prop("value", move || self.native_value(self.value.get()))
+            .on(ev::change, move |ev| {
+                self.message.set(String::new());
+                let field = event_target::<web_sys::HtmlSelectElement>(&ev);
+                field.set_custom_validity("");
+                self.change.run(field.value());
+            })
+            .on(ev::invalid, move |ev: web_sys::Event| {
+                ev.prevent_default();
+                let field = event_target::<web_sys::HtmlSelectElement>(&ev);
+                let m = t("请填写此项。", "Please fill out this field.");
+                field.set_custom_validity(&m);
+                self.message.set(m);
+                self.close();
+                let field = SendWrapper::new(field);
+                Timeout::new(0, move || {
+                    if !field.is_connected() {
+                        return;
+                    }
+                    let first = field.form().and_then(|f| {
+                        f.query_selector("input:invalid,select:invalid,textarea:invalid")
+                            .expect("invariant: the invalid form control selector is valid CSS")
+                    });
+                    if first
+                        .is_none_or(|e| e == (*field).clone().unchecked_into::<web_sys::Element>())
+                        && let Some(trigger) = self.trigger.get()
+                        && let Err(error) = trigger.focus()
+                    {
+                        web_sys::console::warn_2(&"Unable to move browser focus".into(), &error);
+                    }
+                })
+                .forget();
+            })
+    }
+
+    fn panel_view(self) -> impl IntoView {
+        html::span()
+            .child(move || {
+                self.options
+                    .get()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (value, label))| {
+                        let selected = move || self.value.with(|current| current == &value);
+                        let check = selected.clone();
+                        html::span().child(
+                            html::span()
+                                .child((
+                                    html::span().child(label),
+                                    html::span()
+                                        .aria_hidden("true")
+                                        .child(move || if check() { "✓" } else { "" }),
+                                ))
+                                .class("blog-select-option blog-row blog-row--option")
+                                .id(self.dom_id(format_args!("options-{i}")))
+                                .role("option")
+                                .aria_selected(move || selected().to_string())
+                                .attr("data-option-index", i)
+                                .attr("data-active", move || {
+                                    (self.active.get() == i).then_some("true")
+                                })
+                                .on(ev::pointermove, move |_| {
+                                    self.active.set(i);
+                                })
+                                .on(ev::click, move |ev| {
+                                    ev.prevent_default();
+                                    ev.stop_propagation();
+                                    self.commit(i);
+                                }),
                         )
                     })
-                },
-            ))
-            .class("blog-select"),
-    )
+                    .collect_view()
+            })
+            .class("blog-select-panel blog-frame")
+            .node_ref(self.panel)
+            .id(self.dom_id("options"))
+            .popover("manual")
+            .role("listbox")
+            .aria_label(move || self.label.get())
+            .attr("data-blog-select-open", move || {
+                self.open.get().then_some("true")
+            })
+            .on(ev::pointerdown, move |ev| {
+                if ev
+                    .target()
+                    .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
+                    .is_some_and(|t| {
+                        t.closest("[role=option]")
+                            .expect("invariant: the option role selector is valid CSS")
+                            .is_some()
+                    })
+                {
+                    ev.prevent_default();
+                }
+            })
+    }
+
+    fn error_view(self) -> impl IntoView {
+        move || {
+            let message = self.message.get();
+            (!message.is_empty()).then(|| {
+                html::span()
+                    .child(message)
+                    .class("blog-select-error")
+                    .id(self.dom_id("error"))
+                    .role("alert")
+            })
+        }
+    }
 }

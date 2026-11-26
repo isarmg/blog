@@ -34440,7 +34440,7 @@
         "src/public/photos.rs": "59be1503acf00f1bda4945df555bd325befacffaf38d9b601e4eac1de0b4e662",
         "src/public/shell.rs": "fd5ad242f9b22f3244f5eeb93b6f2e1c776da840062a0e362e2eb5f962842ccb",
         "src/public/toolbox.rs": "7185a47b4ee49f70af929b2c546db6b235b1bcce8472c049c8385002c7381550",
-        "src/select.rs": "e5e8fb575165c79304b6826b53694d4775d845226b4331112f7a6b9fc04a61ea"
+        "src/select.rs": "568dfdaca4bbbf9d97fcb8611897ecf6fa2e3e89b23e53f947d645e9b691e7aa"
       },
       "layer": "product",
       "name": "blog-browser",
@@ -47834,7 +47834,7 @@
         "src/content/letter.rs": "0ee63cf6547973a87251519012dbe16802f801be54ad8bb2ba9a953fc96bf0c7",
         "src/content/links.rs": "66a56657071430eaaef03a30c88ce8c9f2a3e1414a68badc4b2362500f2c972f",
         "src/content/mod.rs": "7a54c3213fa6de82c6e2e053987172b5802e25f0561b68759184e9500f6008c8",
-        "src/content/notes.rs": "36de5f35daca88c128e5411b91c0152afebb6cbc1c81c9947d878c7e02826b76",
+        "src/content/notes.rs": "3fb2ec5d54cdcbe1a77268461898a78b146b2de702bdd34b0646b275fa0d42bc",
         "src/content/resources.rs": "2230b67a3fac4ccf5519052646bc9b419e9c380c97e1e502248deee6f5705e56",
         "src/content/site.rs": "ca0f472c79e487673e4b89acc1ec253837206459222598f81e9f75f7820ce62e",
         "src/content/site/media.rs": "1694c833076b5973e971f2f3f11b5243159f7d0233e5acac004a782c7b7b1f1c",

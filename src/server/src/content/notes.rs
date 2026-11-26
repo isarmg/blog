@@ -59,8 +59,6 @@ pub(super) struct AdminNoteInput {
     is_public: bool,
 }
 
-const ADMIN_NOTE_SQL: &str = "SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id";
-
 async fn validate_note_image(
     transaction: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     image_path: Option<&str>,
@@ -88,9 +86,9 @@ async fn load_admin_note(
     connection: &mut sqlx::SqliteConnection,
     id: i64,
 ) -> Result<AdminNote, AppError> {
-    sqlx::query_as::<_, AdminNote>(sqlx::AssertSqlSafe(format!(
-        "{ADMIN_NOTE_SQL} WHERE w.id=? AND w.type='friend'"
-    )))
+    sqlx::query_as::<_, AdminNote>(
+        "SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id WHERE w.id=? AND w.type='friend'",
+    )
     .bind(id)
     .fetch_optional(connection)
     .await?
