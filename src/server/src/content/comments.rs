@@ -82,18 +82,11 @@ enum CommentTarget {
 }
 
 impl CommentTarget {
-    fn source(&self) -> i64 {
+    fn database_fields(&self) -> (i64, &'static str) {
         match *self {
-            Self::Article(id) | Self::Love(id) => id,
-            Self::Message => 0,
-        }
-    }
-
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Article(_) => "article",
-            Self::Message => "message",
-            Self::Love(_) => "love",
+            Self::Article(id) => (id, "article"),
+            Self::Message => (0, "message"),
+            Self::Love(id) => (id, "love"),
         }
     }
 }
@@ -128,8 +121,7 @@ async fn create_anonymous_comment(
     target: CommentTarget,
     input: CommentSubmission,
 ) -> ApiResult<PublicComment> {
-    let source = target.source();
-    let kind = target.as_str();
+    let (source, kind) = target.database_fields();
     let content = input.content.as_str();
     let parent = input.parent;
     let mut hash = Sha256::new();
@@ -259,8 +251,7 @@ async fn comment_page(
         )
     };
     let pagination = query.bounds(default_size, 50);
-    let source = target.source();
-    let kind = target.as_str();
+    let (source, kind) = target.database_fields();
     let mut count = sqlx::query_scalar(count_sql);
     let mut data = sqlx::query_as(sqlx::AssertSqlSafe(format!("{COMMENT_SQL} {items_sql}")));
     if let Some(id) = floor {
@@ -358,13 +349,14 @@ async fn site_comment_replies(
     id: i64,
     query: PageQuery,
 ) -> ApiResult<PageResult<PublicComment>> {
+    let (source, kind) = target.database_fields();
     sqlx::query_scalar::<_, i64>(
         "SELECT id FROM comment WHERE id=? AND source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
     )
     .bind(id)
-    .bind(target.source())
-    .bind(target.as_str())
+    .bind(source)
+    .bind(kind)
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(absent)?;

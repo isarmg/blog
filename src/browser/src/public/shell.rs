@@ -39,13 +39,12 @@ pub(super) fn Chrome(
             .set_title(&title);
     });
     let random_cover = Memo::new(move |_| {
-        let covers = site
-            .current()
-            .map_or_default(|v| notices(&v.random_cover.unwrap_or_default()));
-        covers
-            .get((js_sys::Math::random() * covers.len() as f64) as usize)
-            .cloned()
-            .unwrap_or_default()
+        let covers = site.with_current(|s| {
+            s.map_or_default(|s| notices(s.random_cover.as_deref().unwrap_or_default()))
+        });
+        let len = u32::try_from(covers.len()).expect("invariant: cover list fits a browser index");
+        let index = (js_sys::Math::random() * f64::from(len)) as usize;
+        covers.into_iter().nth(index).unwrap_or_default()
     });
     let menu = RwSignal::new(false);
     let dark = RwSignal::new(

@@ -210,6 +210,7 @@ pub struct LogRecord {
 }
 
 impl LogRecord {
+    #[cfg(feature = "tracing")]
     pub(crate) fn common_instance(
         service: &str,
         event: CommonEvent,
@@ -305,6 +306,7 @@ impl LogRecord {
             attributes: Map::new(),
         })
     }
+    #[cfg(feature = "tracing")]
     pub(crate) fn with_instance_type(mut self, instance_type: &str) -> Result<Self, LogError> {
         if self.scope != Scope::Instance {
             return Err(LogError::InvalidRecord);
@@ -320,11 +322,13 @@ impl LogRecord {
             Some(crate::error::RequestId::new(request_id).map_err(LogError::RequestId)?);
         Ok(self)
     }
+    #[cfg(any(test, feature = "tracing"))]
     pub(crate) fn with_task_id(mut self, task_id: &str) -> Result<Self, LogError> {
         identifier(task_id)?;
         self.task_id = Some(task_id.into());
         Ok(self)
     }
+    #[cfg(any(test, feature = "tracing"))]
     pub(crate) fn with_error_code(mut self, code: &str) -> Result<Self, LogError> {
         self.error_code = Some(crate::error::ErrorCode::new(code).map_err(LogError::ErrorCode)?);
         Ok(self)

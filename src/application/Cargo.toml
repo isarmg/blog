@@ -10,7 +10,7 @@ build = "../tools/assets/src/platform_contract.rs"
 
 [features]
 default = ["tracing"]
-tracing = []
+tracing = ["tracing/registry"]
 
 [dependencies]
 num-traits = { path = "../foundation/math/numeric-traits", package = "blog-math-numeric-traits" }
@@ -90,7 +90,7 @@ features = [
 path = "../foundation/diagnostics/structured-events"
 package = "blog-diagnostics-structured-events"
 default-features = false
-features = ["registry"]
+features = ["std"]
 
 [dependencies.url-encoding]
 path = "../foundation/network/web-address"

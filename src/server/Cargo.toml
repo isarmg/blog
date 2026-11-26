@@ -29,7 +29,8 @@ schemars = { path = "../foundation/format/json-schema",package = "blog-format-js
 serde = {  features = ["derive"], path = "../foundation/format/data-model",package = "blog-format-data-model"}
 sha2 = { default-features = false, features = ["alloc"], path = "../foundation/crypto/secure-hash", package = "blog-crypto-secure-hash" }
 serde_json = { path = "../foundation/format/json",package = "blog-format-json"}
-blog-application = {  path = "../application"}
+# Build scripts reuse schema and asset helpers, not the runtime log collector.
+blog-application = { default-features = false, path = "../application" }
 
 [dev-dependencies]
 # The dependency contracts also exercise local time transitions and timestamp serialization.
