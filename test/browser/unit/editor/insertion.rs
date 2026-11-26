@@ -77,9 +77,8 @@ fn players(source: &str) -> usize {
 }
 
 fn inserted_at(source: &str, start: usize, end: usize) -> Result<String, UnfinishedFormatting> {
-    let start = source[..start].encode_utf16().count() as u32;
-    let end = source[..end].encode_utf16().count() as u32;
-    Insertion::new(source.into(), Some((start, end)))
+    let to_utf16 = |index| u32::try_from(source[..index].encode_utf16().count()).unwrap();
+    Insertion::new(source.into(), Some((to_utf16(start), to_utf16(end))))
         .apply(source, BLOCK)
         .map(|(value, _)| value)
 }

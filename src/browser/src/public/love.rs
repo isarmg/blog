@@ -133,6 +133,69 @@ pub(super) fn Letter() -> impl IntoView {
     ))
 }
 
+fn browser_now() -> Option<chrono::DateTime<chrono::Utc>> {
+    String::from(js_sys::Date::new_0().to_iso_string())
+        .parse()
+        .ok()
+}
+
+fn countdown_label(days: i64) -> String {
+    match days.cmp(&0) {
+        std::cmp::Ordering::Less => format!(
+            "{} {} {}",
+            t("已过去", ""),
+            days.unsigned_abs(),
+            t("天", "days ago")
+        ),
+        std::cmp::Ordering::Equal => t("就是今天", "Today is the day"),
+        std::cmp::Ordering::Greater => {
+            format!("{} {days} {}", t("还有", ""), t("天", "days to go"))
+        }
+    }
+}
+
+fn love_clock(elapsed: Option<crate::dates::Together>, has_start: bool) -> AnyView {
+    let Some(e) = elapsed else {
+        return html::div()
+            .class("love-timer-empty")
+            .child((
+                html::strong().child(if has_start {
+                    t("新的旅程即将开始", "A new journey begins soon")
+                } else {
+                    t("从第一份回忆开始", "Start with your first memory")
+                }),
+                html::p().child(t(
+                    "留下相识的日期，让时间替我们记住每一个日子。",
+                    "Add the day you met and keep track of each day together.",
+                )),
+            ))
+            .into_any();
+    };
+    let units = [
+        ("years", i64::from(e.years), "年", "year", "years"),
+        ("months", i64::from(e.months), "月", "month", "months"),
+        ("days", e.days, "日", "day", "days"),
+        ("hours", e.hours, "时", "hour", "hours"),
+        ("minutes", e.minutes, "分", "minute", "minutes"),
+        ("seconds", e.seconds, "秒", "second", "seconds"),
+    ];
+    html::div()
+        .class("love-clock")
+        .aria_label(t("相伴时长", "Time spent together"))
+        .child((
+            html::span()
+                .class("love-clock-prefix")
+                .child(t("第", "Together for")),
+            units.map(|(key, value, zh, unit, units)| {
+                html::div().attr("data-unit", key).child((
+                    html::strong().child(value),
+                    html::span().child(t(zh, if value == 1 { unit } else { units })),
+                ))
+            }),
+        ))
+        .into_any()
+}
+
 #[component]
 pub(super) fn Love() -> impl IntoView {
     let site = site_data();
@@ -144,10 +207,10 @@ pub(super) fn Love() -> impl IntoView {
             .unwrap_or(Value::Null)
     });
     let tab = RwSignal::new("photos".to_string());
-    let now = RwSignal::new(js_sys::Date::now() as i64);
+    let now = RwSignal::new(browser_now());
     let interval = SendWrapper::new(blog_interface::timers::callback::Interval::new(
         1000,
-        move || now.set(js_sys::Date::now() as i64),
+        move || now.set(browser_now()),
     ));
     on_cleanup(move || drop(interval));
     let content = NodeRef::<html::Div>::new();
@@ -159,12 +222,8 @@ pub(super) fn Love() -> impl IntoView {
         let n = text(&current.get(), "woman_name");
         if n.is_empty() { t("她", "Her") } else { n }
     });
-    let elapsed = Signal::derive(move || {
-        crate::dates::parse(&text(&current.get(), "timing")).and_then(|s| {
-            chrono::DateTime::from_timestamp_millis(now.get())
-                .and_then(|e| crate::dates::together(s, e))
-        })
-    });
+    let started = Memo::new(move |_| crate::dates::parse(&text(&current.get(), "timing")));
+    let elapsed = Signal::derive(move || crate::dates::together(started.get()?, now.get()?));
     let notes_page = RwSignal::new(1u64);
     let notes = load(Signal::derive(move || {
         if tab.get() == "notes" {
@@ -221,79 +280,16 @@ pub(super) fn Love() -> impl IntoView {
                             html::section()
                             .child((html::h1()
                             .child( t("这是我们一起走过的", "Our journey together")),
-                            move | | if let Some(e) = elapsed.get() { View::new(
-    html::div()
-        .child(
-            (
-                    html::span()
-                    .child( t("第",
-                    "Together for")).class("love-clock-prefix"),
-                    [("years", i64::from(e.years), t("年", if e.years == 1 { "year" }
-                    else { "years" })), ("months", i64::from(e.months), t("月", if e
-                    .months == 1 { "month" } else { "months" })), ("days", e.days,
-                    t("日", if e.days == 1 { "day" } else { "days" })), ("hours", e
-                    .hours, t("时", if e.hours == 1 { "hour" } else { "hours" })),
-                    ("minutes", e.minutes, t("分", if e.minutes == 1 { "minute" }
-                    else { "minutes" })), ("seconds", e.seconds, t("秒", if e
-                    .seconds == 1 { "second" } else { "seconds" }))].into_iter()
-                    .map(| (key, v, l) | View::new(
-    html::div()
-        .child(
-            (
-                    html::strong()
-                    .child( v),
-                    html::span()
-                    .child( l)
-                ,),
-        )
-        .attr(
-            "data-unit",
-            key,
-        ),
-))
-                    .collect_view()
-                ,),
-        )
-        .class("love-clock")
-        .aria_label(
-            t("相伴时长", "Time spent together"),
-        ),
-) .into_any() } else { View::new(
-    html::div()
-        .child(
-            (
-                    html::strong()
-                    .child( if crate
-                    ::dates::parse(& text(& current.get(), "timing")).is_some() {
-                    t("新的旅程即将开始", "A new journey begins soon") } else { t("从第一份回忆开始", "Start with your first memory") }),
-                    html::p()
-                    .child( t("留下相识的日期，让时间替我们记住每一个日子。",
-                    "Add the day you met and keep track of each day together."))
-                ,),
-        )
-        .class("love-timer-empty"),
-) .into_any() },
-                            move | | crate ::dates::parse(& text(& current.get(),
-                            "countdown_time")).and_then(| target |
-                            chrono::DateTime::from_timestamp_millis(now.get()).map(| n |
-                            (target.date_naive() - n.date_naive()).num_days())).map(|
-                            days | View::new(
-    html::p()
-        .child(
-            (
-                    html::span()
-                    .child((text(& current.get(), "countdown_title"),
-                    "：",)),
-                    html::strong()
-                    .child( if days > 0 {
-                    format!("{} {days} {}", t("还有", ""), t("天", "days to go"))
-                    } else if days == 0 { t("就是今天", "Today is the day") }
-                    else { format!("{} {} {}", t("已过去", ""),- days, t("天",
-                    "days ago")) })
-                ,),
-        )
-        .class("love-countdown"),
-)),))
+                            move || love_clock(elapsed.get(), started.get().is_some()),
+                            move || {
+                                let family = current.get();
+                                let target = crate::dates::parse(&text(&family, "countdown_time"))?;
+                                let days = (target.date_naive() - now.get()?.date_naive()).num_days();
+                                Some(html::p().class("love-countdown").child((
+                                    html::span().child((text(&family, "countdown_title"), "：")),
+                                    html::strong().child(countdown_label(days)),
+                                )))
+                            },))
                             .class("love-timer"),
                             html::a()
                             .child( html::span()

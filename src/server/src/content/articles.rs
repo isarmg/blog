@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 #[derive(Serialize, sqlx::FromRow)]
-pub(super) struct ArticleSummary {
+struct ArticlePresentation {
     id: i64,
     article_title: String,
     article_cover: Option<String>,
@@ -25,54 +25,46 @@ pub(super) struct ArticleSummary {
     recommend_status: i64,
     view_status: i64,
     create_time: Option<String>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+pub(super) struct ArticleSummary {
+    #[sqlx(flatten)]
+    #[serde(flatten)]
+    presentation: ArticlePresentation,
     excerpt: Option<String>,
     search_snippet: Option<String>,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
 pub(super) struct ArticleDetail {
-    id: i64,
+    #[sqlx(flatten)]
+    #[serde(flatten)]
+    presentation: ArticlePresentation,
     user_id: i64,
-    article_title: String,
     article_content: String,
-    article_cover: Option<String>,
     video_url: Option<String>,
-    sort_id: i64,
-    label_id: i64,
-    view_count: i64,
-    like_count: i64,
-    comment_count: i64,
     username: Option<String>,
-    sort_name: Option<String>,
-    label_name: Option<String>,
-    recommend_status: i64,
     comment_status: i64,
-    view_status: i64,
     password_required: i64,
     tips: Option<String>,
-    create_time: Option<String>,
     update_time: Option<String>,
 }
 
-const ARTICLE_SUMMARY_COLUMNS: &str = r"SELECT id,article_title,article_cover,sort_id,label_id,
+const ARTICLE_PRESENTATION_COLUMNS: &str = "id,article_title,article_cover,sort_id,label_id,
     (SELECT sort_name FROM sort WHERE sort.id=article.sort_id) AS sort_name,
     (SELECT label_name FROM label WHERE label.id=article.label_id) AS label_name,
     view_count,like_count,
     (SELECT COUNT(*) FROM comment WHERE source=article.id AND type='article') AS comment_count,
-    recommend_status,view_status,create_time,
-    CASE WHEN password IS NULL THEN substr(article_content,1,400) ELSE NULL END AS excerpt,
+    recommend_status,view_status,create_time";
+const ARTICLE_SUMMARY_COLUMNS: &str = r"CASE WHEN password IS NULL THEN substr(article_content,1,400) ELSE NULL END AS excerpt,
     CASE WHEN ?2<>'' AND password IS NULL AND article_title NOT LIKE ?3 ESCAPE '\'
         THEN substr(article_content,max(1,instr(lower(article_content),lower(?2))-48),160)
         ELSE NULL END AS search_snippet";
-const ARTICLE_SQL: &str = "SELECT id,user_id,article_title,article_content,article_cover,video_url,
-    sort_id,label_id,view_count,like_count,
-    (SELECT COUNT(*) FROM comment WHERE source=article.id AND type='article') AS comment_count,
+const ARTICLE_DETAIL_COLUMNS: &str = "user_id,article_content,video_url,
     (SELECT username FROM user WHERE user.id=article.user_id) AS username,
-    (SELECT sort_name FROM sort WHERE sort.id=article.sort_id) AS sort_name,
-    (SELECT label_name FROM label WHERE label.id=article.label_id) AS label_name,
-    recommend_status,comment_status,view_status,
-    CASE WHEN password IS NULL THEN 0 ELSE 1 END AS password_required,
-    tips,create_time,update_time FROM article";
+    comment_status,CASE WHEN password IS NULL THEN 0 ELSE 1 END AS password_required,
+    tips,update_time";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -226,7 +218,7 @@ fn article_page_sql(
     // comment counts. CROSS JOIN fixes the page as the outer loop, so OFFSET
     // and sorting never process full article summaries for discarded rows.
     let list = format!(
-        "WITH article_page AS MATERIALIZED ({page}) {ARTICLE_SUMMARY_COLUMNS} FROM article_page CROSS JOIN article WHERE article.id=article_page.article_id ORDER BY article_page.page_search_rank,article_page.page_created_at DESC,article_page.article_id DESC"
+        "WITH article_page AS MATERIALIZED ({page}) SELECT {ARTICLE_PRESENTATION_COLUMNS},{ARTICLE_SUMMARY_COLUMNS} FROM article_page CROSS JOIN article WHERE article.id=article_page.article_id ORDER BY article_page.page_search_rank,article_page.page_created_at DESC,article_page.article_id DESC"
     );
     (count, list)
 }
@@ -261,7 +253,7 @@ where
         ArticleAudience::Public => "id=? AND deleted=0 AND view_status=1 AND password IS NULL",
     };
     sqlx::query_as::<_, ArticleDetail>(sqlx::AssertSqlSafe(format!(
-        "{ARTICLE_SQL} WHERE {condition}"
+        "SELECT {ARTICLE_PRESENTATION_COLUMNS},{ARTICLE_DETAIL_COLUMNS} FROM article WHERE {condition}"
     )))
     .bind(id)
     .fetch_optional(executor)
@@ -288,20 +280,26 @@ pub(super) struct ArticleNews {
 }
 const ARTICLE_NEWS_SQL: &str = "SELECT w.id,w.content,w.create_time FROM wei_yan w";
 
+pub(super) async fn require_public_article(
+    connection: &mut sqlx::SqliteConnection,
+    id: i64,
+) -> Result<(), AppError> {
+    sqlx::query_scalar::<_, i64>(
+        "SELECT id FROM article WHERE id=? AND deleted=0 AND view_status=1 AND password IS NULL",
+    )
+    .bind(id)
+    .fetch_optional(connection)
+    .await?
+    .ok_or_else(absent)?;
+    Ok(())
+}
+
 pub(super) async fn article_news(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> ApiResult<Vec<ArticleNews>> {
     let mut transaction = state.pool.begin().await?;
-    let visible: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM article WHERE id=? AND deleted=0 AND view_status=1 AND password IS NULL)",
-    )
-    .bind(id)
-    .fetch_one(&mut *transaction)
-    .await?;
-    if !visible {
-        return Err(absent());
-    }
+    require_public_article(&mut transaction, id).await?;
     let rows=sqlx::query_as::<_,ArticleNews>(sqlx::AssertSqlSafe(format!("{ARTICLE_NEWS_SQL} WHERE w.type='news' AND w.source=? AND w.is_public=1 ORDER BY w.create_time DESC,w.id DESC LIMIT 100")))
         .bind(id).fetch_all(&mut *transaction).await?;
     transaction.commit().await?;
@@ -370,19 +368,17 @@ pub(super) async fn admin_update_article_news(
         .await?
         .ok_or_else(absent)?;
     let time = normalize_news_time(input.create_time)?;
-    let changed = sqlx::query("UPDATE wei_yan SET content=?,create_time=COALESCE(?,create_time) WHERE id=? AND source=? AND type='news'")
-        .bind(input.content.as_str()).bind(time).bind(news_id).bind(article_id)
-        .execute(&mut *transaction).await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    let result = sqlx::query_as::<_, ArticleNews>(sqlx::AssertSqlSafe(format!(
-        "{ARTICLE_NEWS_SQL} WHERE w.id=? AND w.source=? AND w.type='news'"
-    )))
+    let result = sqlx::query_as(
+        "UPDATE wei_yan SET content=?,create_time=COALESCE(?,create_time)
+         WHERE id=? AND source=? AND type='news' RETURNING id,content,create_time",
+    )
+    .bind(input.content.as_str())
+    .bind(time)
     .bind(news_id)
     .bind(article_id)
-    .fetch_one(&mut *transaction)
-    .await?;
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or_else(absent)?;
     transaction.commit().await?;
     Ok(Json(result))
 }
@@ -562,7 +558,7 @@ pub(super) async fn unlock_article(
         ));
     }
     let article = sqlx::query_as::<_, ArticleDetail>(sqlx::AssertSqlSafe(format!(
-        "{ARTICLE_SQL} WHERE id=? AND deleted=0"
+        "SELECT {ARTICLE_PRESENTATION_COLUMNS},{ARTICLE_DETAIL_COLUMNS} FROM article WHERE id=? AND deleted=0"
     )))
     .bind(id)
     .fetch_one(&mut *transaction)

@@ -235,20 +235,6 @@ const COMMENT_SQL: &str = "SELECT c.id,c.user_id,u.username,u.avatar,c.comment_c
     c.parent_comment_id,pu.username AS parent_username,c.floor_comment_id,
     (SELECT COUNT(*) FROM comment child WHERE child.floor_comment_id=c.id AND child.type=c.type) AS reply_count
     FROM comment c LEFT JOIN user u ON u.id=c.user_id LEFT JOIN user pu ON pu.id=c.parent_user_id";
-async fn visible_comment_article(
-    connection: &mut sqlx::SqliteConnection,
-    id: i64,
-) -> Result<(), AppError> {
-    sqlx::query_scalar::<_, i64>(
-        "SELECT id FROM article WHERE id=? AND deleted=0 AND view_status=1 AND password IS NULL",
-    )
-    .bind(id)
-    .fetch_optional(connection)
-    .await?
-    .ok_or_else(absent)?;
-    Ok(())
-}
-
 async fn read_root_comments(
     mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
     target: CommentTarget,
@@ -314,7 +300,7 @@ pub(super) async fn comments(
 ) -> ApiResult<PageResult<PublicComment>> {
     // Authorization and returned comments must describe the same snapshot.
     let mut transaction = state.pool.begin().await?;
-    visible_comment_article(&mut transaction, query.article_id).await?;
+    super::articles::require_public_article(&mut transaction, query.article_id).await?;
     let pagination = PageQuery {
         page: query.page,
         size: query.size,

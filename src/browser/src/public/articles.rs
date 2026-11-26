@@ -384,7 +384,7 @@ fn Reading(article: ArticleModel) -> impl IntoView {
     );
     let headings = StoredValue::new(rendered.headings);
     let node = NodeRef::<html::Article>::new();
-    let progress = RwSignal::new(0i64);
+    let progress = RwSignal::new(0.);
     let active = RwSignal::new(String::new());
     let lightbox = RwSignal::new(None::<String>);
     let copyright = RwSignal::new(false);
@@ -404,7 +404,7 @@ fn Reading(article: ArticleModel) -> impl IntoView {
         progress.set(
             ((scroll - start) / (end - start) * 100.)
                 .clamp(0., 100.)
-                .round() as i64,
+                .round(),
         );
         let doc = win
             .document()

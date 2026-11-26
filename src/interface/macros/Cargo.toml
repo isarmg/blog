@@ -31,11 +31,6 @@ package = "blog-syntax-rust-parser"
 path = "../../foundation/syntax/rust-parser"
 features = ["full", "visit-mut", "extra-traits"]
 
-[dependencies.syn_legacy]
-package = "blog-syntax-record-derive-parser"
-path = "../../foundation/syntax/record-derive-parser"
-features = ["full", "extra-traits"]
-
 [dependencies.unicode-segmentation]
 package = "blog-text-text-boundaries"
 path = "../../foundation/text/text-boundaries"

@@ -22,7 +22,7 @@ pub(super) fn Chrome(
     #[prop(default=Signal::derive(String::new))] cover: Signal<String>,
     #[prop(default=Signal::derive(String::new))] subtitle: Signal<String>,
     #[prop(default=Signal::derive(||None))] metadata: Signal<Option<ArticleModel>>,
-    children: ChildrenFn,
+    children: Children,
 ) -> impl IntoView {
     let site = site_data();
     Effect::new(move |_| {

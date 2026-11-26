@@ -1,7 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, quote};
 use syn::parse::Error;
-use syn_legacy as syn;
 
 use crate::builder::field_info::FieldBuilderAttr;
 use crate::builder::mutator::Mutator;

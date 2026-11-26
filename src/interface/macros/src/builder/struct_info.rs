@@ -1,7 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{GenericArgument, ItemFn, Token, parse::Error, parse_quote, punctuated::Punctuated};
-use syn_legacy as syn;
 
 use crate::builder::{
     builder_attr::{IntoSetting, TypeBuilderAttr},
@@ -55,7 +54,7 @@ impl<'a> StructInfo<'a> {
 
     fn builder_args(&self, fields: syn::TypeTuple) -> TokenStream {
         let mut args = self.generic_arguments();
-        args.push(GenericArgument::Type(fields.into()));
+        args.push(GenericArgument::Type(syn::Type::Tuple(fields)));
         quote!(<#args>)
     }
 
@@ -423,7 +422,9 @@ impl<'a> StructInfo<'a> {
                 quote!(#name,).to_tokens(&mut destructuring);
             }
         }
-        ty_generics.push(syn::GenericArgument::Type(ty_generics_tuple.into()));
+        ty_generics.push(syn::GenericArgument::Type(syn::Type::Tuple(
+            ty_generics_tuple,
+        )));
         let (impl_generics, _, where_clause) = generics.split_for_impl();
 
         let mutator_struct_name = format_ident!("TypedBuilderFieldMutator");

@@ -50,8 +50,66 @@ fn has_authority_scheme(value: &str) -> bool {
     })
 }
 
+fn append_video<'a>(events: &mut Vec<Event<'a>>, kind: CodeBlockKind<'a>, parser: &mut Parser<'a>) {
+    let mut source = String::new();
+    for event in parser {
+        if event == Event::End(TagEnd::CodeBlock) {
+            break;
+        }
+        let Event::Text(text) = event else {
+            unreachable!("invariant: fenced code consists of text followed by a closing event")
+        };
+        source.push_str(&text);
+    }
+    // Only the renderer emits HTML. Invalid video declarations remain code.
+    if let Some(player) = video_html(&source, None) {
+        events.push(Event::Html(player.into()));
+    } else {
+        events.extend([
+            Event::Start(Tag::CodeBlock(kind)),
+            Event::Text(source.into()),
+            Event::End(TagEnd::CodeBlock),
+        ]);
+    }
+}
+
+fn append_links<'a>(events: &mut Vec<Event<'a>>, finder: &LinkFinder, text: CowStr<'a>) {
+    let mut start = 0;
+    for link in finder.links(&text) {
+        let destination = match link.kind() {
+            LinkKind::Email => format!("mailto:{}", link.as_str()),
+            LinkKind::Url if !has_authority_scheme(link.as_str()) => {
+                format!("http://{}", link.as_str())
+            }
+            LinkKind::Url => link.as_str().to_owned(),
+        };
+        if !allowed_destination(&destination, false) {
+            continue;
+        }
+        if start < link.start() {
+            events.push(Event::Text(text[start..link.start()].to_owned().into()));
+        }
+        events.extend([
+            Event::Start(Tag::Link {
+                link_type: LinkType::Inline,
+                dest_url: destination.into(),
+                title: CowStr::Borrowed(""),
+                id: CowStr::Borrowed(""),
+            }),
+            Event::Text(link.as_str().to_owned().into()),
+            Event::End(TagEnd::Link),
+        ]);
+        start = link.end();
+    }
+    if start == 0 {
+        events.push(Event::Text(text));
+    } else if start < text.len() {
+        events.push(Event::Text(text[start..].to_owned().into()));
+    }
+}
+
 pub fn html(content: &str) -> String {
-    let parser = Parser::new_ext(
+    let mut parser = Parser::new_ext(
         content,
         Options::ENABLE_TABLES | Options::ENABLE_STRIKETHROUGH,
     );
@@ -61,47 +119,12 @@ pub fn html(content: &str) -> String {
     let mut links = Vec::new();
     let mut images = Vec::new();
     let mut code = false;
-    let mut video = None::<(CodeBlockKind<'_>, String)>;
-    for event in parser {
-        // A fence is parsed before linkification or HTML handling. Only the
-        // renderer constructs these HTML events; author HTML remains text.
-        if let Some((kind, source)) = &mut video {
-            match event {
-                Event::Text(text) => source.push_str(&text),
-                Event::End(TagEnd::CodeBlock) => {
-                    if let Some(player) = video_html(source, None) {
-                        events.push(Event::Html(player.into()));
-                    } else {
-                        events.push(Event::Start(Tag::CodeBlock(kind.clone())));
-                        events.push(Event::Text(std::mem::take(source).into()));
-                        events.push(Event::End(TagEnd::CodeBlock));
-                    }
-                    video = None;
-                }
-                Event::Start(_)
-                | Event::End(_)
-                | Event::Code(_)
-                | Event::InlineMath(_)
-                | Event::DisplayMath(_)
-                | Event::Html(_)
-                | Event::InlineHtml(_)
-                | Event::FootnoteReference(_)
-                | Event::SoftBreak
-                | Event::HardBreak
-                | Event::Rule
-                | Event::TaskListMarker(_) => {
-                    unreachable!(
-                        "invariant: code blocks contain only text before their closing event"
-                    )
-                }
-            }
-            continue;
-        }
+    while let Some(event) = parser.next() {
         match event {
             Event::Html(text) | Event::InlineHtml(text) => events.push(Event::Text(text)),
             Event::SoftBreak => events.push(Event::HardBreak),
             Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(info))) if info.trim() == "video" => {
-                video = Some((CodeBlockKind::Fenced(info), String::new()));
+                append_video(&mut events, CodeBlockKind::Fenced(info), &mut parser);
             }
             Event::Start(Tag::CodeBlock(kind)) => {
                 code = true;
@@ -117,12 +140,11 @@ pub fn html(content: &str) -> String {
                 title,
                 id,
             }) => {
-                let destination = if link_type == LinkType::Email {
-                    format!("mailto:{dest_url}")
+                let allowed = if link_type == LinkType::Email {
+                    allowed_destination(&format!("mailto:{dest_url}"), false)
                 } else {
-                    dest_url.to_string()
+                    allowed_destination(&dest_url, false)
                 };
-                let allowed = allowed_destination(&destination, false);
                 links.push(allowed);
                 if allowed {
                     events.push(Event::Start(Tag::Link {
@@ -131,14 +153,6 @@ pub fn html(content: &str) -> String {
                         title,
                         id,
                     }));
-                }
-            }
-            Event::End(TagEnd::Link) => {
-                if links
-                    .pop()
-                    .expect("invariant: parser link events are balanced")
-                {
-                    events.push(Event::End(TagEnd::Link));
                 }
             }
             Event::Start(Tag::Image {
@@ -158,45 +172,21 @@ pub fn html(content: &str) -> String {
                     }));
                 }
             }
-            Event::End(TagEnd::Image) => {
-                if images
+            Event::End(tag @ (TagEnd::Link | TagEnd::Image)) => {
+                let stack = if tag == TagEnd::Link {
+                    &mut links
+                } else {
+                    &mut images
+                };
+                if stack
                     .pop()
-                    .expect("invariant: parser image events are balanced")
+                    .expect("invariant: parser link and image events are balanced")
                 {
-                    events.push(Event::End(TagEnd::Image));
+                    events.push(Event::End(tag));
                 }
             }
             Event::Text(text) if !code && links.is_empty() && images.is_empty() => {
-                let mut start = 0;
-                for link in finder.links(&text) {
-                    let destination = match link.kind() {
-                        LinkKind::Email => format!("mailto:{}", link.as_str()),
-                        LinkKind::Url if !has_authority_scheme(link.as_str()) => {
-                            format!("http://{}", link.as_str())
-                        }
-                        LinkKind::Url => link.as_str().to_owned(),
-                    };
-                    if !allowed_destination(&destination, false) {
-                        continue;
-                    }
-                    if start < link.start() {
-                        events.push(Event::Text(text[start..link.start()].to_owned().into()));
-                    }
-                    events.push(Event::Start(Tag::Link {
-                        link_type: LinkType::Inline,
-                        dest_url: destination.into(),
-                        title: CowStr::Borrowed(""),
-                        id: CowStr::Borrowed(""),
-                    }));
-                    events.push(Event::Text(link.as_str().to_owned().into()));
-                    events.push(Event::End(TagEnd::Link));
-                    start = link.end();
-                }
-                if start == 0 {
-                    events.push(Event::Text(text));
-                } else if start < text.len() {
-                    events.push(Event::Text(text[start..].to_owned().into()));
-                }
+                append_links(&mut events, &finder, text);
             }
             event @ (Event::Start(_)
             | Event::End(_)

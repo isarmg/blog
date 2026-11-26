@@ -172,7 +172,7 @@ impl Insertion {
             result.push('\n');
         }
         let block_end = result.len();
-        let cursor = result.encode_utf16().count().min(u32::MAX as usize) as u32;
+        let cursor = u32::try_from(result.encode_utf16().count()).unwrap_or(u32::MAX);
         result.push_str(after);
         // An unfinished fence or HTML block can continue past its source range
         // at EOF. Confirm the inserted block really stands on its own rather

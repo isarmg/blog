@@ -56,8 +56,7 @@ pub(super) fn Message() -> impl IntoView {
         )
         .style(
             format!(
-                "animation-delay:{}s;top:{}%",- ((i % 10) as f64) * 2.3, 8 + i % 7 *
-                12
+                "animation-delay:-{}ms;top:{}%", i % 10 * 2300, 8 + i % 7 * 12
             ),
         )
         .class("message-barrage-item"),

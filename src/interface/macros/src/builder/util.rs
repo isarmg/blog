@@ -1,5 +1,4 @@
 use std::iter;
-use syn_legacy as syn;
 
 use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::{ToTokens, format_ident, quote};
@@ -12,15 +11,15 @@ use syn::{
 };
 
 pub fn ident_to_type(ident: syn::Ident) -> syn::Type {
-    syn::TypePath {
+    syn::Type::Path(syn::TypePath {
+        attrs: Vec::new(),
         qself: None,
         path: ident.into(),
-    }
-    .into()
+    })
 }
 
 pub fn empty_type() -> syn::Type {
-    empty_type_tuple().into()
+    syn::Type::Tuple(empty_type_tuple())
 }
 
 pub fn type_tuple(elems: impl Iterator<Item = syn::Type>) -> syn::TypeTuple {
@@ -34,6 +33,7 @@ pub fn type_tuple(elems: impl Iterator<Item = syn::Type>) -> syn::TypeTuple {
 
 pub fn empty_type_tuple() -> syn::TypeTuple {
     syn::TypeTuple {
+        attrs: Vec::new(),
         paren_token: token::Paren::default(),
         elems: Punctuated::new(),
     }

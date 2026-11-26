@@ -30,8 +30,8 @@ pub fn iso(value: &str) -> Option<String> {
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Together {
-    pub years: i32,
-    pub months: i32,
+    pub years: u32,
+    pub months: u32,
     pub days: i64,
     pub hours: i64,
     pub minutes: i64,
@@ -41,8 +41,9 @@ pub fn together(start: DateTime<Utc>, end: DateTime<Utc>) -> Option<Together> {
     if start > end {
         return None;
     }
-    let mut months = (end.year() - start.year()) * 12 + end.month() as i32 - start.month() as i32;
-    let anniversary = |n: i32| start.checked_add_months(Months::new(n as u32));
+    let years = u32::try_from(end.year() - start.year()).ok()?;
+    let mut months = years * 12 + end.month() - start.month();
+    let anniversary = |months| start.checked_add_months(Months::new(months));
     if anniversary(months)? > end {
         months -= 1;
     }

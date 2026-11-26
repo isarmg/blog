@@ -389,17 +389,18 @@ async fn public_visibility_and_password_are_enforced() {
         .unwrap();
     assert_eq!(stats.status(), StatusCode::OK);
     assert_eq!(body_json(stats).await["article_count"], 1);
-    let public = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .uri("/api/v1/articles/2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(public.status(), StatusCode::NOT_FOUND);
+    for path in [
+        "/api/v1/articles/2",
+        "/api/v1/articles/2/news",
+        "/api/v1/comments?article_id=2",
+    ] {
+        let public = app
+            .clone()
+            .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(public.status(), StatusCode::NOT_FOUND, "{path}");
+    }
     let access = app
         .clone()
         .oneshot(

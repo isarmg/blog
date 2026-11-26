@@ -55,7 +55,7 @@ fn capture_insertion(
 fn insert_body_video(
     form: RwSignal<ArticleDraft>,
     area: NodeRef<blog_interface::html::Textarea>,
-    insertion: Insertion,
+    insertion: &Insertion,
     block: &str,
 ) -> Result<(), insertion::UnfinishedFormatting> {
     let (content, cursor) =
@@ -245,7 +245,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                         upload.error.set(Some(invalid()));
                         return;
                     };
-                    if insert_body_video(form, body_area, insertion, &block).is_err() {
+                    if insert_body_video(form, body_area, &insertion, &block).is_err() {
                         validation.set(video_insertion_error(true));
                         return;
                     }
@@ -484,7 +484,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                         body_area,
                                                         body_touched.get_untracked(),
                                                     );
-                                                    if insert_body_video(form, body_area, insertion, &block).is_err() {
+                                                    if insert_body_video(form, body_area, &insertion, &block).is_err() {
                                                         validation.set(video_insertion_error(false));
                                                         return;
                                                     }

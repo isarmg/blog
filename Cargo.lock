@@ -319,7 +319,6 @@ version = "0.0.0"
 name = "blog-component-macros"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-record-derive-parser",
  "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",

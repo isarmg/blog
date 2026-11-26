@@ -211,110 +211,99 @@ pub fn install_document_policies() {
     let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
         return;
     };
-    // These four listeners intentionally live for the single mounted document,
-    // exactly as the former JS document policies did; there is no per-page leak.
-    blog_interface::events::EventListener::new_with_options(
-        &doc,
-        "invalid",
-        blog_interface::events::EventListenerOptions::run_in_capture_phase(),
-        move |event| {
-            let Some(control) = Control::from_event(event) else {
-                return;
-            };
-            let v = control.validity();
-            if v.custom_error() {
-                return;
-            }
-            let textarea = matches!(control, Control::Textarea(_));
-            let message = if v.value_missing() {
-                t("请填写此项。", "Please fill out this field.")
-            } else if !textarea && v.type_mismatch() {
-                t("请输入有效的格式。", "Please enter a valid value.")
-            } else if v.too_long() {
-                t("输入内容过长。", "The value is too long.")
-            } else if v.too_short() {
-                t("输入内容过短。", "The value is too short.")
-            } else if !textarea && (v.range_overflow() || v.range_underflow()) {
-                t(
-                    "输入值超出允许范围。",
-                    "The value is outside the allowed range.",
-                )
-            } else if !textarea && v.pattern_mismatch() {
-                t(
-                    "输入内容不符合要求的格式。",
-                    "Please match the required format.",
-                )
-            } else if !textarea && (v.step_mismatch() || v.bad_input()) {
-                t(
-                    "请输入允许范围内的有效数字。",
-                    "Please enter a valid number within the allowed range.",
-                )
-            } else {
-                t("请检查输入内容。", "Please check this value.")
-            };
-            control.set_custom_validity(&message);
-        },
-    )
-    .forget();
+    document_policy(&doc, "invalid", localize_validation);
     for event in ["input", "change"] {
-        blog_interface::events::EventListener::new_with_options(
-            &doc,
-            event,
-            blog_interface::events::EventListenerOptions::run_in_capture_phase(),
-            move |event| {
-                if let Some(control) = Control::from_event(event) {
-                    control.set_custom_validity("");
-                }
-            },
-        )
-        .forget();
+        document_policy(&doc, event, |event| {
+            if let Some(control) = Control::from_event(event) {
+                control.set_custom_validity("");
+            }
+        });
     }
+    document_policy(&doc, "click", carry_language);
+}
+
+fn document_policy(doc: &web_sys::Document, event: &'static str, callback: fn(&web_sys::Event)) {
+    // Policies live for the one mounted document, not individual pages.
     blog_interface::events::EventListener::new_with_options(
-        &doc,
-        "click",
+        doc,
+        event,
         blog_interface::events::EventListenerOptions::run_in_capture_phase(),
-        move |event| {
-            let Some(target) = event
-                .target()
-                .and_then(|t| t.dyn_into::<web_sys::Element>().ok())
-            else {
-                return;
-            };
-            let Ok(Some(link)) = target.closest("a[href]") else {
-                return;
-            };
-            if link.has_attribute("download")
-                || link
-                    .get_attribute("href")
-                    .is_some_and(|href| href.starts_with('#'))
-            {
-                return;
-            }
-            let Some(win) = web_sys::window() else { return };
-            let Ok(current) = web_sys::Url::new(&win.location().href().unwrap_or_default()) else {
-                return;
-            };
-            if !current.search_params().has("lang") {
-                return;
-            }
-            let Some(href) = link.get_attribute("href") else {
-                return;
-            };
-            let Ok(url) = web_sys::Url::new_with_base(&href, &current.href()) else {
-                return;
-            };
-            if url.origin() == current.origin()
-                && ["http:", "https:"].contains(&url.protocol().as_str())
-            {
-                url.search_params()
-                    .set("lang", &blog_interface::i18n::locale());
-                link.set_attribute(
-                    "href",
-                    &format!("{}{}{}", url.pathname(), url.search(), url.hash()),
-                )
-                .expect("invariant: href is a valid attribute name");
-            }
-        },
+        callback,
     )
     .forget();
+}
+
+fn localize_validation(event: &web_sys::Event) {
+    let Some(control) = Control::from_event(event) else {
+        return;
+    };
+    let v = control.validity();
+    if v.custom_error() {
+        return;
+    }
+    let textarea = matches!(control, Control::Textarea(_));
+    let message = if v.value_missing() {
+        t("请填写此项。", "Please fill out this field.")
+    } else if !textarea && v.type_mismatch() {
+        t("请输入有效的格式。", "Please enter a valid value.")
+    } else if v.too_long() {
+        t("输入内容过长。", "The value is too long.")
+    } else if v.too_short() {
+        t("输入内容过短。", "The value is too short.")
+    } else if !textarea && (v.range_overflow() || v.range_underflow()) {
+        t(
+            "输入值超出允许范围。",
+            "The value is outside the allowed range.",
+        )
+    } else if !textarea && v.pattern_mismatch() {
+        t(
+            "输入内容不符合要求的格式。",
+            "Please match the required format.",
+        )
+    } else if !textarea && (v.step_mismatch() || v.bad_input()) {
+        t(
+            "请输入允许范围内的有效数字。",
+            "Please enter a valid number within the allowed range.",
+        )
+    } else {
+        t("请检查输入内容。", "Please check this value.")
+    };
+    control.set_custom_validity(&message);
+}
+
+fn carry_language(event: &web_sys::Event) {
+    let Some(target) = event
+        .target()
+        .and_then(|target| target.dyn_into::<web_sys::Element>().ok())
+    else {
+        return;
+    };
+    let Ok(Some(link)) = target.closest("a[href]") else {
+        return;
+    };
+    let Some(href) = link.get_attribute("href") else {
+        return;
+    };
+    if link.has_attribute("download") || href.starts_with('#') {
+        return;
+    }
+    let Some(win) = web_sys::window() else { return };
+    let Ok(current) = web_sys::Url::new(&win.location().href().unwrap_or_default()) else {
+        return;
+    };
+    if !current.search_params().has("lang") {
+        return;
+    }
+    let Ok(url) = web_sys::Url::new_with_base(&href, &current.href()) else {
+        return;
+    };
+    if url.origin() == current.origin() && ["http:", "https:"].contains(&url.protocol().as_str()) {
+        url.search_params()
+            .set("lang", &blog_interface::i18n::locale());
+        link.set_attribute(
+            "href",
+            &format!("{}{}{}", url.pathname(), url.search(), url.hash()),
+        )
+        .expect("invariant: href is a valid attribute name");
+    }
 }

@@ -189,7 +189,7 @@ pub fn Select(
             } else {
                 0.
             };
-            panel.set_scroll_top(panel.scroll_top() + delta.round() as i32);
+            panel.scroll_by_with_x_and_y(0., delta.round());
         }
     });
     Effect::new(move |_| {

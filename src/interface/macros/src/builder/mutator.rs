@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use syn_legacy as syn;
 
 use proc_macro2::Ident;
 use syn::{
@@ -101,16 +100,13 @@ impl Mutator {
             .map(|(i, input)| match input {
                 FnArg::Receiver(_) => parse_quote!(self),
                 FnArg::Typed(mut input) => {
-                    input.pat = Box::new(
-                        PatIdent {
-                            attrs: Vec::new(),
-                            by_ref: None,
-                            mutability: None,
-                            ident: pat_to_ident(i, &input.pat),
-                            subpat: None,
-                        }
-                        .into(),
-                    );
+                    input.pat = Box::new(syn::Pat::Ident(PatIdent {
+                        attrs: Vec::new(),
+                        by_ref: None,
+                        mutability: None,
+                        ident: pat_to_ident(i, &input.pat),
+                        subpat: None,
+                    }));
                     FnArg::Typed(input)
                 }
             })

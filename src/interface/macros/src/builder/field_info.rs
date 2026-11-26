@@ -1,5 +1,3 @@
-use syn_legacy as syn;
-
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::parse::Parser;
@@ -54,7 +52,7 @@ impl<'a> FieldInfo<'a> {
     }
 
     pub fn tuplized_type_ty_param(&self) -> syn::Type {
-        super::util::type_tuple(std::iter::once(self.ty.clone())).into()
+        syn::Type::Tuple(super::util::type_tuple(std::iter::once(self.ty.clone())))
     }
 
     pub fn type_from_inside_option(&self) -> Option<&syn::Type> {
