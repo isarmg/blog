@@ -251,17 +251,7 @@ fn authority_sources() -> Vec<Value> {
     ]
     .into_iter()
     .map(|(path, bytes)| {
-        let digest = Sha256::digest(bytes);
-        let sha256: String = digest
-            .iter()
-            .flat_map(|byte| {
-                const HEX: &[u8; 16] = b"0123456789abcdef";
-                [
-                    HEX[usize::from(byte >> 4)] as char,
-                    HEX[usize::from(byte & 15)] as char,
-                ]
-            })
-            .collect();
+        let sha256 = crate::hexadecimal(&Sha256::digest(bytes));
         json!({"path":path,"sha256":sha256,"generator":"blog_application::installation_material::common"})
     })
     .collect()

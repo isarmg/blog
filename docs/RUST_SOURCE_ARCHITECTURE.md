@@ -38,7 +38,7 @@
 | network | 12 | domain-tests, host-tools, native, workspace-tests | collections, diagnostics, encoding, format, platform, runtime, sync, text, unicode |
 | operations | 1 | native, workspace-tests | cli, diagnostics, product, runtime |
 | platform | 8 | host-tools, native, workspace-tests | collections, interface, native, wasm |
-| product | 2 | native, web-release, workspace-tests | application, assets, cli, crypto, diagnostics, encoding, filesystem, format, interface, network, runtime, storage, syntax, text, wasm |
+| product | 2 | native, web-release, workspace-tests | application, assets, cli, crypto, diagnostics, filesystem, format, interface, network, runtime, storage, syntax, text, wasm |
 | runtime | 10 | host-tools, native, web-release, workspace-tests | collections, diagnostics, encoding, platform, sync, syntax |
 | storage | 3 | native, workspace-tests | collections, diagnostics, encoding, format, network, runtime, sync, syntax, text |
 | sync | 13 | host-tools, native, web-release, workspace-tests | collections, format, math, native, platform, runtime |
@@ -147,7 +147,7 @@
 | blog-encoding-compression (`src/foundation/encoding/compression`) | DEFLATE、gzip与zlib流和Adler校验 | host-tools, workspace-tests | src/tools/assets | adler2@2.0.1, flate2@1.1.10, miniz_oxide@0.9.1, simd-adler32@0.3.10 |
 | blog-encoding-constant-time-base-encoding (`src/foundation/encoding/constant-time-base-encoding`) | constant time base encoding | native, workspace-tests | src/foundation/crypto/password-derivation, src/foundation/crypto/password-format | base64ct@1.8.3 |
 | blog-encoding-decimal-float-format (`src/foundation/encoding/decimal-float-format`) | decimal float format | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/collections/inline-string, src/foundation/format/json | zmij@1.0.23 |
-| blog-encoding-hex-codec (`src/foundation/encoding/hex-codec`) | hex codec | native, workspace-tests | src/server | hex@0.4.3 |
+| blog-encoding-hex-codec (`src/foundation/encoding/hex-codec`) | hex codec | 当前入口未选用 | 入口或保留实现 | hex@0.4.3 |
 | blog-encoding-integer-format (`src/foundation/encoding/integer-format`) | integer format | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/assets/compiler, src/foundation/assets/style-compiler, src/foundation/collections/inline-string, src/foundation/format/data-model, src/foundation/format/json, src/foundation/network/form-data, src/foundation/network/http-message, src/foundation/network/http-transport, src/foundation/network/request-router | itoa@1.0.18 |
 | blog-encoding-radix-codecs (`src/foundation/encoding/radix-codecs`) | radix codecs | 当前入口未选用 | 入口或保留实现 | data-encoding@2.11.1 |
 | blog-encoding-roundtrip-float-format (`src/foundation/encoding/roundtrip-float-format`) | roundtrip float format | 当前入口未选用 | src/foundation/network/form-data | ryu@1.0.23 |

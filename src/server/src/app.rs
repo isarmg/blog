@@ -17,8 +17,8 @@ use tower_http::{
     trace::TraceLayer,
 };
 
-#[derive(Clone)]
-pub(crate) struct AppState {
+pub(crate) type AppState = Arc<RouterState>;
+pub(crate) struct RouterState {
     pub(crate) scope: blog_application::server_runtime::WorkScope,
     pub(crate) pool: SqlitePool,
     pub(crate) admin: Arc<AdministratorService<SqliteAdministratorStore>>,
@@ -254,7 +254,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
     };
     Ok(web_routes
         .route("/readyz", get(readiness).with_state(state.pool.clone()))
-        .route("/api/v1/health", get(health).with_state(state.pool))
+        .route("/api/v1/health", get(health).with_state(state.pool.clone()))
         .merge(public_routes)
         .nest(
             "/media",
@@ -268,7 +268,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
         .merge(blog_application::admin_axum::administrator_router(
             PRODUCT_ID,
             state.origin,
-            state.admin,
+            state.admin.clone(),
         )?)
         .route(
             "/api/{*path}",
@@ -309,7 +309,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
                 .on_eos(())
                 .on_failure(()),
         )
-        .layer(from_fn_with_state(state.scope, admit_request))
+        .layer(from_fn_with_state(state.scope.clone(), admit_request))
         .layer(from_fn_with_state(
             blog_application::server_cli::ServiceIdentity::new(PRODUCT_ID)
                 .expect("invariant: static service identity is a valid HTTP header"),

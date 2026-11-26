@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "7fb8fbbe1c7786ee5e8a6a3a46e6bacb14443d8b9f9fb3ab61d8c9d83cf7f2c1"
+    "Cargo.lock": "e7267dcf08dcdc2541a7c57a88951403d4f4bcade4296b174596737ed53604ca"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6246,7 +6246,7 @@
     "src/interface/Cargo.toml": "ad57df9faff3a0b96abe7987206a7c50f3b55b8c464861059c331957048978c2",
     "src/interface/dom/Cargo.toml": "713d669f33ccff2be4d4610e24a2f5896ae4c677115db9468bef0a222e238661",
     "src/interface/macros/Cargo.toml": "b3209604affaa821d4a8e7d10470354514715e21a417cca8071449a05c571f19",
-    "src/server/Cargo.toml": "81996e9848cd559718d2de9394ee437449917ddd26a9afcd22260f1828d29168",
+    "src/server/Cargo.toml": "a071b135a18e45028f77796a1af6dfd72a777f431b7da26b13fa48ac0c2ed9db",
     "src/tools/assets/Cargo.toml": "46f9c916a4c43d0328a353c5f9b8bf3c0292a8f14fb6324213625b72362a6542",
     "src/tools/setup/Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
     "test/browser-domain/Cargo.toml": "a8960cc84bf02373c106ffdc6f501659768e979774076041ca45d3a9769b6477"
@@ -34291,14 +34291,14 @@
         "src/error/mod.rs": "b88983e22255adcfba3a7bb9eb05945e46762155a867c2d21c72cc86c0e7e9fc",
         "src/fs_safety/mod.rs": "d6b73b2091d1220d830ed8540098207c854901872a1a659baceb83bac0226cdc",
         "src/fs_safety/unix.rs": "1cb7d1b24b564848357e68bb15f7bba58f434a680a15a83055d26d68e8d85ef9",
-        "src/installation_material.rs": "f95e46d3694bd91ec6fba63b0436b2b093fa2fba36089cf3b084a035e5bf6a8a",
-        "src/lib.rs": "ef2a60a15ac0025cebe28677116484fdb921e7f8018bfadecbc1a7d3bc6cd8f2",
+        "src/installation_material.rs": "9dd5f9ce807cbb13b760779426d1d4fd58e543c92a5353f42c340320cd56b3c6",
+        "src/lib.rs": "56674c3f3d134ea8601cebb6d65d408d687272737185fbab1bbcecd3c7f0c6c0",
         "src/log/mod.rs": "09a9dbffec5e7342ecf57e0f855e1ab8b8ab931bbcc4106e3d59dcdca43e8e22",
         "src/log/rotating.rs": "3355703a7ea02620c029e3960db3702bea62a62f4ca963f5e795a1faa89f0aa7",
         "src/log/tracing_layer.rs": "06e63028e55c3db895e184fc4b8d0f131f94fbb782f2433509762c33189cf3e9",
         "src/platform_db/mod.rs": "d5e74921c7dd303069dbeec7efbd69b01cdc727a2c54b3af9c9ed9116a55b629",
         "src/schema_identity/data/schema-fingerprint-v1.json": "640ef41a225c86e69e21751ec17cffe7884326665bf19403569d6b097ef52bdd",
-        "src/schema_identity/mod.rs": "5cc4de7e2484df1038db2b2bcadb421977153daea775d8c13c7334151303030a",
+        "src/schema_identity/mod.rs": "bf25771f15943b2d155eb6b40e9580d7972590cc0637f40cbe1f4ed2fb940b49",
         "src/secret_envelope/data/current-envelope-v1.json": "03a37059fa6ef97093d64a7ebd2874f772d1536519e12ae68d54c74d861a919a",
         "src/secret_envelope/mod.rs": "dddb45dfe3e7d39c0c9cf6dd168a6bfa8420cc8a3b66f2da1f020d55df2db8b7",
         "src/server_cli/http.rs": "dff8186a50718a6ad50537d2fc6018fe1aadaa09e7c3bd1ff082902788f3365a",
@@ -34438,7 +34438,7 @@
         "src/public/love.rs": "c573ec5ae71938a9684cf837b0ee8d59a1d2a495c2ae33e0fd905aaf359cd8c9",
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
         "src/public/photos.rs": "59be1503acf00f1bda4945df555bd325befacffaf38d9b601e4eac1de0b4e662",
-        "src/public/shell.rs": "fd5ad242f9b22f3244f5eeb93b6f2e1c776da840062a0e362e2eb5f962842ccb",
+        "src/public/shell.rs": "f19c0cdff3ff77f30bc4c5db5ff0f9741e25773582d14fafd043c0bea49dff60",
         "src/public/toolbox.rs": "7185a47b4ee49f70af929b2c546db6b235b1bcce8472c049c8385002c7381550",
         "src/select.rs": "568dfdaca4bbbf9d97fcb8611897ecf6fa2e3e89b23e53f947d645e9b691e7aa"
       },
@@ -47798,7 +47798,6 @@
         "src/foundation/diagnostics/error-context",
         "src/foundation/diagnostics/structured-events",
         "src/foundation/diagnostics/typed-error",
-        "src/foundation/encoding/hex-codec",
         "src/foundation/filesystem/temporary-storage",
         "src/foundation/format/data-model",
         "src/foundation/format/date-time",
@@ -47815,12 +47814,12 @@
       ],
       "directory": "src/server",
       "files_sha256": {
-        "Cargo.toml": "81996e9848cd559718d2de9394ee437449917ddd26a9afcd22260f1828d29168",
-        "build.rs": "be0f3519d6cb90210893d9be699cc826350d252a723edb34e90943d42e3793c4",
+        "Cargo.toml": "a071b135a18e45028f77796a1af6dfd72a777f431b7da26b13fa48ac0c2ed9db",
+        "build.rs": "c8486852cea5eeff41990ff78f38375b94665e266639793d7cbc0052acc1862e",
         "schema/initialize-site-author.sql": "fa82753ff3758d95a71df0fd0c0318cfe134b4738137cd7d3f30c93cb2f500af",
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
         "src/administrator.rs": "703bb1615220bf11cd4d949234f607bc185ea0fc518a6c70e02bc07d2fa1ec29",
-        "src/app.rs": "eaa38043ca7c4a19a7fb8676d9e1458a8874d3aac5c7c966d4ac9212935ee36e",
+        "src/app.rs": "78c9805986d9321ffd540a5502f5e5ec5dd877bbb02b6ec9fbafd15f1af95657",
         "src/config.rs": "f2bfd36e246ce8152b0f456b3079b8f610fbc4e30850b64d27049ed0ca2d0ac6",
         "src/config_definition.rs": "ccccd30fef770247ff32d4beedead7ba878efcabc3fb4e357c7de7ca443c21ac",
         "src/content/articles.rs": "b63c75c7c3721488326354c6c74cadb32157151278c46bb3d2d042da5a438302",
@@ -47841,19 +47840,19 @@
         "src/database.rs": "f417b6c62e60603d8053d0d06a3c7ba12c7cfe3dbb80e93b7127bc2ac73e7719",
         "src/error.rs": "5e96135be93dd04959c677aa4e177b17b4fc8a61df4fd14b6bb463f7a47a5ae1",
         "src/home.rs": "529decdb3595a9b32b30add4aa0cb4ae7d9f403c2ccf5c2a6322cc598dfaff0f",
-        "src/installation_definition.rs": "0411819293e86346ef7eab82ea4c24fd71cece16ae105f1e604ce90012a57c7a",
+        "src/installation_definition.rs": "c5cc8b5942e218e22d3d18aadfa28a885d354a2f96998122ea6e4811876ae4cf",
         "src/lib.rs": "10dc9ba109e34896bbfd3b43e7f16070a53749a47765bc9ab7ad6b5f81e8985a",
         "src/lifecycle.rs": "8757492cf14a15f3635a2225960d3f17118fc184a280d197c8a498a5a37c4f34",
         "src/main.rs": "b587a932c9a90d9780f2a81b784f5bc7342ea8dfd9ce619d87a863f2cdb35ea4",
         "src/maintenance.rs": "fd48aa154d442c9142299933024c721dacfe4ca11f1b63ae1c9d0de7dc832cb1",
         "src/media.rs": "80797c6b3b41ffd3f898f6e97e6a242f85672f33e86c25ec3315253aab2ad4fa",
-        "src/media/formats.rs": "ef57e892f9dc017e59ceab0ea430fde243bf796c7064d295194f540919677a88",
+        "src/media/formats.rs": "c19ef710018c1df814d38b8d057c036c835add40ccfb959048d5ed6558e5ab29",
         "src/media/references.rs": "11882b9dcca1a19c7c144c2dbc72a3fbc74c7b10dc8cb693403daa40a21ed30a",
         "src/media/storage.rs": "44cb32f10788fa08bd46e50afd2d7fbb5562c57cab3cbb9cdcf4f8b9cb9fbc3d",
-        "src/runtime.rs": "7ac2fa17c5dfb2a247944ab99bae4e42b19ef4daa828b40cd04be67fc15bdac2",
+        "src/runtime.rs": "9c3136a8d1a3d0f354ae57777c15ac7c5644e7977c39e2b46508607ee0f7f9de",
         "src/schema.rs": "bcdaf13cb66a8a7c4b3f6eb24be32bc60d29633807fecda9612012314e71a72c",
         "src/schema_definition.rs": "8ac18c726b151002f5239750395590ad896aea6e2159f1a5dcf96e30755adfe6",
-        "src/static_assets.rs": "5c8ffb12f3ae5265fc7d45ba4941058442cf07f33f020b1b5a878c61fc9ed72c"
+        "src/static_assets.rs": "6db99c80e77f2f540597a2b64186340c0b6b7bb9d458800b10f1317a783a9859"
       },
       "layer": "product",
       "name": "blog",
@@ -47884,19 +47883,19 @@
         "test/server/unit/media/formats.rs": "2a0c5a9aac34eeedbb37c323d3d7198f60f7eab83cda05a163647d06f594170d",
         "test/server/unit/media/performance.rs": "47e7680acdb651727a7846b9f97274710499fdd6b3803f2c679d192052240895",
         "test/server/unit/media/references.rs": "2c71aa8af8b9fbe4528e3b43ab8aa52d25d134edd5f92bf38fa3dd013cdc1464",
-        "test/server/unit/static_assets/identity_tests.rs": "935e5ac7b5e463345d4763792c87b3c74e5c5fa7df29f077f46c38af9de7cdb8",
-        "test/server/unit/tests.rs": "5a5250f6b4eb66a981bf7c9e0fadb1c0c6603a1caa67ae026f919dd5eb3a5988",
+        "test/server/unit/static_assets/identity_tests.rs": "d6f63ceed745321c62be9d06111ffd5de9d578fc0c560f87dc38ae9a4c5525aa",
+        "test/server/unit/tests.rs": "58f793465e7da1d0da3abf1a7f204f4526c778a9c6d1a6c372ac8b19c1da85dd",
         "test/server/unit/tests/comment_contracts.rs": "9c91b7ab56d1af67f8d6570f7c4203a64ea5897a61a8675fbe9f206254c6ef05",
-        "test/server/unit/tests/commit_responses.rs": "ca91b2eb1098bcd421dfa068044ba03660b9b83bc15764bd0a17d8086be9c3e3",
+        "test/server/unit/tests/commit_responses.rs": "e60f50d5638a412cd85480718424c85624b5e81eee9bfdbd3716f5637c55e5fc",
         "test/server/unit/tests/family.rs": "ee0c5a73daa7edcb8f64061cbdd40b153be10a7aa5737a6a4d5342d850bc933c",
-        "test/server/unit/tests/management.rs": "76cb1a8276bff8c25a28e311b74974bbfbfb619604704fec0c6e4da3ff6d1b90",
+        "test/server/unit/tests/management.rs": "1a74e5a67520921b0f65be93821012a674080036456ed9032b8dfc0c1e26e64b",
         "test/server/unit/tests/media_management.rs": "07e75815d876ea675039c58acf948526e0407320338429ae17bda896850fe47b",
-        "test/server/unit/tests/media_names.rs": "94db97907fdcf4efd49489c8a71294ab87b9e618804149ad993add6ce49a779a",
+        "test/server/unit/tests/media_names.rs": "68e63a489049ba235a1bbb22ffafb25bb315f80c095fddc8458044db571f964d",
         "test/server/unit/tests/news_timestamps.rs": "37c1daee1376c6f85535b1a393c1740f8085db0a4795d625970ad88ef6f6a34f",
         "test/server/unit/tests/public_browse.rs": "5a14b110cc74b40fee1f0035faae7e49e1712c6ef23140a611157f1c0c6d263f",
         "test/server/unit/tests/schema_v3.rs": "c77f40184e9e8e7c0384508ff03ba9e7fa7d0c700545ba0be706f29b7627ece1",
         "test/server/unit/tests/slow_body.rs": "fa912d4c712987b9e27719365d42d8060b77eb3f74ddda6f4625a645ce7a5cd8",
-        "test/server/unit/tests/taxonomy.rs": "990084d6ed17a5a23670b9a7621e810ad0023e196361a011f73aa2c6d11d8c8f"
+        "test/server/unit/tests/taxonomy.rs": "1ac6dccf9dcf64feef49890d28324a16eb7dec7ef81798cfeb9aef8034b65fc4"
       },
       "version": "3.0.1"
     },
@@ -48492,19 +48491,6 @@
         "src/foundation/encoding/decimal-float-format": {
           "features": [],
           "name": "blog-encoding-decimal-float-format",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/encoding/hex-codec": {
-          "features": [
-            "alloc",
-            "default",
-            "std"
-          ],
-          "name": "blog-encoding-hex-codec",
           "roles": [
             "compile",
             "runtime"
@@ -52576,18 +52562,6 @@
         "src/foundation/encoding/decimal-float-format": {
           "features": [],
           "name": "blog-encoding-decimal-float-format",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/encoding/hex-codec": {
-          "features": [
-            "alloc",
-            "default",
-            "std"
-          ],
-          "name": "blog-encoding-hex-codec",
           "roles": [
             "compile"
           ],

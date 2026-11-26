@@ -9,7 +9,10 @@ async fn uploaded_unicode_names_roundtrip_through_resources_and_media() {
     for (index, fixture) in fixtures.as_array().unwrap().iter().enumerate() {
         let name = fixture["name"].as_str().unwrap();
         // Distinct valid GIFs avoid content-addressed deduplication between names.
-        let mut image = hex::decode("47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b").unwrap();
+        let mut image =
+            b"GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xff\xff\xff!\xf9\x04\x01\x00\x00\x00\
+            \x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+                .to_vec();
         image[13] = u8::try_from(index).unwrap();
         let response = app
             .clone()

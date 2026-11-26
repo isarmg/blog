@@ -1,6 +1,5 @@
 use crate::{
-    AppState,
-    app::router,
+    app::{RouterState, router},
     database::{initialize, initialize_new_database, open_database, validate_existing_database},
 };
 use axum::{Router, http::StatusCode, response::Response};
@@ -52,19 +51,19 @@ async fn setup_with_password_slots(
     .await
     .unwrap();
     std::fs::write(dir.path().join("index.html"), "<h1>BLOG</h1>").unwrap();
-    let state = AppState {
+    let state = Arc::new(RouterState {
         password_slots,
         ..fixture_state(dir.path(), &pool)
-    };
+    });
     let app = router(state, Some(dir.path().to_path_buf())).unwrap();
     (dir, app, pool)
 }
 
-fn fixture_state(media: &std::path::Path, pool: &SqlitePool) -> AppState {
+fn fixture_state(media: &std::path::Path, pool: &SqlitePool) -> RouterState {
     let admin = Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
         pool.clone(),
     )));
-    AppState {
+    RouterState {
         scope: blog_application::server_runtime::WorkScope::new(),
         pool: pool.clone(),
         admin,
@@ -962,7 +961,7 @@ async fn comment_submission_retries_survive_concurrency_restart_and_deletion() {
         .await
         .unwrap();
     let app = router(
-        fixture_state(dir.path(), &pool),
+        Arc::new(fixture_state(dir.path(), &pool)),
         Some(dir.path().to_path_buf()),
     )
     .unwrap();
@@ -1242,7 +1241,7 @@ async fn article_related_reads_keep_authorization_and_content_in_one_snapshot() 
             })
             .connect_lazy_with((*fixture_pool.connect_options()).clone());
         let state = fixture_state(directory.path(), &pool);
-        let app = router(state, None).unwrap();
+        let app = router(Arc::new(state), None).unwrap();
         let response = app
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
             .await

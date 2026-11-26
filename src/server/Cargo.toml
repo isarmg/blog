@@ -14,7 +14,6 @@ thiserror = { path = "../foundation/diagnostics/typed-error", package = "blog-di
 async-trait = { path = "../foundation/syntax/async-trait",package = "blog-syntax-async-trait"}
 chrono = { default-features = false, features = ["std"], path = "../foundation/format/date-time", package = "blog-format-date-time" }
 clap = {  features = ["derive"], path = "../foundation/cli/arguments",package = "blog-cli-arguments"}
-hex = { path = "../foundation/encoding/hex-codec",package = "blog-encoding-hex-codec"}
 sha2 = { default-features = false, features = ["alloc"], path = "../foundation/crypto/secure-hash", package = "blog-crypto-secure-hash" }
 serde = {  features = ["derive"], path = "../foundation/format/data-model",package = "blog-format-data-model"}
 serde_json = { path = "../foundation/format/json",package = "blog-format-json"}
@@ -26,7 +25,6 @@ blog-application = {  features = ["tracing"], path = "../application"}
 pulldown-cmark = { default-features = false, path = "../foundation/assets/markdown-parser", package = "blog-assets-markdown-parser" }
 
 [build-dependencies]
-hex = { path = "../foundation/encoding/hex-codec", package = "blog-encoding-hex-codec" }
 schemars = { path = "../foundation/format/json-schema",package = "blog-format-json-schema"}
 serde = {  features = ["derive"], path = "../foundation/format/data-model",package = "blog-format-data-model"}
 sha2 = { default-features = false, features = ["alloc"], path = "../foundation/crypto/secure-hash", package = "blog-crypto-secure-hash" }

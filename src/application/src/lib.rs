@@ -33,11 +33,14 @@ pub mod state_file;
 pub(crate) mod testkit;
 pub mod web_assets;
 
-fn hexadecimal(bytes: &[u8]) -> String {
-    use std::fmt::Write as _;
+/// Encode each byte as two lowercase ASCII hex digits, without a prefix.
+#[must_use]
+pub fn hexadecimal(bytes: &[u8]) -> String {
+    const DIGITS: &[u8; 16] = b"0123456789abcdef";
     let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        write!(output, "{byte:02x}").expect("writing to a String is infallible");
+    for &byte in bytes {
+        output.push(char::from(DIGITS[usize::from(byte >> 4)]));
+        output.push(char::from(DIGITS[usize::from(byte & 0xf)]));
     }
     output
 }

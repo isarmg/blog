@@ -154,6 +154,7 @@ async fn content_mutations_recheck_revocable_authority_after_request_body_waits(
 
 #[tokio::test]
 async fn media_upload_rechecks_authority_before_publishing_a_file_or_resource() {
+    use blog_application::hexadecimal;
     use sha2::{Digest, Sha256};
 
     let (directory, app, pool) = setup().await;
@@ -170,7 +171,7 @@ async fn media_upload_rechecks_authority_before_publishing_a_file_or_resource() 
     assert!(
         !directory
             .path()
-            .join(format!("{}.png", hex::encode(Sha256::digest(bytes))))
+            .join(format!("{}.png", hexadecimal(&Sha256::digest(bytes))))
             .exists()
     );
     assert_eq!(
@@ -1521,7 +1522,7 @@ async fn note_receipts_validate_keys_and_commit_atomically_then_survive_database
     let pool = open_database(&directory.path().join("site.sqlite"))
         .await
         .unwrap();
-    let app = router(fixture_state(directory.path(), &pool), None).unwrap();
+    let app = router(Arc::new(fixture_state(directory.path(), &pool)), None).unwrap();
     let replay = create_note_with_key(&app, &auth, "durable-note", draft).await;
     assert_eq!(replay.status(), StatusCode::OK);
     assert_eq!(body_json(replay).await, saved);
@@ -1589,10 +1590,10 @@ async fn paginated_content_keeps_counts_items_and_source_reads_in_one_snapshot()
             })
             .connect_lazy_with((*fixture_pool.connect_options()).clone());
         let app = router(
-            AppState {
+            Arc::new(RouterState {
                 pool: pool.clone(),
                 ..fixture_state(directory.path(), &fixture_pool)
-            },
+            }),
             None,
         )
         .unwrap();

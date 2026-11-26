@@ -7,6 +7,7 @@ mod installation_definition;
 mod platform_contract;
 #[path = "src/schema_definition.rs"]
 mod schema_definition;
+use blog_application::hexadecimal;
 use std::{env, fs, path::PathBuf};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -103,7 +104,7 @@ fn emit_offline_metadata(schema_hash: &str, ddl: &str, revision: String) -> Resu
         companion_contracts: vec![],
     };
     let bytes = serde_json::to_vec(&contract)?;
-    let digest = hex::encode(Sha256::digest(&bytes));
+    let digest = hexadecimal(&Sha256::digest(&bytes));
     let identity = blog_application::contracts::ReleaseIdentity {
         product: "blog".into(),
         version: env!("CARGO_PKG_VERSION").into(),
@@ -159,5 +160,5 @@ fn core_source_sha256(directory: &std::path::Path) -> Result<String> {
         hash.update(fs::read(&path)?);
         hash.update([0]);
     }
-    Ok(hex::encode(hash.finalize()))
+    Ok(hexadecimal(&hash.finalize()))
 }

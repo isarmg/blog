@@ -13,7 +13,6 @@ dependencies = [
  "blog-diagnostics-error-context",
  "blog-diagnostics-structured-events",
  "blog-diagnostics-typed-error",
- "blog-encoding-hex-codec",
  "blog-filesystem-temporary-storage",
  "blog-format-data-model",
  "blog-format-date-time",
@@ -517,10 +516,6 @@ version = "0.0.0"
 
 [[package]]
 name = "blog-encoding-decimal-float-format"
-version = "0.0.0"
-
-[[package]]
-name = "blog-encoding-hex-codec"
 version = "0.0.0"
 
 [[package]]
