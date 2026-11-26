@@ -218,7 +218,7 @@
 | [blog-platform-processor-features](../../src/foundation/platform/processor-features/Cargo.toml) | processor features | [lib.rs](../../src/foundation/platform/processor-features/src/lib.rs) | Rust 文档注释 | [cpufeatures@0.3.1](origins/cpufeatures-0.3.1/README.md) |
 | [blog-platform-socket-options](../../src/foundation/platform/socket-options/Cargo.toml) | socket options | [lib.rs](../../src/foundation/platform/socket-options/src/lib.rs) | Rust 文档注释 | [socket2@0.6.5](origins/socket2-0.6.5/README.md) |
 | [blog-platform-system-abi](../../src/foundation/platform/system-abi/Cargo.toml) | system abi | [lib.rs](../../src/foundation/platform/system-abi/src/lib.rs) | Rust 文档注释 | [libc@0.2.190](origins/libc-0.2.190/README.md)<br>[libc@0.2.191](origins/libc-0.2.191/README.md) |
-| [blog-platform-system-calls](../../src/foundation/platform/system-calls/Cargo.toml) | system calls | [lib.rs](../../src/foundation/platform/system-calls/src/lib.rs) | Rust 文档注释 | [rustix@1.1.5](origins/rustix-1.1.5/README.md) |
+| [blog-platform-system-calls](../../src/foundation/platform/system-calls/Cargo.toml) | system calls | [lib.rs](../../src/foundation/platform/system-calls/src/lib.rs) | Rust 文档注释 | [rustix@1.1.6](origins/rustix-1.1.6/README.md) |
 | [blog-platform-system-entropy](../../src/foundation/platform/system-entropy/Cargo.toml) | system entropy | [lib.rs](../../src/foundation/platform/system-entropy/src/lib.rs) | [README.md](../../src/foundation/platform/system-entropy/README.md) | [getrandom@0.4.3](origins/getrandom-0.4.3/README.md) |
 
 ## runtime

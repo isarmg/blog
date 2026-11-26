@@ -18,7 +18,7 @@ use backend::fd::AsFd;
 ///  - [NetBSD]
 ///  - [OpenBSD]
 ///
-/// [Linux]: https://man7.org/linux/man-pages/man4/tty_ioctl.4.html
+/// [Linux]: https://man7.org/linux/man-pages/man2/TIOCSCTTY.2const.html
 /// [FreeBSD]: https://man.freebsd.org/cgi/man.cgi?query=tty&sektion=4
 /// [NetBSD]: https://man.netbsd.org/tty.4
 /// [OpenBSD]: https://man.openbsd.org/tty.4
@@ -43,7 +43,7 @@ unsafe impl ioctl::Ioctl for Tiocsctty {
     }
 
     fn as_ptr(&mut self) -> *mut c::c_void {
-        crate::utils::as_ptr(&0_u32) as *mut c::c_void
+        core::ptr::null_mut()
     }
 
     unsafe fn output_from_ptr(
@@ -53,3 +53,7 @@ unsafe impl ioctl::Ioctl for Tiocsctty {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "../../../../../../test/foundation/platform/system-calls/unit/src/process/ioctl/tests.rs"]
+mod tests;

@@ -1147,7 +1147,7 @@
     {
       "directory": "src/foundation/platform/system-calls",
       "origins": [
-        "rustix@1.1.5"
+        "rustix@1.1.6"
       ],
       "layer": "platform",
       "purpose": "system calls"

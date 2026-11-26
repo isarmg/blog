@@ -271,7 +271,7 @@
 | blog-platform-processor-features (`src/foundation/platform/processor-features`) | processor features | native, host-tools, workspace-tests | src/foundation/crypto/password-derivation, src/foundation/crypto/secure-hash | cpufeatures@0.3.1 |
 | blog-platform-socket-options (`src/foundation/platform/socket-options`) | socket options | native, host-tools, workspace-tests | src/application, src/foundation/network/http-transport, src/foundation/runtime/task-scheduler | socket2@0.6.5 |
 | blog-platform-system-abi (`src/foundation/platform/system-abi`) | system abi | native, host-tools, workspace-tests | src/application, src/foundation/network/http-transport, src/foundation/platform/error-code, src/foundation/platform/socket-options, src/foundation/platform/system-entropy, src/foundation/runtime/io-poller, src/foundation/runtime/signal-registry, src/foundation/runtime/task-scheduler, src/foundation/sync/mutex | libc@0.2.190, libc@0.2.191 |
-| blog-platform-system-calls (`src/foundation/platform/system-calls`) | system calls | native, host-tools, workspace-tests | src/application, src/foundation/filesystem/temporary-storage, src/tools/assets | rustix@1.1.5 |
+| blog-platform-system-calls (`src/foundation/platform/system-calls`) | system calls | native, host-tools, workspace-tests | src/application, src/foundation/filesystem/temporary-storage, src/tools/assets | rustix@1.1.6 |
 | blog-platform-system-entropy (`src/foundation/platform/system-entropy`) | system entropy | native, host-tools, workspace-tests | src/application, src/foundation/collections/keyed-hash, src/foundation/filesystem/temporary-storage, src/foundation/math/fast-random, src/foundation/math/password-random-traits | getrandom@0.4.3 |
 
 ## product

@@ -12555,6 +12555,60 @@
           "reason": "Replace the parser with url 2.5.9 for RUSTSEC-2026-0592."
         }
       ]
+    },
+    {
+      "id": "import-rustix-1-1-6",
+      "reason": "Record the registry-checksum-verified rustix 1.1.6 archive and its original license texts.",
+      "from": [],
+      "to": [
+        {
+          "directory": "src/foundation/rustix-1.1.6",
+          "name": "rustix",
+          "version": "1.1.6",
+          "origins": [
+            "rustix@1.1.6"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "refresh-maintained-system-calls-to-rustix-1-1-6",
+      "reason": "Refresh the existing Linux AMD64 system-calls implementation from rustix 1.1.6 while retaining its local target, features and dependency closure.",
+      "from": [
+        {
+          "directory": "src/foundation/platform/system-calls",
+          "name": "blog-platform-system-calls",
+          "version": "0.0.0",
+          "origins": [
+            "rustix@1.1.5"
+          ]
+        },
+        {
+          "directory": "src/foundation/rustix-1.1.6",
+          "name": "rustix",
+          "version": "1.1.6",
+          "origins": [
+            "rustix@1.1.6"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/platform/system-calls",
+          "name": "blog-platform-system-calls",
+          "version": "0.0.0",
+          "origins": [
+            "rustix@1.1.6"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "rustix@1.1.5",
+          "reason": "All retained system-calls sources now derive from rustix 1.1.6; preserve the old archive and licenses as history."
+        }
+      ]
     }
   ]
 }

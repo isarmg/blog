@@ -129,7 +129,7 @@
 | src/foundation/platform/processor-features | blog-platform-processor-features | cpufeatures@0.3.1 | cpufeatures@0.3.1: MIT OR Apache-2.0 |
 | src/foundation/platform/socket-options | blog-platform-socket-options | socket2@0.6.5 | socket2@0.6.5: MIT OR Apache-2.0 |
 | src/foundation/platform/system-abi | blog-platform-system-abi | libc@0.2.190, libc@0.2.191 | libc@0.2.190: MIT OR Apache-2.0; libc@0.2.191: MIT OR Apache-2.0 |
-| src/foundation/platform/system-calls | blog-platform-system-calls | rustix@1.1.5 | rustix@1.1.5: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
+| src/foundation/platform/system-calls | blog-platform-system-calls | rustix@1.1.6 | rustix@1.1.6: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | src/foundation/platform/system-entropy | blog-platform-system-entropy | getrandom@0.4.3 | getrandom@0.4.3: MIT OR Apache-2.0 |
 | src/foundation/runtime/async-toolkit | blog-runtime-async-toolkit | futures-channel@0.3.34, futures-core@0.3.34, futures-executor@0.3.34, futures-io@0.3.34, futures-sink@0.3.34, futures-task@0.3.34, futures-util@0.3.34, futures@0.3.34 | futures-channel@0.3.34: MIT OR Apache-2.0; futures-core@0.3.34: MIT OR Apache-2.0; futures-executor@0.3.34: MIT OR Apache-2.0; futures-io@0.3.34: MIT OR Apache-2.0; futures-sink@0.3.34: MIT OR Apache-2.0; futures-task@0.3.34: MIT OR Apache-2.0; futures-util@0.3.34: MIT OR Apache-2.0; futures@0.3.34: MIT OR Apache-2.0 |
 | src/foundation/runtime/future-macros | blog-runtime-future-macros | futures-macro@0.3.34 | futures-macro@0.3.34: MIT OR Apache-2.0 |

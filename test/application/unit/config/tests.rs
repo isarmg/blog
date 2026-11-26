@@ -582,12 +582,12 @@ fn managed_configuration_rejects_additional_access_and_default_acl() {
     fs::write(&path, b"{}").unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
     // Linux POSIX ACL xattr v2: owner, named user, owning group, mask, other.
-    // The named user has no effective rights, so even unchanged mode 0600 must
-    // not disguise an additional access policy or inherit it into later files.
+    // Use a mapped UID even in single-user namespaces. The zero mask keeps
+    // mode 0600 unchanged: the extra policy itself must still be rejected.
     let mut acl = 2u32.to_le_bytes().to_vec();
     for (tag, permission, identity) in [
         (1u16, 6u16, u32::MAX),
-        (2, 4, 34),
+        (2, 4, rustix::process::geteuid().as_raw()),
         (4, 0, u32::MAX),
         (16, 0, u32::MAX),
         (32, 0, u32::MAX),

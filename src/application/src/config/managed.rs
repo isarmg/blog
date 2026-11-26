@@ -60,9 +60,9 @@ fn no_additional_acl(file: &File, directory: bool) -> Result<(), ConfigError> {
         if attribute.ends_with("default") && !directory {
             continue;
         }
-        match rustix::fs::getxattr(&physical, attribute, &mut [0u8; 1]) {
+        match rustix::fs::getxattr_query(&physical, attribute) {
             Err(rustix::io::Errno::NODATA | rustix::io::Errno::NOTSUP) => (),
-            Ok(_) | Err(rustix::io::Errno::RANGE) => return Err(error(Reason::UnsafeFile)),
+            Ok(_) => return Err(error(Reason::UnsafeFile)),
             Err(cause) => {
                 return Err(error(Reason::ReadFailed)
                     .with_cause(ConfigCause::ReadAccessControl(cause.into())));
