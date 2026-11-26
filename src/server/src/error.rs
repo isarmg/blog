@@ -92,3 +92,19 @@ pub enum Error {
     #[error(transparent)]
     MediaRecovery(#[from] crate::app::AppError),
 }
+
+/// Preserve both failures when releasing the state lock after an operation.
+pub(crate) fn finish_operation(
+    operation: Result<(), Error>,
+    release: Result<(), blog_application::state_file::Error>,
+) -> Result<(), Error> {
+    match (operation, release) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(operation), Ok(())) => Err(operation),
+        (Ok(()), Err(release)) => Err(release.into()),
+        (Err(operation), Err(release)) => Err(Error::StateRelease {
+            operation: Box::new(operation),
+            release,
+        }),
+    }
+}

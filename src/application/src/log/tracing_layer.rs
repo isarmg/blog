@@ -24,6 +24,7 @@ const MAX_FIELDS: usize = 32;
 const MAX_FIELD_BYTES: usize = 2048;
 
 #[derive(Clone)]
+#[must_use]
 pub struct BlogStructuredLayer {
     service: Arc<str>,
     rejected: Arc<AtomicU64>,
@@ -38,6 +39,8 @@ enum Sink {
 }
 
 impl BlogStructuredLayer {
+    /// # Errors
+    /// The service identity cannot be used in a valid log record.
     pub fn new(service: &str) -> Result<Self, LogError> {
         identifier(service)?;
         Ok(Self {
@@ -51,14 +54,10 @@ impl BlogStructuredLayer {
         self
     }
 
-    #[cfg(any(unix, windows))]
-    pub fn with_rotating_file(mut self, output: crate::log::RotatingLogFile) -> Self {
-        self.output = Arc::new(Mutex::new(Sink::File(output)));
-        self
-    }
-
     /// Switch the installed subscriber's shared sink after the run preflight.
     /// All clones observe the switch.
+    /// # Panics
+    /// Another thread poisoned the shared sink lock.
     #[cfg(any(unix, windows))]
     pub fn set_rotating_file(&self, output: crate::log::RotatingLogFile) {
         let mut sink = self
@@ -68,6 +67,7 @@ impl BlogStructuredLayer {
         *sink = Sink::File(output);
     }
 
+    #[must_use]
     pub fn rejected_count(&self) -> u64 {
         self.rejected.load(Ordering::Relaxed)
     }

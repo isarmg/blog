@@ -81,7 +81,7 @@ async fn stalled_json_bodies_expire_without_writes_and_release_all_public_execut
         .collect();
     wait_for_reads(&polled, 4).await;
     let deadline = blog_application::server_cli::http::JSON_BODY_TIMEOUT;
-    tokio::time::advance(deadline - Duration::from_millis(1)).await;
+    tokio::time::advance(deadline.checked_sub(Duration::from_millis(1)).unwrap()).await;
     assert!(requests.iter().all(|request| !request.is_finished()));
     tokio::time::advance(Duration::from_millis(1)).await;
     for (id, request) in requests.into_iter().enumerate() {

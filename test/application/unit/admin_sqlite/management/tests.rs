@@ -1,8 +1,11 @@
 use super::*;
+use crate::admin_core::{AdministratorRecord, AdministratorStore};
 use crate::admin_core::{AdministratorService, LoginContext, PasswordWorkError};
+use crate::admin_sqlite::{ADMIN_PERSISTENT_DDL, session_from_row};
+use sqlx::{Row, SqlitePool};
 
 struct Fixture {
-    _directory: tempfile::TempDir,
+    directory: tempfile::TempDir,
     service: AdministratorService<SqliteAdministratorStore>,
     context: AdministratorManagementContext,
 }
@@ -53,7 +56,7 @@ async fn fixture() -> Fixture {
         .await
         .unwrap();
     Fixture {
-        _directory: directory,
+        directory,
         service,
         context: AdministratorManagementContext {
             identity,
@@ -143,7 +146,7 @@ async fn validation_rejects_noncurrent_accounts_without_writes() {
     ));
     assert_eq!(before, logical_snapshot(f.service.store().pool()).await);
     let empty = crate::sqlite::create_if_missing(
-        f._directory.path().join("empty.sqlite3"),
+        f.directory.path().join("empty.sqlite3"),
         crate::sqlite::PoolOptions::new(2),
     )
     .await
@@ -486,5 +489,11 @@ async fn minute_activity_updates_can_finish_out_of_order_without_logging_out() {
             .unwrap()
     );
     let row: (i64, i64) = sqlx::query_as("SELECT last_seen_at_micros, idle_expires_at_micros FROM _common_admin_sessions WHERE session_id=?").bind(id.as_str()).fetch_one(store.pool()).await.unwrap();
-    assert_eq!(row, ((timestamp + 100) as i64, (deadline + 100) as i64));
+    assert_eq!(
+        row,
+        (
+            i64::try_from(timestamp + 100).unwrap(),
+            i64::try_from(deadline + 100).unwrap()
+        )
+    );
 }

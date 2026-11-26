@@ -1,11 +1,12 @@
 //! Administrator-controlled runtime configuration, read without source writes.
 
 use super::{ConfigCause, ConfigError, ConfigSource, MAX_CONFIG_BYTES, Reason};
-use rustix::fs::{AtFlags, Mode, OFlags, open, openat, statat};
+use rustix::fs::{AtFlags, FileType, Mode, OFlags, Stat, fstat, open, openat, statat};
 use std::{
-    fs::{File, Metadata},
+    ffi::OsStr,
+    fs::File,
     io::Read,
-    os::{fd::AsRawFd, unix::fs::MetadataExt},
+    os::fd::AsRawFd,
     path::{Component, Path},
 };
 
@@ -22,34 +23,71 @@ fn io_error(cause: rustix::io::Errno) -> ConfigError {
     .with_cause(ConfigCause::OpenFile(cause.into()))
 }
 
-fn inspect_error(cause: std::io::Error) -> ConfigError {
-    error(Reason::ReadFailed).with_cause(ConfigCause::InspectFile(cause))
+fn inspect_error(cause: rustix::io::Errno) -> ConfigError {
+    error(Reason::ReadFailed).with_cause(ConfigCause::InspectFile(cause.into()))
 }
 
-fn directory_stamp(metadata: &Metadata) -> (u64, u64, u32, u32, u32) {
-    (
-        metadata.dev(),
-        metadata.ino(),
-        metadata.uid(),
-        metadata.gid(),
-        metadata.mode(),
-    )
+struct Directory {
+    handle: File,
+    before: Stat,
 }
 
-fn file_stamp(metadata: &Metadata) -> (u64, u64, u64, i64, i64, i64, i64, u32, u32, u32, u64) {
-    (
-        metadata.dev(),
-        metadata.ino(),
-        metadata.len(),
-        metadata.mtime(),
-        metadata.mtime_nsec(),
-        metadata.ctime(),
-        metadata.ctime_nsec(),
-        metadata.uid(),
-        metadata.gid(),
-        metadata.mode(),
-        metadata.nlink(),
-    )
+impl Directory {
+    fn capture(
+        handle: File,
+        immediate: bool,
+        development_owner: Option<u32>,
+    ) -> Result<Self, ConfigError> {
+        let before = fstat(&handle).map_err(inspect_error)?;
+        let mode = before.st_mode & 0o7777;
+        let development = development_owner == Some(before.st_uid);
+        let root_owned = before.st_uid == 0;
+        let sticky_root = root_owned && mode & 0o1000 != 0;
+        if FileType::from_raw_mode(before.st_mode) != FileType::Directory
+            || (!root_owned && !development)
+            || (mode & 0o022 != 0 && !sticky_root)
+        {
+            return Err(error(Reason::UnsafeFile));
+        }
+        if immediate {
+            if !(root_owned && matches!(mode, 0o700 | 0o750) || development && mode == 0o700) {
+                return Err(error(Reason::UnsafeFile));
+            }
+            no_additional_acl(&handle, true)?;
+        }
+        Ok(Self { handle, before })
+    }
+
+    fn verify(&self, parent: Option<(&File, &OsStr)>) -> Result<(), ConfigError> {
+        let now = fstat(&self.handle).map_err(inspect_error)?;
+        let named = match parent {
+            Some((directory, name)) => statat(directory, name, AtFlags::SYMLINK_NOFOLLOW),
+            None => rustix::fs::stat("/"),
+        }
+        .map_err(inspect_error)?;
+        if !same_identity(&self.before, &now) || !same_identity(&self.before, &named) {
+            return Err(error(Reason::SourceChanged));
+        }
+        Ok(())
+    }
+}
+
+fn same_identity(before: &Stat, after: &Stat) -> bool {
+    before.st_dev == after.st_dev
+        && before.st_ino == after.st_ino
+        && before.st_uid == after.st_uid
+        && before.st_gid == after.st_gid
+        && before.st_mode == after.st_mode
+}
+
+fn same_file(before: &Stat, after: &Stat) -> bool {
+    same_identity(before, after)
+        && before.st_size == after.st_size
+        && before.st_nlink == after.st_nlink
+        && before.st_mtime == after.st_mtime
+        && before.st_mtime_nsec == after.st_mtime_nsec
+        && before.st_ctime == after.st_ctime
+        && before.st_ctime_nsec == after.st_ctime_nsec
 }
 
 fn no_additional_acl(file: &File, directory: bool) -> Result<(), ConfigError> {
@@ -83,6 +121,9 @@ fn no_additional_acl(file: &File, directory: bool) -> Result<(), ConfigError> {
 /// `allow_development_owner` additionally accepts a process-owned 0700 parent
 /// and 0600 file. A consumer may set it only for an explicitly unbound debug
 /// build. This function never creates files, locks, directories, or permissions.
+///
+/// # Errors
+/// Rejects unsafe, oversized or changing sources, and reports failed reads.
 pub fn read_managed_file(
     path: &Path,
     allow_development_owner: bool,
@@ -90,76 +131,82 @@ pub fn read_managed_file(
     if !path.is_absolute() || path.as_os_str().len() > 16 * 1024 {
         return Err(error(Reason::UnsafeFile));
     }
-    let components = path.components().collect::<Vec<_>>();
-    if components.len() < 2
-        || components.len() > 256
-        || components
-            .iter()
-            .skip(1)
-            .any(|part| !matches!(part, Component::Normal(_)))
-    {
-        return Err(error(Reason::UnsafeFile));
-    }
-    let caller = rustix::process::geteuid().as_raw();
+    let names = path
+        .components()
+        .skip(1) // The absolute root is opened separately.
+        .map(|component| match component {
+            Component::Normal(name) => Ok(name),
+            Component::Prefix(_)
+            | Component::RootDir
+            | Component::CurDir
+            | Component::ParentDir => Err(error(Reason::UnsafeFile)),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let (&name, ancestors) = names
+        .split_last()
+        .filter(|_| names.len() < 256)
+        .ok_or_else(|| error(Reason::UnsafeFile))?;
+    let development_owner = allow_development_owner.then(|| rustix::process::geteuid().as_raw());
     let flags = OFlags::PATH | OFlags::DIRECTORY | OFlags::NOFOLLOW | OFlags::CLOEXEC;
-    let root = File::from(open("/", flags, Mode::empty()).map_err(io_error)?);
-    let mut directories = vec![(root, None)];
-    for component in &components[1..components.len() - 1] {
-        let Component::Normal(name) = component else {
-            unreachable!("invariant: configuration path components were parsed as normal names")
-        };
-        let parent = &directories.last().expect("root descriptor exists").0;
-        let next = File::from(openat(parent, *name, flags, Mode::empty()).map_err(io_error)?);
-        directories.push((next, Some(*name)));
+    let root = Directory::capture(
+        File::from(open("/", flags, Mode::empty()).map_err(io_error)?),
+        ancestors.is_empty(),
+        development_owner,
+    )?;
+    let mut directories = Vec::with_capacity(ancestors.len());
+    for (index, &part) in ancestors.iter().enumerate() {
+        let parent: &Directory = directories.last().unwrap_or(&root);
+        let directory =
+            File::from(openat(&parent.handle, part, flags, Mode::empty()).map_err(io_error)?);
+        directories.push(Directory::capture(
+            directory,
+            index + 1 == ancestors.len(),
+            development_owner,
+        )?);
     }
-    let mut stamps = Vec::with_capacity(directories.len());
-    for (index, (directory, _)) in directories.iter().enumerate() {
-        let metadata = directory.metadata().map_err(inspect_error)?;
-        let mode = metadata.mode() & 0o7777;
-        let owner_allowed =
-            metadata.uid() == 0 || (allow_development_owner && metadata.uid() == caller);
-        let sticky_root = metadata.uid() == 0 && mode & 0o1000 != 0;
-        if !metadata.is_dir() || !owner_allowed || (mode & 0o022 != 0 && !sticky_root) {
-            return Err(error(Reason::UnsafeFile));
-        }
-        if index + 1 == directories.len() {
-            let managed = metadata.uid() == 0 && matches!(mode, 0o700 | 0o750);
-            let development = allow_development_owner && metadata.uid() == caller && mode == 0o700;
-            if !managed && !development {
-                return Err(error(Reason::UnsafeFile));
-            }
-            no_additional_acl(directory, true)?;
-        }
-        stamps.push(directory_stamp(&metadata));
+    let parent = directories.last().unwrap_or(&root);
+    let bytes = read_file(parent, name, development_owner)?;
+    no_additional_acl(&parent.handle, true)?;
+    root.verify(None)?;
+    let mut parent = &root;
+    for (directory, &part) in directories.iter().zip(ancestors) {
+        directory.verify(Some((&parent.handle, part)))?;
+        parent = directory;
     }
-    let directory = &directories.last().expect("root descriptor exists").0;
-    let Component::Normal(name) = components.last().expect("file component exists") else {
-        unreachable!("invariant: a configuration path ends in a normal file name")
-    };
+    Ok(bytes)
+}
+
+fn read_file(
+    parent: &Directory,
+    name: &OsStr,
+    development_owner: Option<u32>,
+) -> Result<Vec<u8>, ConfigError> {
+    let directory = &parent.handle;
     let mut file = File::from(
         openat(
             directory,
-            *name,
+            name,
             OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::NONBLOCK | OFlags::CLOEXEC,
             Mode::empty(),
         )
         .map_err(io_error)?,
     );
-    let before = file.metadata().map_err(inspect_error)?;
-    let parent = stamps.last().expect("parent stamp exists");
-    let mode = before.mode() & 0o7777;
-    let managed = parent.2 == 0 && before.uid() == 0 && matches!(mode, 0o600 | 0o640);
-    let development =
-        allow_development_owner && parent.2 == caller && before.uid() == caller && mode == 0o600;
-    if !before.is_file()
-        || before.nlink() != 1
-        || before.gid() != parent.3
+    let before = fstat(&file).map_err(inspect_error)?;
+    let mode = before.st_mode & 0o7777;
+    let managed = parent.before.st_uid == 0 && before.st_uid == 0 && matches!(mode, 0o600 | 0o640);
+    let development = development_owner == Some(parent.before.st_uid)
+        && before.st_uid == parent.before.st_uid
+        && mode == 0o600;
+    if FileType::from_raw_mode(before.st_mode) != FileType::RegularFile
+        || before.st_nlink != 1
+        || before.st_gid != parent.before.st_gid
         || (!managed && !development)
     {
         return Err(error(Reason::UnsafeFile));
     }
     no_additional_acl(&file, false)?;
-    if before.len() > MAX_CONFIG_BYTES as u64 {
+    let length = u64::try_from(before.st_size).map_err(|_| error(Reason::LimitExceeded))?;
+    if length > MAX_CONFIG_BYTES as u64 {
         return Err(error(Reason::LimitExceeded));
     }
     let mut bytes = Vec::new();
@@ -170,45 +217,11 @@ pub fn read_managed_file(
     if bytes.len() > MAX_CONFIG_BYTES {
         return Err(error(Reason::LimitExceeded));
     }
-    let after = file.metadata().map_err(inspect_error)?;
-    let named = statat(directory, *name, AtFlags::SYMLINK_NOFOLLOW)
-        .map_err(|cause| inspect_error(cause.into()))?;
-    if file_stamp(&before) != file_stamp(&after)
-        || named.st_dev != before.dev()
-        || named.st_ino != before.ino()
-        || named.st_mode != before.mode()
-        || named.st_uid != before.uid()
-        || named.st_gid != before.gid()
-        || named.st_nlink != before.nlink()
-        || u64::try_from(named.st_size).ok() != Some(before.len())
-        || named.st_mtime != before.mtime()
-        || i64::try_from(named.st_mtime_nsec).ok() != Some(before.mtime_nsec())
-        || named.st_ctime != before.ctime()
-        || i64::try_from(named.st_ctime_nsec).ok() != Some(before.ctime_nsec())
-        || bytes.len() as u64 != before.len()
-    {
+    let after = fstat(&file).map_err(inspect_error)?;
+    let named = statat(directory, name, AtFlags::SYMLINK_NOFOLLOW).map_err(inspect_error)?;
+    if !same_file(&before, &after) || !same_file(&before, &named) || bytes.len() as u64 != length {
         return Err(error(Reason::SourceChanged));
     }
     no_additional_acl(&file, false)?;
-    no_additional_acl(directory, true)?;
-    for (index, (held, name)) in directories.iter().enumerate() {
-        let now = held.metadata().map_err(inspect_error)?;
-        let named = if let Some(name) = name {
-            statat(&directories[index - 1].0, *name, AtFlags::SYMLINK_NOFOLLOW)
-                .map_err(|cause| inspect_error(cause.into()))?
-        } else {
-            rustix::fs::stat("/").map_err(|cause| inspect_error(cause.into()))?
-        };
-        let named_stamp = (
-            named.st_dev,
-            named.st_ino,
-            named.st_uid,
-            named.st_gid,
-            named.st_mode,
-        );
-        if directory_stamp(&now) != stamps[index] || named_stamp != stamps[index] {
-            return Err(error(Reason::SourceChanged));
-        }
-    }
     Ok(bytes)
 }

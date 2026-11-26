@@ -4,7 +4,7 @@ use axum::{Router, routing::get};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-async fn launch(
+fn launch(
     limits: Http1Limits,
     router: Router,
 ) -> (
@@ -29,7 +29,6 @@ async fn launch(
         capabilities: vec![],
     })
     .build()
-    .await
     .unwrap();
     let handle = runtime.handle();
     (address, handle, tokio::spawn(runtime.serve(server, router)))
@@ -94,7 +93,6 @@ async fn shutdown_reports_the_original_state_close_failure() {
         capabilities: vec![],
     })
     .build()
-    .await
     .unwrap();
     runtime.handle().shutdown();
     let mut server = HttpServer::new(
@@ -153,7 +151,6 @@ async fn shutdown_polls_a_paused_health_probe_while_draining_product_requests() 
         }),
     )
     .build()
-    .await
     .unwrap();
     let handle = runtime.handle();
     let listeners = BoundListeners::bind(["127.0.0.1:0".parse().unwrap()]).unwrap();
@@ -195,7 +192,6 @@ async fn stalled_commit_report_does_not_count_the_socket_drain_barrier() {
         capabilities: vec![],
     })
     .build()
-    .await
     .unwrap();
     runtime.handle().shutdown();
     let listeners = BoundListeners::bind(["127.0.0.1:0".parse().unwrap()]).unwrap();
@@ -244,8 +240,7 @@ async fn requests_have_correlation_without_peer_identity_and_idle_bind_does_not_
             ..Default::default()
         },
         app,
-    )
-    .await;
+    );
     for ip in ["127.0.0.1", "127.0.0.2", "127.0.0.1"] {
         let response = request(SocketAddr::new(ip.parse().unwrap(), address.port()), b"GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nX-Forwarded-For: 203.0.113.1\r\nX-Request-ID: socket-test\r\n\r\n").await;
         let response = String::from_utf8(response).unwrap();
@@ -282,8 +277,7 @@ async fn response_body_retains_global_capacity_after_handler_returns() {
             ..Default::default()
         },
         app,
-    )
-    .await;
+    );
     let mut first = tokio::net::TcpStream::connect(address).await.unwrap();
     first
         .write_all(b"GET /hold HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
@@ -323,8 +317,7 @@ async fn slow_request_headers_expire_on_real_socket() {
             ..Default::default()
         },
         Router::new(),
-    )
-    .await;
+    );
     let response = request(address, b"GET / HTTP/1.1\r\nHost:").await;
     assert!(response.is_empty() || response.starts_with(b"HTTP/1.1 408"));
     handle.shutdown();
@@ -334,7 +327,7 @@ async fn slow_request_headers_expire_on_real_socket() {
 #[tokio::test]
 async fn repeated_chunked_transfer_codings_are_rejected_before_handler_dispatch() {
     let app = Router::new().route("/", axum::routing::post(|body: String| async move { body }));
-    let (address, handle, serving) = launch(Http1Limits::default(), app).await;
+    let (address, handle, serving) = launch(Http1Limits::default(), app);
     for field in [
         "Transfer-Encoding: chunked, chunked",
         "Transfer-Encoding: ChUnKeD, gzip, chunked",

@@ -188,7 +188,7 @@ fn detects_replacement_and_coordinates_locks() -> Result<(), Box<dyn std::error:
         })
     ));
     drop(instance);
-    let _instance = state.try_instance_lock()?;
+    let _held = state.try_instance_lock()?;
     assert!(matches!(
         state.try_instance_lock(),
         Err(Error::LockUnavailable {
@@ -222,7 +222,7 @@ fn implicit_drop_unlocks_instance_even_when_a_description_alias_survives()
     let parent = private_tempdir()?;
     let state = PrivateStateDirectory::open(parent.path())?;
     let instance = state.try_instance_lock()?;
-    let alias = instance._instance.file().try_clone()?;
+    let alias = instance.instance.file().try_clone()?;
     let before = alias.metadata()?;
     assert!(state.try_instance_lock().is_err());
     drop(instance);
@@ -257,13 +257,13 @@ fn implicit_instance_drop_unlocks_without_unlinking_state() -> Result<(), Box<dy
     let parent = private_tempdir()?;
     let state = PrivateStateDirectory::open(parent.path())?;
     let instance = state.try_instance_lock()?;
-    let instance_alias = instance._instance.file().try_clone()?;
-    let identity = instance._instance.identity();
+    let instance_alias = instance.instance.file().try_clone()?;
+    let identity = instance.instance.identity();
     drop(instance);
     let replacement = state.try_instance_lock()?;
     drop(instance_alias);
     assert!(state.try_instance_lock().is_err());
-    assert_eq!(replacement._instance.identity(), identity);
+    assert_eq!(replacement.instance.identity(), identity);
     replacement.release()?;
     Ok(())
 }
@@ -274,8 +274,8 @@ fn explicit_unlock_prevents_old_guard_drop_from_releasing_a_reacquired_alias()
     let parent = private_tempdir()?;
     let state = PrivateStateDirectory::open(parent.path())?;
     let mut instance = state.try_instance_lock()?;
-    let alias = instance._instance.file().try_clone()?;
-    instance._instance.unlock()?;
+    let alias = instance.instance.file().try_clone()?;
+    instance.instance.unlock()?;
     try_flock(
         &alias,
         FlockOperation::NonBlockingLockExclusive,
@@ -294,8 +294,8 @@ fn explicit_release_unlocks_the_original_description_after_its_name_is_replaced(
     let parent = private_tempdir()?;
     let state = PrivateStateDirectory::open(parent.path())?;
     let instance = state.try_instance_lock()?;
-    let alias = instance._instance.file().try_clone()?;
-    let original_identity = instance._instance.identity();
+    let alias = instance.instance.file().try_clone()?;
+    let original_identity = instance.instance.identity();
     fs::rename(
         state.path().join(INSTANCE_LOCK_FILE),
         state.path().join("original-lock"),

@@ -117,32 +117,7 @@ fn text_contains_reference(value: &str, path: &str) -> bool {
                     .contains(path)
                 || url_references(&dest_url, path)
         }
-        Event::Text(text) => match &mut context {
-            TextContext::Video(video) => {
-                video.push_str(&text);
-                false
-            }
-            TextContext::Code => false,
-            TextContext::Prose => finder.links(&text).any(|link| {
-                if link.kind() != &LinkKind::Url {
-                    return false;
-                }
-                let value = link.as_str();
-                if value.split_once("://").is_some_and(|(scheme, _)| {
-                    scheme
-                        .as_bytes()
-                        .first()
-                        .is_some_and(u8::is_ascii_alphabetic)
-                        && scheme
-                            .bytes()
-                            .all(|byte| byte.is_ascii_alphanumeric() || b"+.-".contains(&byte))
-                }) {
-                    url_references(value, path)
-                } else {
-                    url_references(&format!("http://{value}"), path)
-                }
-            }),
-        },
+        Event::Text(text) => text_event_references(&mut context, &finder, &text, path),
         Event::Start(
             Tag::Paragraph
             | Tag::Heading { .. }
@@ -202,6 +177,40 @@ fn text_contains_reference(value: &str, path: &str) -> bool {
     })
 }
 
+fn text_event_references(
+    context: &mut TextContext,
+    finder: &LinkFinder,
+    text: &str,
+    path: &str,
+) -> bool {
+    match context {
+        TextContext::Video(video) => {
+            video.push_str(text);
+            false
+        }
+        TextContext::Code => false,
+        TextContext::Prose => finder.links(text).any(|link| {
+            if link.kind() != &LinkKind::Url {
+                return false;
+            }
+            let value = link.as_str();
+            if value.split_once("://").is_some_and(|(scheme, _)| {
+                scheme
+                    .as_bytes()
+                    .first()
+                    .is_some_and(u8::is_ascii_alphabetic)
+                    && scheme
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || b"+.-".contains(&byte))
+            }) {
+                url_references(value, path)
+            } else {
+                url_references(&format!("http://{value}"), path)
+            }
+        }),
+    }
+}
+
 fn url_references(value: &str, path: &str) -> bool {
     let base = Url::parse("https://media.invalid/").expect("static media reference base");
     base.join(value.trim()).is_ok_and(|url| {
@@ -238,7 +247,6 @@ pub(super) async fn referenced(
     connection: &mut SqliteConnection,
     filename: &MediaFilename,
 ) -> Result<bool, AppError> {
-    let path = filename.path();
     // Inspect saved content, including drafts, so removing an unused upload
     // cannot break an article, profile, album, note or letter. Anonymous comment
     // and guestbook text renders as text nodes and does not retain media.
@@ -251,6 +259,7 @@ pub(super) async fn referenced(
         "SELECT id,coalesce(image_path,'')||char(0)||coalesce(avatar,'') AS value FROM tree_hole",
         "SELECT id,coalesce(avatar,'') AS value FROM user WHERE deleted=0",
     ];
+    let path = filename.path();
     for query in QUERIES {
         // Every browser-normalized alias retains the uploaded filename, unless
         // it is encoded. Match that filename before checking URL destinations;

@@ -15,26 +15,9 @@ where
     .await;
     let login = send(request(Method::POST, ADMIN_LOGIN_PATH, LOGIN_JSON)).await;
     assert_eq!(login.status(), StatusCode::OK);
-    let cookie = login.headers()[header::SET_COOKIE]
-        .to_str()
-        .unwrap()
-        .split(';')
-        .next()
-        .unwrap()
-        .to_string();
-    let session: AdministratorSession =
-        serde_json::from_slice(&to_bytes(login.into_body(), 8192).await.unwrap()).unwrap();
-    let authorized = |method: Method, path: &str, body: &str| {
-        let mut request = request(method, path, body.to_owned());
-        request
-            .headers_mut()
-            .insert(header::COOKIE, HeaderValue::from_str(&cookie).unwrap());
-        request.headers_mut().insert(
-            "x-csrf-token",
-            HeaderValue::from_str(session.csrf_token()).unwrap(),
-        );
-        request
-    };
+    let (cookie, session) = logged_in(login).await;
+    let authorized =
+        |method, path: &str, body: &str| authorized_request(method, path, body, &cookie, &session);
     let create = r#"{"username":"secondary","current_password":"another correct password"}"#;
     let mut no_csrf = authorized(Method::POST, ADMIN_ACCOUNT_PATH, create);
     no_csrf.headers_mut().remove("x-csrf-token");
@@ -113,6 +96,10 @@ where
             StatusCode::NOT_FOUND
         );
     }
+    assert_self_service(&send).await;
+}
+
+async fn assert_self_service<Fut: Future<Output = Response>>(send: &impl Fn(Request<Body>) -> Fut) {
     // The self-service endpoint uses the same transport guards on both adapters.
     let login = send(request(
         Method::POST,
@@ -121,30 +108,9 @@ where
     ))
     .await;
     assert_eq!(login.status(), StatusCode::OK);
-    let cookie = login.headers()[header::SET_COOKIE]
-        .to_str()
-        .unwrap()
-        .split(';')
-        .next()
-        .unwrap()
-        .to_owned();
-    let current: AdministratorSession =
-        serde_json::from_slice(&to_bytes(login.into_body(), 8192).await.unwrap()).unwrap();
-    let account_request = |body: &str| {
-        let mut value = request(
-            Method::POST,
-            crate::contracts::ADMIN_ACCOUNT_PATH,
-            body.to_owned(),
-        );
-        value
-            .headers_mut()
-            .insert(header::COOKIE, HeaderValue::from_str(&cookie).unwrap());
-        value.headers_mut().insert(
-            "x-csrf-token",
-            HeaderValue::from_str(current.csrf_token()).unwrap(),
-        );
-        value
-    };
+    let (cookie, current) = logged_in(login).await;
+    let account_request =
+        |body: &str| authorized_request(Method::POST, ADMIN_ACCOUNT_PATH, body, &cookie, &current);
     let change = r#"{"username":"renamed","current_password":"correct horse battery","new_password":"my updated correct password"}"#;
     let mut no_csrf = account_request(change);
     no_csrf.headers_mut().remove("x-csrf-token");
@@ -201,4 +167,35 @@ where
         serde_json::from_slice(&to_bytes(login.into_body(), 8192).await.unwrap()).unwrap();
     assert_eq!(updated.user_id(), current.user_id());
     assert_eq!(updated.username(), "renamed");
+}
+
+async fn logged_in(login: Response) -> (String, AdministratorSession) {
+    let cookie = login.headers()[header::SET_COOKIE]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let session =
+        serde_json::from_slice(&to_bytes(login.into_body(), 8192).await.unwrap()).unwrap();
+    (cookie, session)
+}
+
+fn authorized_request(
+    method: Method,
+    path: &str,
+    body: &str,
+    cookie: &str,
+    session: &AdministratorSession,
+) -> Request<Body> {
+    let mut value = request(method, path, body.to_owned());
+    value
+        .headers_mut()
+        .insert(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
+    value.headers_mut().insert(
+        "x-csrf-token",
+        HeaderValue::from_str(session.csrf_token()).unwrap(),
+    );
+    value
 }

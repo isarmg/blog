@@ -38,7 +38,7 @@ async fn bounded_passes_advance_beyond_live_rows_and_revisit_after_wrap()
     assert_eq!(ids(&pool).await?, [1, 2]);
     assert_eq!(store.prune_inactive_sessions(100, 2).await?, 0);
     assert_eq!(store.prune_inactive_sessions(950, 2).await?, 2);
-    assert!(ids(&pool).await?.is_empty());
+    assert_eq!(ids(&pool).await?, [] as [i64; 0]);
     assert_eq!(store.prune_inactive_sessions(1000, 2).await?, 0);
     assert!(store.prune_inactive_sessions(1000, 0).await.is_err());
     assert!(store.prune_inactive_sessions(1000, 129).await.is_err());

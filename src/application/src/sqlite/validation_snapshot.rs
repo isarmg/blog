@@ -1,5 +1,5 @@
 //! Source-preserving validation snapshots for a separate diagnostics process.
-//! Never open an online SQLite source in the process already owning its SQLx
+//! Never open an online SQLite source in the process already owning its `SQLx`
 //! connections: closing raw descriptors can affect SQLite's POSIX locks.
 
 use sha2::{Digest, Sha256};
@@ -44,17 +44,21 @@ pub struct ValidationSnapshot {
 }
 
 impl ValidationSnapshot {
+    /// # Errors
+    /// The database or its sidecars cannot be safely copied within the default limits.
     pub fn capture(path: impl AsRef<Path>) -> Result<Self, SnapshotError> {
         Self::capture_with_limits(path, SnapshotLimits::default())
     }
 
-    pub fn capture_with_limits(
+    pub(crate) fn capture_with_limits(
         path: impl AsRef<Path>,
         limits: SnapshotLimits,
     ) -> Result<Self, SnapshotError> {
         Self::capture_at(path, limits, None)
     }
 
+    /// # Errors
+    /// The temporary root is unsafe or the source cannot be captured there.
     pub fn capture_in(
         path: impl AsRef<Path>,
         temporary_root: impl AsRef<Path>,
@@ -66,6 +70,8 @@ impl ValidationSnapshot {
         )
     }
 
+    /// # Errors
+    /// The limits or temporary root are invalid, or a coherent bounded capture is not possible.
     pub fn capture_with_limits_in(
         path: impl AsRef<Path>,
         limits: SnapshotLimits,
@@ -96,7 +102,7 @@ impl ValidationSnapshot {
         for attempt in 0..limits.attempts {
             match capture_once(path, limits.max_total_bytes, deadline, temporary_root) {
                 Err(SnapshotError::SourceChanged) if attempt + 1 < limits.attempts => {
-                    std::thread::yield_now()
+                    std::thread::yield_now();
                 }
                 result => return result,
             }
@@ -104,18 +110,21 @@ impl ValidationSnapshot {
         Err(SnapshotError::SourceChanged)
     }
 
+    #[must_use]
     pub fn database_path(&self) -> &Path {
         &self.database
     }
 
     /// Open the already-captured generation after another read-only adapter
     /// has closed its connection. No source recapture or generation change.
-    pub async fn into_pool(self) -> Result<ValidationSnapshotPool, SnapshotError> {
+    pub(crate) async fn into_pool(self) -> Result<ValidationSnapshotPool, SnapshotError> {
         open_snapshot_pool(self, None).await
     }
 
     /// Open this exact captured generation with native limits applied to every
     /// newly established connection before any validation statement is prepared.
+    /// # Errors
+    /// The captured database cannot be opened or the supplied native limits cannot be enforced.
     pub async fn into_pool_with_connection_limits(
         self,
         limits: crate::sqlite::ConnectionLimits,
@@ -131,6 +140,7 @@ pub struct ValidationSnapshotPool {
 }
 
 impl ValidationSnapshotPool {
+    #[must_use]
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
@@ -142,6 +152,8 @@ impl ValidationSnapshotPool {
 /// Copy under SQLite's native read locks, then open only the private copy. WAL
 /// recovery and hot-journal rollback may write to that copy, never the source.
 /// SQL access is query-only after connection, including business validation.
+/// # Errors
+/// A coherent bounded snapshot cannot be captured or opened for validation.
 pub async fn open_validation_snapshot(
     path: impl AsRef<Path>,
 ) -> Result<ValidationSnapshotPool, SnapshotError> {
@@ -152,6 +164,8 @@ pub async fn open_validation_snapshot(
     snapshot.into_pool().await
 }
 
+/// # Errors
+/// Capturing or opening the snapshot fails or the requested connection limits cannot be enforced.
 pub async fn open_validation_snapshot_with_connection_limits(
     path: impl AsRef<Path>,
     limits: crate::sqlite::ConnectionLimits,
@@ -274,7 +288,9 @@ impl Source {
         let file = OpenOptions::new()
             .read(true)
             .custom_flags(
-                (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32,
+                (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK)
+                    .bits()
+                    .cast_signed(),
             )
             .open(path)?;
         let opened = file.metadata()?;
@@ -314,6 +330,28 @@ fn require_regular(metadata: &Metadata) -> Result<(), SnapshotError> {
     }
 }
 
+fn temporary_directory(
+    temporary_root: Option<&Path>,
+) -> Result<Arc<tempfile::TempDir>, SnapshotError> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".sqlite-validation-");
+    Ok(Arc::new(match temporary_root {
+        Some(root) => {
+            let directory = crate::fs_safety::PrivateDirectory::open_existing(root)
+                .map_err(SnapshotError::TemporaryRoot)?;
+            directory
+                .verify_identity()
+                .map_err(SnapshotError::TemporaryRoot)?;
+            let temporary = builder.tempdir_in(root)?;
+            directory
+                .verify_identity()
+                .map_err(SnapshotError::TemporaryRoot)?;
+            temporary
+        }
+        None => builder.tempdir()?,
+    }))
+}
+
 fn capture_once(
     path: &Path,
     budget: u64,
@@ -324,7 +362,11 @@ fn capture_once(
     let parent_path = path.parent().ok_or(SnapshotError::UnsafeSource)?;
     let parent = OpenOptions::new()
         .read(true)
-        .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::DIRECTORY).bits() as i32)
+        .custom_flags(
+            (rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::DIRECTORY)
+                .bits()
+                .cast_signed(),
+        )
         .open(parent_path)?;
     let parent_before = Stamp::from(&parent.metadata()?);
     let mut main = Source::open(path)?.ok_or(SnapshotError::MissingDatabase)?;
@@ -353,23 +395,7 @@ fn capture_once(
     if total == 0 {
         return Err(SnapshotError::InvalidDatabase);
     }
-    let mut builder = tempfile::Builder::new();
-    builder.prefix(".sqlite-validation-");
-    let directory = Arc::new(match temporary_root {
-        Some(root) => {
-            let directory = crate::fs_safety::PrivateDirectory::open_existing(root)
-                .map_err(SnapshotError::TemporaryRoot)?;
-            directory
-                .verify_identity()
-                .map_err(SnapshotError::TemporaryRoot)?;
-            let temporary = builder.tempdir_in(root)?;
-            directory
-                .verify_identity()
-                .map_err(SnapshotError::TemporaryRoot)?;
-            temporary
-        }
-        None => builder.tempdir()?,
-    });
+    let directory = temporary_directory(temporary_root)?;
     let database = directory.path().join("database.sqlite3");
     let mut expected = Vec::new();
     for (source, target) in [
@@ -446,7 +472,7 @@ fn transfer(
     deadline: Instant,
 ) -> Result<[u8; 32], SnapshotError> {
     let mut hash = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
+    let mut buffer = vec![0u8; 64 * 1024];
     let mut total = 0u64;
     loop {
         check_deadline(deadline)?;
@@ -482,8 +508,8 @@ fn check_deadline(deadline: Instant) -> Result<(), SnapshotError> {
 #[allow(unsafe_code)]
 fn lock_read(file: &File, start: libc::off_t, length: libc::off_t) -> Result<(), SnapshotError> {
     let mut lock = libc::flock {
-        l_type: libc::F_RDLCK as _,
-        l_whence: libc::SEEK_SET as _,
+        l_type: i16::try_from(libc::F_RDLCK).expect("Linux F_RDLCK fits l_type"),
+        l_whence: i16::try_from(libc::SEEK_SET).expect("Linux SEEK_SET fits l_whence"),
         l_start: start,
         l_len: length,
         l_pid: 0,

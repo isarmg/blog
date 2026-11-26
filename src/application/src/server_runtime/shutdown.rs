@@ -63,6 +63,8 @@ pub struct ProcessSignals {
 }
 
 impl ProcessSignals {
+    /// # Errors
+    /// The runtime cannot register a signal handler.
     pub fn install() -> io::Result<Self> {
         use tokio::signal::unix::{SignalKind, signal};
         Ok(Self {
@@ -70,6 +72,8 @@ impl ProcessSignals {
             terminate: signal(SignalKind::terminate())?,
         })
     }
+    /// # Errors
+    /// A signal stream closes before delivering a process signal.
     pub async fn recv(&mut self) -> io::Result<&'static str> {
         tokio::select! {
             value = self.interrupt.recv() => value.map(|()| "SIGINT"),

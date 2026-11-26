@@ -1,4 +1,3 @@
-use crate::Error;
 use crate::{
     AppState, PRODUCT_ID,
     app::router,
@@ -6,6 +5,7 @@ use crate::{
     database::{open_database, validate_existing_database},
     lifecycle, media, schema, static_assets,
 };
+use crate::{Error, error::finish_operation};
 use blog_application::admin_auth::AdministratorOriginMode;
 use blog_application::admin_core::AdministratorService;
 use blog_application::admin_sqlite::SqliteAdministratorStore;
@@ -13,25 +13,12 @@ use std::{fs, path::Path, sync::Arc};
 
 pub(crate) async fn run(root: &Path) -> Result<(), Error> {
     static_assets::verify()?;
-    let loaded = config::load(root, &root.join("config/config.json"))?;
-    let settings = &loaded.value;
-    let log_layer = blog_application::log::BlogStructuredLayer::new("blog")?;
-    use tracing::collector::prelude::*;
-    tracing::collector::registry()
-        .with(
-            settings
-                .log_level
-                .parse::<tracing::collector::filter::LevelFilter>()
-                .expect("invariant: configured log level was validated"),
-        )
-        .with(log_layer)
-        .try_init()?;
+    let settings = config::load(root, &root.join("config/config.json"))?.value;
+    initialize_logging(&settings)?;
     let database = settings.database_path();
     let media = settings.media_path();
     let bind = settings.bind;
-    let web = settings.web.clone();
-    let development = settings.development;
-    if let Some(web) = &web
+    if let Some(web) = &settings.web
         && !fs::metadata(web.join("index.html"))
             .map_err(Error::ReadWebEntry)?
             .is_file()
@@ -39,7 +26,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
         return Err(Error::InvalidWebEntry);
     }
     blog_application::fs_safety::PrivateDirectory::open_existing(&media)?;
-    let instance_lock = config::runtime_lock(settings)?;
+    let instance_lock = config::runtime_lock(&settings)?;
     let pool = match async {
         validate_existing_database(&database, &settings.root.join("run")).await?;
         open_database(&database).await
@@ -47,15 +34,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
     .await
     {
         Ok(pool) => pool,
-        Err(operation) => {
-            return match instance_lock.release() {
-                Ok(()) => Err(operation),
-                Err(release) => Err(Error::StateRelease {
-                    operation: Box::new(operation),
-                    release,
-                }),
-            };
-        }
+        Err(operation) => return finish_operation(Err(operation), instance_lock.release()),
     };
     let scope = blog_application::server_runtime::WorkScope::new();
     let participant = Arc::new(lifecycle::Lifecycle {
@@ -64,7 +43,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
         lock: std::sync::Mutex::new(Some(instance_lock)),
     });
     let result = async {
-        let origin = if development {
+        let origin = if settings.development {
             AdministratorOriginMode::LoopbackDevelopmentHttp
         } else {
             AdministratorOriginMode::ProductionHttps
@@ -72,7 +51,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
         let admin = Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
             pool.clone(),
         )));
-        attach_log_file(settings)?;
+        attach_log_file(&settings)?;
         tracing::info!(event = "common.config.loaded");
         let health_pool = pool.clone();
         let runtime = blog_application::server_runtime::ServerRuntime::builder(
@@ -92,8 +71,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
                 async move { crate::app::database_ready(&pool).await }
             }),
         )
-        .build()
-        .await?;
+        .build()?;
         media::recover_deletions(&pool, &media).await?;
         let state = AppState {
             scope,
@@ -105,7 +83,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
             public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
             password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
         };
-        let app = router(state, web)?;
+        let app = router(state, settings.web)?;
         let signals = blog_application::server_runtime::ProcessSignals::install()
             .map_err(Error::InstallProcessSignals)?;
         let listeners = blog_application::server_runtime::BoundListeners::bind([bind])
@@ -132,15 +110,7 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
     }
     .await;
     pool.close().await;
-    match (result, participant.release_lock()) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(operation), Ok(())) => Err(operation),
-        (Ok(()), Err(release)) => Err(release.into()),
-        (Err(operation), Err(release)) => Err(Error::StateRelease {
-            operation: Box::new(operation),
-            release,
-        }),
-    }
+    finish_operation(result, participant.release_lock())
 }
 
 fn attach_log_file(settings: &config::Settings) -> Result<(), Error> {
@@ -149,5 +119,20 @@ fn attach_log_file(settings: &config::Settings) -> Result<(), Error> {
         "server",
         blog_application::log::LogRetention::default(),
     )?)?;
+    Ok(())
+}
+
+fn initialize_logging(settings: &config::Settings) -> Result<(), Error> {
+    use tracing::collector::prelude::*;
+    let log_layer = blog_application::log::BlogStructuredLayer::new("blog")?;
+    tracing::collector::registry()
+        .with(
+            settings
+                .log_level
+                .parse::<tracing::collector::filter::LevelFilter>()
+                .expect("invariant: configured log level was validated"),
+        )
+        .with(log_layer)
+        .try_init()?;
     Ok(())
 }

@@ -22,7 +22,7 @@ fn huge_cells_are_rejected_without_affecting_another_connection()
         assert_eq!(
             error
                 .as_database_error()
-                .and_then(|error| error.code())
+                .and_then(sqlx::error::DatabaseError::code)
                 .as_deref(),
             Some("18")
         );
@@ -42,7 +42,7 @@ fn huge_cells_are_rejected_without_affecting_another_connection()
             sqlx::query_scalar::<_, i64>("SELECT length(zeroblob(2097152))")
                 .fetch_one(&mut second)
                 .await?,
-            2097152
+            2_097_152
         );
         first.close().await?;
         second.close().await?;

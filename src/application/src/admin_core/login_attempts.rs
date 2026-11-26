@@ -30,12 +30,17 @@ where
 }
 
 impl AuthenticationState {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Call exactly once before credential lookup or password verification.
     /// Success never clears the window. Rejections do not extend it.
+    /// # Errors
+    /// The shared login attempt window is full.
+    /// # Panics
+    /// A previous caller poisoned the admission lock.
     pub fn admit_login_attempt(&self) -> Result<(), AuthenticationStateError> {
         let now = Instant::now();
         let mut window = self
@@ -46,14 +51,14 @@ impl AuthenticationState {
             started_at: now,
             admitted: 0,
         });
-        if now.duration_since(current.started_at) >= LOGIN_ATTEMPTS_WINDOW {
+        let remaining =
+            LOGIN_ATTEMPTS_WINDOW.saturating_sub(now.duration_since(current.started_at));
+        if remaining.is_zero() {
             *current = Window {
                 started_at: now,
                 admitted: 0,
             };
-        }
-        if current.admitted == LOGIN_ATTEMPTS_MAX {
-            let remaining = LOGIN_ATTEMPTS_WINDOW - now.duration_since(current.started_at);
+        } else if current.admitted == LOGIN_ATTEMPTS_MAX {
             let retry_after_seconds =
                 remaining.as_secs() + u64::from(remaining.subsec_nanos() != 0);
             return Err(AuthenticationStateError::LoginAttemptsExceeded {

@@ -1,4 +1,8 @@
-use super::*;
+use super::{
+    AdapterState, AdministratorStore, HeaderMap, IntoResponse, Method, PasswordWorkError, Request,
+    RequestId, Response, Router, State, StatusCode, Uri, authenticate_request, body, error,
+    no_store, now_micros, post, request_id,
+};
 use crate::admin_core::{AdministratorManagementContext, ManagementError};
 pub(super) fn account_routes<Store: AdministratorStore + 'static>(
     router: Router<AdapterState<Store>>,
@@ -86,12 +90,12 @@ fn mutation_response<E: std::error::Error + Send + Sync + 'static>(
 ) -> Response {
     match result {
         Ok(()) => no_store(StatusCode::NO_CONTENT.into_response()),
-        Err(failure) => management_error(failure, id),
+        Err(failure) => management_error(&failure, id),
     }
 }
 
 fn management_error<E: std::error::Error + Send + Sync + 'static>(
-    failure: ManagementError<E>,
+    failure: &ManagementError<E>,
     id: Option<&RequestId>,
 ) -> Response {
     let (status, code, retryable) = match failure {

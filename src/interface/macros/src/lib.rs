@@ -15,7 +15,6 @@ mod builder;
 mod component;
 mod diagnostics;
 mod names;
-mod token_join;
 
 /// Generates a typed props builder and component constructor.
 ///
@@ -98,9 +97,4 @@ fn component_macro(s: TokenStream, is_transparent: bool) -> syn::Result<proc_mac
 #[proc_macro_derive(TypedBuilder, attributes(builder))]
 pub fn typed_builder(input: TokenStream) -> TokenStream {
     builder::derive_typed_builder(input)
-}
-/// Joins identifiers in the generated reactive/view implementations.
-#[proc_macro]
-pub fn paste(input: TokenStream) -> TokenStream {
-    token_join::paste(input)
 }

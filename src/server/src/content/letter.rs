@@ -4,7 +4,7 @@ use blog_application::admin_core::AuthenticatedIdentity;
 use blog_application::error::HttpStatus;
 use serde::{Deserialize, Serialize};
 
-const MAX_STORED_LETTER_BYTES: usize = 128 * 1024;
+const MAX_STORED_LETTER_BYTES: i64 = 128 * 1024;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -91,7 +91,7 @@ async fn load_stored_letter(
     let mut rows = sqlx::query_as::<_, StoredLetter>(
         "SELECT id,CASE WHEN length(CAST(content AS BLOB))<=? THEN content ELSE NULL END AS content,is_public,image_path,source FROM wei_yan WHERE type='letter' AND user_id=? ORDER BY id LIMIT 2",
     )
-    .bind(MAX_STORED_LETTER_BYTES as i64)
+    .bind(MAX_STORED_LETTER_BYTES)
     .bind(author)
     .fetch_all(connection)
     .await?;

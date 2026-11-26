@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    Error, Identifier, SecurityAction, SecurityAuditEvent, SqliteAdministratorStore, insert_audit,
+    revoke_administrator_sessions, session_authorized_on_connection, to_i64,
+};
 use crate::admin_core::{
     AdministratorManagementContext, AdministratorMutation, AuditOutcome, ManagementError,
 };
@@ -9,7 +12,7 @@ type Failure = ManagementError<Error>;
 fn storage_error(error: sqlx::Error) -> Failure {
     if error
         .as_database_error()
-        .is_some_and(|error| error.is_unique_violation())
+        .is_some_and(sqlx::error::DatabaseError::is_unique_violation)
     {
         ManagementError::Conflict
     } else {

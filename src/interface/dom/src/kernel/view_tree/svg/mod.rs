@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 macro_rules! svg_elements {
 	($($tag:ident  [$($attr:ty),*]),* $(,)?) => {
-        blog_component_macros::paste! {
+        token_concat::paste! {
             $(
                 /// An SVG element.
                 // `tag()` function

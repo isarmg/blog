@@ -50,41 +50,8 @@ async fn execute(
 
 #[tokio::test]
 async fn generated_statements_initialize_reset_revoke_and_preserve_identity_atomically() {
-    let pool = sqlx::sqlite::SqlitePoolOptions::new()
-        .max_connections(1)
-        .connect("sqlite::memory:")
-        .await
-        .unwrap();
+    let (pool, schema, material) = installation_fixture().await;
     let mut connection = pool.acquire().await.unwrap();
-    sqlx::raw_sql(admin_sqlite::ADMIN_PERSISTENT_DDL)
-        .execute(&mut *connection)
-        .await
-        .unwrap();
-    sqlx::raw_sql(crate::schema_identity::PRODUCT_METADATA_DDL)
-        .execute(&mut *connection)
-        .await
-        .unwrap();
-    sqlx::raw_sql(platform_db::PLATFORM_METADATA_DDL)
-        .execute(&mut *connection)
-        .await
-        .unwrap();
-    let schema = SchemaIdentity::new(
-        "fixture",
-        "fixture-db-current",
-        1,
-        crate::sqlite::schema_fingerprint(&mut *connection)
-            .await
-            .unwrap(),
-    )
-    .unwrap();
-    let identity = ReleaseIdentity {
-        product: "fixture".into(),
-        version: "1.0.0".into(),
-        source_revision: "a".repeat(40),
-        target: "x86_64-unknown-linux-gnu".into(),
-        state_contract_sha256: "b".repeat(64),
-    };
-    let material = common(&identity, &schema, Some("server-control-plane")).unwrap();
     let original_password = "original fixture password";
     let original_hash = admin_auth::hash_password(original_password).unwrap();
     connection.execute("BEGIN IMMEDIATE").await.unwrap();
@@ -182,4 +149,39 @@ fn unsupported_profile_and_unsafe_schema_integer_are_rejected() {
     assert!(common(&identity, &schema, Some("retired-profile")).is_err());
     schema.schema_revision = crate::contracts::MAX_SAFE_JSON_INTEGER + 1;
     assert!(common(&identity, &schema, None).is_err());
+}
+
+async fn installation_fixture() -> (sqlx::SqlitePool, SchemaIdentity, Value) {
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+    let mut connection = pool.acquire().await.unwrap();
+    for ddl in [
+        admin_sqlite::ADMIN_PERSISTENT_DDL,
+        crate::schema_identity::PRODUCT_METADATA_DDL,
+        platform_db::PLATFORM_METADATA_DDL,
+    ] {
+        sqlx::raw_sql(ddl).execute(&mut *connection).await.unwrap();
+    }
+    let schema = SchemaIdentity::new(
+        "fixture",
+        "fixture-db-current",
+        1,
+        crate::sqlite::schema_fingerprint(&mut *connection)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let identity = ReleaseIdentity {
+        product: "fixture".into(),
+        version: "1.0.0".into(),
+        source_revision: "a".repeat(40),
+        target: "x86_64-unknown-linux-gnu".into(),
+        state_contract_sha256: "b".repeat(64),
+    };
+    let material = common(&identity, &schema, Some("server-control-plane")).unwrap();
+    drop(connection);
+    (pool, schema, material)
 }

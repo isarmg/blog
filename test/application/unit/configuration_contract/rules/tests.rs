@@ -5,11 +5,11 @@ use serde_json::json;
 fn rule_and_path_modes_accept_only_their_string_representation() {
     let range =
         json!({"kind":"integer-range","fields":["/value"],"arguments":{"minimum":1,"maximum":2}});
-    validate(json!([range]), json!({"value":1})).unwrap();
+    validate(&json!([range]), &json!({"value":1})).unwrap();
     let mut object_kind = range;
     object_kind["kind"] = json!({"integer-range":null});
     assert_eq!(
-        validate(json!([object_kind]), json!({"value":1}))
+        validate(&json!([object_kind]), &json!({"value":1}))
             .unwrap_err()
             .reason,
         Reason::InvalidMapping
@@ -17,7 +17,7 @@ fn rule_and_path_modes_accept_only_their_string_representation() {
 
     let path = json!({"base":"root","value":"state","fallback":null,"suffix":"","encoding":"path"});
     let rule = |path| json!([{"kind":"root-state-paths","fields":[],"arguments":{"paths":[path],"protected":[]}}]);
-    validate(rule(path.clone()), json!({})).unwrap();
+    validate(&rule(path.clone()), &json!({})).unwrap();
     for (field, object) in [
         ("base", json!({"root":null})),
         ("encoding", json!({"path":null})),
@@ -25,7 +25,7 @@ fn rule_and_path_modes_accept_only_their_string_representation() {
         let mut invalid = path.clone();
         invalid[field] = object;
         assert_eq!(
-            validate(rule(invalid), json!({})).unwrap_err().reason,
+            validate(&rule(invalid), &json!({})).unwrap_err().reason,
             Reason::InvalidMapping
         );
     }
@@ -35,8 +35,8 @@ fn rule_and_path_modes_accept_only_their_string_representation() {
 fn rule_decoding_and_address_failures_preserve_their_sources_privately() {
     use std::error::Error as _;
     let unknown = validate(
-        json!([{"kind":"private-unknown-rule","fields":[],"arguments":{}}]),
-        json!({}),
+        &json!([{"kind":"private-unknown-rule","fields":[],"arguments":{}}]),
+        &json!({}),
     )
     .unwrap_err();
     assert_eq!(unknown.reason, Reason::InvalidMapping);
@@ -49,8 +49,8 @@ fn rule_decoding_and_address_failures_preserve_their_sources_privately() {
             .is::<serde_json::Error>()
     );
     let address = validate(
-        json!([{"kind":"socket-address","fields":["/bind"],"arguments":{}}]),
-        json!({"bind":"private-invalid-address"}),
+        &json!([{"kind":"socket-address","fields":["/bind"],"arguments":{}}]),
+        &json!({"bind":"private-invalid-address"}),
     )
     .unwrap_err();
     assert_eq!(address.reason, Reason::InvalidValue);
@@ -72,21 +72,16 @@ fn rule_decoding_and_address_failures_preserve_their_sources_privately() {
     }
 }
 
-fn validate(rules: Value, value: Value) -> std::result::Result<(), ConfigError> {
-    validate_rules(
-        &rules,
-        &value,
-        Path::new("/opt/fixture"),
-        ConfigSource::File,
-    )
+fn validate(rules: &Value, value: &Value) -> std::result::Result<(), ConfigError> {
+    validate_rules(rules, value, Path::new("/opt/fixture"), ConfigSource::File)
 }
 
 #[test]
 fn optional_paths_and_relative_urls_still_reject_malformed_rule_arguments() {
     assert_eq!(
         validate(
-            json!([{"kind":"path","fields":["/path"],"arguments":{"optional":true,"absolute":"invalid"}}]),
-            json!({"path":null}),
+            &json!([{"kind":"path","fields":["/path"],"arguments":{"optional":true,"absolute":"invalid"}}]),
+            &json!({"path":null}),
         )
         .unwrap_err()
         .reason,
@@ -105,8 +100,8 @@ fn optional_paths_and_relative_urls_still_reject_malformed_rule_arguments() {
     ] {
         assert_eq!(
             validate(
-                json!([{"kind":"url","fields":["/url"],"arguments":arguments}]),
-                json!({"url":"/media/image.png"}),
+                &json!([{"kind":"url","fields":["/url"],"arguments":arguments}]),
+                &json!({"url":"/media/image.png"}),
             )
             .unwrap_err()
             .reason,
@@ -114,13 +109,13 @@ fn optional_paths_and_relative_urls_still_reject_malformed_rule_arguments() {
         );
     }
     validate(
-        json!([{"kind":"path","fields":["/path"],"arguments":{"optional":true,"absolute":true}}]),
-        json!({"path":null}),
+        &json!([{"kind":"path","fields":["/path"],"arguments":{"optional":true,"absolute":true}}]),
+        &json!({"path":null}),
     )
     .unwrap();
     validate(
-        json!([{"kind":"url","fields":["/url"],"arguments":{"relative_path":true,"allowed_schemes":["https"],"no_credentials":true,"no_query":true,"no_fragment":true}}]),
-        json!({"url":"/media/image.png"}),
+        &json!([{"kind":"url","fields":["/url"],"arguments":{"relative_path":true,"allowed_schemes":["https"],"no_credentials":true,"no_query":true,"no_fragment":true}}]),
+        &json!({"url":"/media/image.png"}),
     )
     .unwrap();
 }
@@ -135,7 +130,7 @@ fn current_numeric_socket_and_enum_rules_accept_boundaries_and_reject_unsafe_val
         {"kind":"distinct-sockets","fields":["/bind","/callback"],"arguments":{}}
     ]);
     let valid = json!({"idle":1,"total":60,"mode":"on","bind":"[::1]:8080","callback":"127.0.0.1:8080","development":true});
-    validate(rules.clone(), valid.clone()).unwrap();
+    validate(&rules, &valid).unwrap();
     for (field, bad) in [
         ("idle", json!(0)),
         ("total", json!(0)),
@@ -147,13 +142,13 @@ fn current_numeric_socket_and_enum_rules_accept_boundaries_and_reject_unsafe_val
     ] {
         let mut value = valid.clone();
         value[field] = bad;
-        let error = validate(rules.clone(), value).unwrap_err();
+        let error = validate(&rules, &value).unwrap_err();
         assert_eq!(error.source, ConfigSource::File);
         assert!(!serde_json::to_string(&error).unwrap().contains("unknown"));
     }
     let mut maximum = valid;
     maximum["idle"] = json!(60);
-    validate(rules, maximum).unwrap();
+    validate(&rules, &maximum).unwrap();
 }
 
 #[test]
@@ -163,7 +158,7 @@ fn state_paths_resolve_fallbacks_and_reject_reserved_or_overlapping_namespaces()
         {"base":"config","value":"/media","fallback":null,"suffix":"","encoding":"path"}
     ]);
     let rules = json!([{"kind":"root-state-paths","fields":[],"arguments":{"paths":paths,"protected":crate::server_layout::ROOT_RESERVED_DIRECTORIES}}]);
-    validate(rules.clone(), json!({"data":null,"media":"/srv/video"})).unwrap();
+    validate(&rules, &json!({"data":null,"media":"/srv/video"})).unwrap();
     for media in [
         "/opt/fixture/bin/videos",
         "/opt/fixture",
@@ -171,18 +166,18 @@ fn state_paths_resolve_fallbacks_and_reject_reserved_or_overlapping_namespaces()
         "/opt/fixture/../escape",
         "/",
     ] {
-        assert!(validate(rules.clone(), json!({"data":null,"media":media})).is_err());
+        assert!(validate(&rules, &json!({"data":null,"media":media})).is_err());
     }
     let sqlite = json!([{"kind":"root-state-paths","fields":[],"arguments":{"paths":[{"base":"config","value":"/database","fallback":null,"suffix":"","encoding":"sqlite-url"}],"protected":crate::server_layout::ROOT_RESERVED_DIRECTORIES}}]);
     validate(
-        sqlite.clone(),
-        json!({"database":"sqlite:///srv/data/current.db"}),
+        &sqlite,
+        &json!({"database":"sqlite:///srv/data/current.db"}),
     )
     .unwrap();
     assert!(
         validate(
-            sqlite,
-            json!({"database":"sqlite:///srv/data/current.db?mode=rw"})
+            &sqlite,
+            &json!({"database":"sqlite:///srv/data/current.db?mode=rw"})
         )
         .is_err()
     );
@@ -192,7 +187,7 @@ fn state_paths_resolve_fallbacks_and_reject_reserved_or_overlapping_namespaces()
 fn url_rules_match_loopback_and_current_production_rtsp_policy() {
     let rules = json!([{"kind":"url","fields":["/url"],"arguments":{"allowed_schemes":["rtsp","rtsps"],"no_credentials":true,"no_query":true,"no_fragment":true,"origin_only":true,"production_public_rtsps":true,"development_pointer":"/development"}}]);
     for valid in ["rtsps://video.example:8322", "rtsps://192.168.1.20:8322"] {
-        validate(rules.clone(), json!({"url":valid,"development":false})).unwrap();
+        validate(&rules, &json!({"url":valid,"development":false})).unwrap();
     }
     for invalid in [
         "rtsp://video.example:8554",
@@ -203,15 +198,18 @@ fn url_rules_match_loopback_and_current_production_rtsp_policy() {
         "rtsps://video.example:8322/camera",
         "rtsps://video.example:8322?secret=private",
     ] {
-        let error =
-            validate(rules.clone(), json!({"url":invalid,"development":false})).unwrap_err();
+        let error = validate(&rules, &json!({"url":invalid,"development":false})).unwrap_err();
         assert_eq!(error.path, "/url");
         assert!(!error.to_string().contains("private"));
     }
-    validate(rules, json!({"url":"rtsp://[::1]:8554","development":true})).unwrap();
+    validate(
+        &rules,
+        &json!({"url":"rtsp://[::1]:8554","development":true}),
+    )
+    .unwrap();
     let loopback = json!([{"kind":"url","fields":["/url"],"arguments":{"allowed_schemes":["http"],"loopback_host":true,"no_credentials":true,"no_query":true,"no_fragment":true}}]);
-    validate(loopback.clone(), json!({"url":"http://[::1]:9997"})).unwrap();
-    assert!(validate(loopback, json!({"url":"http://example.org:9997"})).is_err());
+    validate(&loopback, &json!({"url":"http://[::1]:9997"})).unwrap();
+    assert!(validate(&loopback, &json!({"url":"http://example.org:9997"})).is_err());
 }
 
 #[test]
@@ -219,11 +217,11 @@ fn external_assets_require_explicit_development_and_unbound_source() {
     for bound in [false, true] {
         let rule = json!([{"kind":"external-web-override","fields":["/web"],"arguments":{"development_pointer":"/development","source_bound":bound}}]);
         for development in [false, true] {
-            validate(rule.clone(), json!({"web":null,"development":development})).unwrap();
+            validate(&rule, &json!({"web":null,"development":development})).unwrap();
             assert_eq!(
                 validate(
-                    rule.clone(),
-                    json!({"web":"/tmp/assets","development":development})
+                    &rule,
+                    &json!({"web":"/tmp/assets","development":development})
                 )
                 .is_ok(),
                 development && !bound
@@ -241,15 +239,15 @@ fn unknown_rules_arguments_missing_values_and_definition_bounds_fail_closed() {
         json!({"kind":"path","fields":["/x~9"],"arguments":{}}),
     ] {
         assert_eq!(
-            validate(json!([rule]), json!({"path":"/tmp"}))
+            validate(&json!([rule]), &json!({"path":"/tmp"}))
                 .unwrap_err()
                 .reason,
             Reason::InvalidMapping
         );
     }
     let missing = validate(
-        json!([{"kind":"path","fields":["/missing"],"arguments":{}}]),
-        json!({}),
+        &json!([{"kind":"path","fields":["/missing"],"arguments":{}}]),
+        &json!({}),
     )
     .unwrap_err();
     assert_eq!(missing.reason, Reason::MissingField);
@@ -257,7 +255,7 @@ fn unknown_rules_arguments_missing_values_and_definition_bounds_fail_closed() {
         json!({"kind":"path","fields":["/path"],"arguments":{}});
         MAX_RULES + 1
     ]);
-    assert!(validate(oversized, json!({"path":"/tmp"})).is_err());
+    assert!(validate(&oversized, &json!({"path":"/tmp"})).is_err());
 }
 
 #[test]
@@ -266,14 +264,14 @@ fn declared_path_relationship_preserves_allowed_subtrees_and_protects_private_en
     for allow in [false, true] {
         let rules = json!([{"kind":"path-relation","fields":[],"arguments":{"parent":spec("/private"),"child":spec("/business"),"allow_child_subtree":allow,"forbidden_child_first_component_prefixes":["current.db","secrets.json",".state-"]}}]);
         validate(
-            rules.clone(),
-            json!({"private":"/srv/private","business":"/srv/business"}),
+            &rules,
+            &json!({"private":"/srv/private","business":"/srv/business"}),
         )
         .unwrap();
         assert_eq!(
             validate(
-                rules.clone(),
-                json!({"private":"/srv/private","business":"/srv/private/media"})
+                &rules,
+                &json!({"private":"/srv/private","business":"/srv/private/media"})
             )
             .is_ok(),
             allow
@@ -287,8 +285,8 @@ fn declared_path_relationship_preserves_allowed_subtrees_and_protects_private_en
         ] {
             assert!(
                 validate(
-                    rules.clone(),
-                    json!({"private":"/srv/private","business":business})
+                    &rules,
+                    &json!({"private":"/srv/private","business":business})
                 )
                 .is_err()
             );
@@ -300,23 +298,23 @@ fn declared_path_relationship_preserves_allowed_subtrees_and_protects_private_en
 fn integer_order_supports_strict_unit_conversion_and_rejects_overflow_or_unknown_arguments() {
     let rule = |arguments| json!([{"kind":"integer-order","fields":["/left","/right"],"arguments":arguments}]);
     let strict = rule(json!({"relation":"less-than","right_scale":1000}));
-    validate(strict.clone(), json!({"left":999,"right":1})).unwrap();
+    validate(&strict, &json!({"left":999,"right":1})).unwrap();
     for left in [1000, 1001, u64::MAX] {
-        assert!(validate(strict.clone(), json!({"left":left,"right":1})).is_err());
+        assert!(validate(&strict, &json!({"left":left,"right":1})).is_err());
     }
-    assert!(validate(strict, json!({"left":1,"right":u64::MAX})).is_err());
+    assert!(validate(&strict, &json!({"left":1,"right":u64::MAX})).is_err());
     let inclusive = rule(json!({"relation":"less-or-equal","left_scale":1000}));
-    validate(inclusive.clone(), json!({"left":1,"right":1000})).unwrap();
-    assert!(validate(inclusive, json!({"left":1,"right":999})).is_err());
+    validate(&inclusive, &json!({"left":1,"right":1000})).unwrap();
+    assert!(validate(&inclusive, &json!({"left":1,"right":999})).is_err());
     validate(
-        rule(json!({"relation":"less-or-equal"})),
-        json!({"left":1,"right":1}),
+        &rule(json!({"relation":"less-or-equal"})),
+        &json!({"left":1,"right":1}),
     )
     .unwrap();
     assert!(
         validate(
-            rule(json!({"relation":"less-than"})),
-            json!({"left":1,"right":1})
+            &rule(json!({"relation":"less-than"})),
+            &json!({"left":1,"right":1})
         )
         .is_err()
     );
@@ -327,7 +325,7 @@ fn integer_order_supports_strict_unit_conversion_and_rejects_overflow_or_unknown
         json!({"relation":"less-than","unrecognized":1}),
     ] {
         assert_eq!(
-            validate(rule(args), json!({"left":1,"right":2}))
+            validate(&rule(args), &json!({"left":1,"right":2}))
                 .unwrap_err()
                 .reason,
             Reason::InvalidMapping

@@ -52,21 +52,91 @@ async fn setup_with_password_slots(
     .await
     .unwrap();
     std::fs::write(dir.path().join("index.html"), "<h1>BLOG</h1>").unwrap();
+    let state = AppState {
+        password_slots,
+        ..fixture_state(dir.path(), &pool)
+    };
+    let app = router(state, Some(dir.path().to_path_buf())).unwrap();
+    (dir, app, pool)
+}
+
+fn fixture_state(media: &std::path::Path, pool: &SqlitePool) -> AppState {
     let admin = Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
         pool.clone(),
     )));
-    let state = AppState {
+    AppState {
         scope: blog_application::server_runtime::WorkScope::new(),
         pool: pool.clone(),
         admin,
         origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-        media: dir.path().to_path_buf(),
+        media: media.to_path_buf(),
         media_operations: Arc::new(tokio::sync::Mutex::new(())),
         public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-        password_slots,
-    };
-    let app = router(state, Some(dir.path().to_path_buf())).unwrap();
-    (dir, app, pool)
+        password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
+    }
+}
+
+async fn login(app: &Router) -> (String, String) {
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/login")
+                .header(header::HOST, "127.0.0.1:18881")
+                .header(header::ORIGIN, "http://127.0.0.1:18881")
+                .header("sec-fetch-site", "same-origin")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let cookie = response
+        .headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
+        .collect::<Vec<_>>()
+        .join("; ");
+    let value = body_json(response).await;
+    (cookie, value["csrf_token"].as_str().unwrap().to_owned())
+}
+
+fn admin_headers(
+    session: &(String, String),
+    method: &str,
+    path: &str,
+) -> axum::http::request::Builder {
+    Request::builder()
+        .method(method)
+        .uri(path)
+        .header(header::HOST, "127.0.0.1:18881")
+        .header(header::ORIGIN, "http://127.0.0.1:18881")
+        .header("sec-fetch-site", "same-origin")
+        .header(header::COOKIE, &session.0)
+        .header("x-csrf-token", &session.1)
+        .header(header::CONTENT_TYPE, "application/json")
+}
+
+async fn admin(
+    app: &Router,
+    session: &(String, String),
+    method: &str,
+    path: &str,
+    value: serde_json::Value,
+) -> Response {
+    app.clone()
+        .oneshot(
+            admin_headers(session, method, path)
+                .body(Body::from(value.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
 }
 
 async fn body_json(response: Response) -> serde_json::Value {
@@ -117,7 +187,7 @@ async fn native_value_limits_preserve_valid_articles_and_survive_connection_repl
         assert_eq!(
             error
                 .as_database_error()
-                .and_then(|error| error.code())
+                .and_then(sqlx::error::DatabaseError::code)
                 .as_deref(),
             Some("18")
         );
@@ -682,7 +752,7 @@ async fn anonymous_comments_enforce_content_and_article_visibility() {
             StatusCode::FORBIDDEN
         );
     }
-    for content in ["".to_string(), " ".to_string(), "x".repeat(1025)] {
+    for content in [String::new(), " ".to_string(), "x".repeat(1025)] {
         assert_eq!(
             anonymous_post(
                 &app,
@@ -891,18 +961,7 @@ async fn comment_submission_retries_survive_concurrency_restart_and_deletion() {
         .await
         .unwrap();
     let app = router(
-        AppState {
-            scope: blog_application::server_runtime::WorkScope::new(),
-            pool: pool.clone(),
-            admin: Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
-                pool.clone(),
-            ))),
-            origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-            media: dir.path().to_path_buf(),
-            media_operations: Arc::new(tokio::sync::Mutex::new(())),
-            public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-            password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
-        },
+        fixture_state(dir.path(), &pool),
         Some(dir.path().to_path_buf()),
     )
     .unwrap();
@@ -1181,18 +1240,7 @@ async fn article_related_reads_keep_authorization_and_content_in_one_snapshot() 
                 })
             })
             .connect_lazy_with((*fixture_pool.connect_options()).clone());
-        let state = AppState {
-            scope: blog_application::server_runtime::WorkScope::new(),
-            pool: pool.clone(),
-            admin: Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
-                pool.clone(),
-            ))),
-            origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-            media: directory.path().to_path_buf(),
-            media_operations: Arc::new(tokio::sync::Mutex::new(())),
-            public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-            password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
-        };
+        let state = fixture_state(directory.path(), &pool);
         let app = router(state, None).unwrap();
         let response = app
             .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())

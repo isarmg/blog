@@ -27,7 +27,7 @@ pub(super) struct MessageCommentInput {
 pub(super) async fn create_comment(
     State(state): State<AppState>,
     crate::ContractJson(input): crate::ContractJson<CommentInput>,
-) -> ApiResult<Comment> {
+) -> ApiResult<PublicComment> {
     create_anonymous_comment(
         &state,
         CommentTarget::Article(input.article_id),
@@ -43,7 +43,7 @@ pub(super) async fn create_comment(
 pub(super) async fn create_message_comment(
     State(state): State<AppState>,
     crate::ContractJson(input): crate::ContractJson<MessageCommentInput>,
-) -> ApiResult<Comment> {
+) -> ApiResult<PublicComment> {
     create_anonymous_comment(
         &state,
         CommentTarget::Message,
@@ -55,7 +55,7 @@ pub(super) async fn create_message_comment(
 pub(super) async fn create_love_comment(
     State(state): State<AppState>,
     crate::ContractJson(input): crate::ContractJson<MessageCommentInput>,
-) -> ApiResult<Comment> {
+) -> ApiResult<PublicComment> {
     let source = crate::site_author_id(&state.pool).await?;
     create_anonymous_comment(
         &state,
@@ -127,7 +127,7 @@ async fn create_anonymous_comment(
     state: &AppState,
     target: CommentTarget,
     input: CommentSubmission,
-) -> ApiResult<Comment> {
+) -> ApiResult<PublicComment> {
     let source = target.source();
     let kind = target.as_str();
     let content = input.content.as_str();
@@ -167,7 +167,7 @@ async fn create_anonymous_comment(
             HttpStatus::Conflict,
             "原评论已删除，不会重复发表",
         ))?;
-        let comment = sqlx::query_as::<_, Comment>(sqlx::AssertSqlSafe(format!(
+        let comment = sqlx::query_as::<_, PublicComment>(sqlx::AssertSqlSafe(format!(
             "{COMMENT_SQL} WHERE c.id=?"
         )))
         .bind(id)
@@ -205,11 +205,12 @@ async fn create_anonymous_comment(
         .bind(id)
         .execute(&mut *transaction)
         .await?;
-    let comment =
-        sqlx::query_as::<_, Comment>(sqlx::AssertSqlSafe(format!("{COMMENT_SQL} WHERE c.id=?")))
-            .bind(id)
-            .fetch_one(&mut *transaction)
-            .await?;
+    let comment = sqlx::query_as::<_, PublicComment>(sqlx::AssertSqlSafe(format!(
+        "{COMMENT_SQL} WHERE c.id=?"
+    )))
+    .bind(id)
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
     Ok(Json(comment))
 }
@@ -222,7 +223,7 @@ pub(super) struct CommentsQuery {
     size: Option<i64>,
 }
 #[derive(Serialize, sqlx::FromRow)]
-pub(super) struct Comment {
+pub(super) struct PublicComment {
     id: i64,
     user_id: Option<i64>,
     username: Option<String>,
@@ -257,7 +258,7 @@ async fn read_root_comments(
     connection: &mut sqlx::SqliteConnection,
     target: CommentTarget,
     pagination: PageBounds,
-) -> Result<PageResult<Comment>, AppError> {
+) -> Result<PageResult<PublicComment>, AppError> {
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
@@ -285,7 +286,7 @@ async fn read_comment_replies(
     target: CommentTarget,
     id: i64,
     pagination: PageBounds,
-) -> Result<PageResult<Comment>, AppError> {
+) -> Result<PageResult<PublicComment>, AppError> {
     let total = sqlx::query_scalar(
         "SELECT COUNT(*) FROM comment WHERE floor_comment_id=? AND source=? AND type=?",
     )
@@ -311,7 +312,7 @@ async fn read_comment_replies(
 pub(super) async fn comments(
     State(state): State<AppState>,
     Query(query): Query<CommentsQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     // Authorization and returned comments must describe the same snapshot.
     let mut transaction = state.pool.begin().await?;
     visible_comment_article(&mut transaction, query.article_id).await?;
@@ -334,7 +335,7 @@ pub(super) async fn comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Query(query): Query<PageQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let article = sqlx::query_scalar(
         "SELECT c.source FROM comment c JOIN article a ON a.id=c.source
@@ -359,7 +360,7 @@ pub(super) async fn comment_replies(
 pub(super) async fn message_comments(
     State(state): State<AppState>,
     Query(query): Query<PageQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let result = read_root_comments(
         &mut transaction,
@@ -375,7 +376,7 @@ pub(super) async fn message_comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Query(query): Query<PageQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let root: Option<i64> = sqlx::query_scalar(
         "SELECT id FROM comment WHERE id=? AND source=0 AND type='message'
@@ -401,7 +402,7 @@ pub(super) async fn message_comment_replies(
 pub(super) async fn love_comments(
     State(state): State<AppState>,
     Query(query): Query<PageQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
     let result = read_root_comments(
@@ -418,7 +419,7 @@ pub(super) async fn love_comment_replies(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Query(query): Query<PageQuery>,
-) -> ApiResult<PageResult<Comment>> {
+) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
     let root: Option<i64> = sqlx::query_scalar(

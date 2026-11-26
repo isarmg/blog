@@ -19,7 +19,7 @@ pub fn envelope_contract() -> serde_json::Value {
     serde_json::json!({
         "format": "secret-envelope-policy-v1",
         "sources": ["src/secret_envelope/mod.rs", "src/secret_envelope/data/current-envelope-v1.json"],
-        "magic_hex": MAGIC.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
+        "magic_hex": crate::hexadecimal(MAGIC),
         "header": ["magic", "u16be(expected-domain-revision)", "nonce", "ciphertext-with-tag"],
         "header_bytes": HEADER_BYTES, "nonce_bytes": NONCE_BYTES, "tag_bytes": TAG_BYTES,
         "master_key_bytes": MASTER_KEY_BYTES,

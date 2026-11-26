@@ -1,6 +1,7 @@
 use super::*;
 use crate::schema_identity::SchemaRow;
 use crate::sqlite::MAX_SCHEMA_OBJECTS;
+use std::fmt::Write as _;
 
 #[test]
 fn fingerprints_canonical_schema_inside_and_outside_tokio() -> Result<(), Box<dyn std::error::Error>>
@@ -42,9 +43,10 @@ fn rejects_input_and_schema_object_excess_and_sql_errors() {
         fingerprint_trusted_ddl(&["CREATE not valid"]),
         Err(DdlFingerprintError::Sqlite(_))
     ));
-    let ddl = (0..=MAX_SCHEMA_OBJECTS)
-        .map(|index| format!("CREATE TABLE item_{index}(id INTEGER);"))
-        .collect::<String>();
+    let mut ddl = String::new();
+    for index in 0..=MAX_SCHEMA_OBJECTS {
+        write!(ddl, "CREATE TABLE item_{index}(id INTEGER);").unwrap();
+    }
     assert!(matches!(
         fingerprint_trusted_ddl(&[&ddl]),
         Err(DdlFingerprintError::ResultLimit)

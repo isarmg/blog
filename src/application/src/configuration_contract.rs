@@ -11,6 +11,9 @@ pub use rules::validate_rules;
 
 /// Generate the current JSON shape and defaults from one owned definition.
 /// Product-specific semantic checks and path rules remain product authorities.
+///
+/// # Errors
+/// Returns the error if the configuration defaults cannot be serialized.
 pub fn generate<T: JsonSchema + Serialize + Default>()
 -> Result<serde_json::Value, serde_json::Error> {
     Ok(serde_json::json!({

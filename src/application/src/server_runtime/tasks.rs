@@ -23,9 +23,14 @@ pub struct TrackedTasks {
 pub struct WorkClosed;
 
 impl TrackedTasks {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
+    /// # Errors
+    /// Task registration has been closed for draining.
+    /// # Panics
+    /// The registration lock is poisoned or no asynchronous runtime is available.
     pub fn try_spawn<F>(&self, future: F) -> Result<JoinHandle<F::Output>, WorkClosed>
     where
         F: Future + Send + 'static,
@@ -41,6 +46,8 @@ impl TrackedTasks {
     }
     /// For producers already protected by an admitted request or tracked work.
     /// Closing before those producers finish is a caller invariant violation.
+    /// # Panics
+    /// Registration has closed, the registration lock is poisoned, or no asynchronous runtime is available.
     pub fn spawn<F>(&self, future: F) -> JoinHandle<F::Output>
     where
         F: Future + Send + 'static,
@@ -49,16 +56,23 @@ impl TrackedTasks {
         self.try_spawn(future)
             .expect("producer attempted registration after drain")
     }
+    /// # Panics
+    /// A previous caller poisoned the registration lock.
     pub fn close(&self) {
         *self.closed.lock().expect("task registration lock poisoned") = true;
         self.tracker.close();
     }
+    /// # Panics
+    /// A previous caller poisoned the registration lock.
+    #[must_use]
     pub fn is_closed(&self) -> bool {
         *self.closed.lock().expect("task registration lock poisoned")
     }
+    #[must_use]
     pub fn len(&self) -> usize {
         self.tracker.len()
     }
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.tracker.is_empty()
     }
@@ -89,13 +103,14 @@ impl Default for WorkScope {
     }
 }
 impl WorkScope {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
     pub async fn enter_request(&self) -> Option<OwnedRwLockReadGuard<()>> {
         let guard = tokio::select! {
             biased;
-            _ = self.shutdown.cancelled() => return None,
+            () = self.shutdown.cancelled() => return None,
             guard = self.request_gate.clone().read_owned() => guard,
         };
         (!self.shutdown.is_cancelled()).then_some(guard)

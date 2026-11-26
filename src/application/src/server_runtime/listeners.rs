@@ -15,6 +15,8 @@ impl BoundListeners {
     /// The first successfully bound address establishes the shared port; any
     /// later address using port zero is rebound to that same fixed or dynamic port.
     /// Failure drops every previous bind before product state can be opened.
+    /// # Errors
+    /// The address list is empty or a socket cannot be bound or inspected.
     pub fn bind(addresses: impl IntoIterator<Item = SocketAddr>) -> io::Result<Self> {
         let mut listeners = Vec::new();
         let mut bound = Vec::new();
@@ -43,6 +45,8 @@ impl BoundListeners {
         })
     }
 
+    /// # Errors
+    /// The supplied listener's local address cannot be read or the socket cannot be converted.
     pub fn from_listener(listener: tokio::net::TcpListener) -> io::Result<Self> {
         let address = listener.local_addr()?;
         let listener = listener.into_std()?;
@@ -56,6 +60,7 @@ impl BoundListeners {
         })
     }
 
+    #[must_use]
     pub fn addresses(&self) -> &[SocketAddr] {
         &self.addresses
     }

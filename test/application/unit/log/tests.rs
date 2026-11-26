@@ -135,7 +135,7 @@ fn record_and_query_budgets_reject_unbounded_inputs_without_partial_output() {
         .attributes
         .insert("data".into(), Value::String("x".repeat(MAX_RECORD_BYTES)));
     assert!(too_large.write_to(&mut writer).is_err());
-    assert!(writer.is_empty());
+    assert_eq!(writer, [] as [u8; 0]);
     assert!(matches!(
         query(
             &vec![b'x'; MAX_RECORD_BYTES + 1][..],

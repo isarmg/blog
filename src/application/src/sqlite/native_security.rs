@@ -1,4 +1,4 @@
-//! One-way connection hardening through SQLx's exclusive native handle.
+//! One-way connection hardening through `SQLx`'s exclusive native handle.
 use sqlx::{SqliteConnection, sqlite::LockedSqliteHandle};
 use thiserror::Error;
 
@@ -12,9 +12,11 @@ pub enum ConnectionSecurityError {
 
 /// Enable SQLite's defensive mode and read back the effective setting.
 ///
-/// This is connection-local and cannot disable the setting. SQLx has no safe
+/// This is connection-local and cannot disable the setting. `SQLx` has no safe
 /// db-config API, and SQLite has no equivalent defensive PRAGMA. Call before
 /// product statements; a failed connection must not be used afterwards.
+/// # Errors
+/// The native handle is unavailable or the database rejects defensive mode.
 pub async fn enable_defensive(
     connection: &mut SqliteConnection,
 ) -> Result<(), ConnectionSecurityError> {
@@ -38,13 +40,13 @@ fn set_and_verify(handle: &mut LockedSqliteHandle<'_>) -> Result<(), ConnectionS
             database,
             libsqlite3_sys::SQLITE_DBCONFIG_DEFENSIVE,
             1 as std::ffi::c_int,
-            &mut enabled as *mut std::ffi::c_int,
+            &raw mut enabled,
         );
         let read = libsqlite3_sys::sqlite3_db_config(
             database,
             libsqlite3_sys::SQLITE_DBCONFIG_DEFENSIVE,
             -1 as std::ffi::c_int,
-            &mut enabled as *mut std::ffi::c_int,
+            &raw mut enabled,
         );
         (set, read)
     };

@@ -2,13 +2,13 @@
 
 //! Utilities for working with enumerated types that contain one of `2..n` other types.
 
-use blog_component_macros::paste;
 use core::{
     cmp::Ordering,
     error::Error,
     fmt::Display,
     iter::{Product, Sum},
 };
+use token_concat::paste;
 
 macro_rules! tuples {
     ($name:ident + $fut_name:ident + $fut_proj:ident {

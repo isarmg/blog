@@ -28,6 +28,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::{collections::BTreeMap, future::Future, pin::Pin, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, watch};
 
+static HEADER: axum::http::HeaderName = axum::http::HeaderName::from_static("x-request-id");
 pub const LIVENESS_PATH: &str = "/healthz";
 pub const READINESS_PATH: &str = "/readyz";
 /// Exact platform roots/subtrees that filesystem consumers must reserve.
@@ -53,6 +54,8 @@ pub struct ProductDescriptor {
 }
 
 impl ProductDescriptor {
+    /// # Errors
+    /// A descriptor field or source digest is invalid.
     pub fn validate(&self) -> Result<(), Error> {
         for (label, value) in [
             ("id", &self.id),
@@ -159,7 +162,7 @@ impl RuntimeHandle {
         // Retain the request even before the runtime or HTTP listener subscribes.
         self.shutdown.send_replace(true);
     }
-    pub fn shutdown_signal(&self) -> watch::Receiver<bool> {
+    pub(crate) fn shutdown_signal(&self) -> watch::Receiver<bool> {
         self.shutdown.subscribe()
     }
     pub async fn health(&self) -> HealthSnapshot {
@@ -223,6 +226,7 @@ struct TaskRegistration {
 type SupervisedTask = dyn FnOnce(watch::Receiver<bool>) -> Pin<Box<dyn Future<Output = std::io::Result<()>> + Send>>
     + Send;
 
+#[must_use]
 pub struct ServerRuntimeBuilder {
     product: ProductDescriptor,
     schema_identity: Option<crate::schema_identity::SchemaIdentity>,
@@ -239,11 +243,12 @@ impl ServerRuntime {
             tasks: vec![],
         }
     }
+    #[must_use]
     pub fn handle(&self) -> RuntimeHandle {
         self.handle.clone()
     }
 
-    pub async fn run_until_shutdown(mut self) {
+    pub(crate) async fn run_until_shutdown(mut self) {
         let mut runtime_shutdown = self.handle.shutdown_signal();
         let joins = tokio_util::task::TaskTracker::new();
         for registration in self.tasks.drain(..) {
@@ -287,7 +292,7 @@ impl ServerRuntime {
                 break;
             }
             tokio::select! {
-                _ = wait_for_shutdown(&mut runtime_shutdown) => break,
+                () = wait_for_shutdown(&mut runtime_shutdown) => break,
                 _ = health_interval.tick() => self.refresh_health().await,
             }
         }
@@ -331,24 +336,6 @@ pub async fn wait_for_shutdown(shutdown: &mut watch::Receiver<bool>) {
     }
 }
 
-/// Create a route-only runtime handle. Servers that already own their socket
-/// lifecycle can adopt the xcss HTTP surface before moving workers into
-/// [`ServerRuntime`]. No background task is left unsupervised by this helper.
-pub fn platform_handle(product: ProductDescriptor) -> Result<RuntimeHandle, Error> {
-    product.validate()?;
-    let (shutdown, _) = watch::channel(false);
-    Ok(RuntimeHandle {
-        state: Arc::new(RwLock::new(RuntimeState {
-            product,
-            schema_identity: None,
-            checks: BTreeMap::new(),
-            tasks: BTreeMap::new(),
-            shutting_down: false,
-        })),
-        shutdown,
-    })
-}
-
 impl ServerRuntimeBuilder {
     pub fn with_schema_identity(
         mut self,
@@ -383,7 +370,9 @@ impl ServerRuntimeBuilder {
         });
         self
     }
-    pub async fn build(self) -> Result<ServerRuntime, Error> {
+    /// # Errors
+    /// The descriptor or schema identity is invalid, or a registered name is duplicated.
+    pub fn build(self) -> Result<ServerRuntime, Error> {
         self.product.validate()?;
         if let Some(schema) = &self.schema_identity
             && (schema.validate().is_err() || schema.application != self.product.id)
@@ -431,7 +420,7 @@ impl ServerRuntimeBuilder {
 
 /// Generate a bounded correlation identifier for one request.
 /// Clock/counter bytes keep correlation available if the OS entropy source fails.
-pub fn new_request_id() -> RequestId {
+pub(crate) fn new_request_id() -> RequestId {
     static FALLBACK_COUNTER: AtomicU64 = AtomicU64::new(1);
     let mut bytes = [0_u8; 16];
     if let Err(error) = getrandom::fill(&mut bytes) {
@@ -445,13 +434,8 @@ pub fn new_request_id() -> RequestId {
         bytes[..8].copy_from_slice(&counter.to_be_bytes());
         bytes[8..].copy_from_slice(&elapsed[8..]);
     }
-    RequestId::new(
-        bytes
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>(),
-    )
-    .expect("invariant: 16 bytes encode to a valid 32-character request ID")
+    RequestId::new(crate::hexadecimal(&bytes))
+        .expect("invariant: 16 bytes encode to a valid 32-character request ID")
 }
 
 #[derive(Clone)]
@@ -462,6 +446,8 @@ struct PlatformState {
 /// Compose the xcss-owned auth, health and readiness routes.
 /// Request IDs are installed once by `serve`, outside product URI validation.
 /// No administrator diagnostics endpoint is provided. Product routes must be merged separately.
+/// # Errors
+/// The administrator routes cannot be constructed for the supplied product identifier.
 pub fn platform_router<Store>(
     handle: RuntimeHandle,
     product_id: impl Into<String>,
@@ -472,8 +458,7 @@ where
     Store: crate::admin_core::AdministratorStore + 'static,
 {
     let product_id = product_id.into();
-    let auth =
-        crate::admin_axum::administrator_router(product_id, mode, Arc::clone(&administrator))?;
+    let auth = crate::admin_axum::administrator_router(product_id, mode, administrator)?;
     let state = PlatformState { handle };
     let runtime = Router::new()
         .route(LIVENESS_PATH, get(liveness))
@@ -597,7 +582,6 @@ where
             Err(never) => match never {},
         };
     }
-    static HEADER: axum::http::HeaderName = axum::http::HeaderName::from_static("x-request-id");
     let request_id = {
         let values = request.headers().get_all(&HEADER);
         let mut values = values.iter();

@@ -22,8 +22,8 @@ async fn response_service_identity_is_parsed_before_router_installation() {
 #[test]
 fn filesystem_failures_keep_machine_semantics_and_hide_diagnostics() {
     use crate::state_file::{Error, LockKind};
-    let private = tempfile::tempdir().unwrap();
     use std::os::unix::fs::PermissionsExt;
+    let private = tempfile::tempdir().unwrap();
     std::fs::set_permissions(private.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     let directory = crate::state_file::PrivateStateDirectory::open(private.path()).unwrap();
     let missing = directory.open_existing("SECRET-path").err().unwrap();
@@ -98,11 +98,14 @@ fn machine_errors_emit_one_contract_record_and_no_human_output() {
         serde_json::from_slice::<ErrorEnvelope>(&output).unwrap(),
         error
     );
-    assert_eq!(output.iter().filter(|byte| **byte == b'\n').count(), 1);
-    assert!(diagnostics.is_empty());
+    let line = output
+        .strip_suffix(b"\n")
+        .expect("record ends with a newline");
+    assert!(!line.contains(&b'\n'));
+    assert_eq!(diagnostics, [] as [u8; 0]);
     output.clear();
     write_error(&error, false, &mut output, &mut diagnostics).unwrap();
-    assert!(output.is_empty());
+    assert_eq!(output, [] as [u8; 0]);
     assert!(
         String::from_utf8(diagnostics)
             .unwrap()

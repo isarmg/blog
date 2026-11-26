@@ -2,7 +2,7 @@
 #![deny(unsafe_code)]
 use anyhow::{Context, ensure};
 use clap::{Parser, Subcommand};
-use std::{io::Read, path::PathBuf};
+use std::{io::Read, path::PathBuf, process::ExitCode};
 
 #[derive(Parser)]
 #[command(version, about = "Initialize and maintain a stopped Blog instance")]
@@ -69,19 +69,15 @@ async fn execute(cli: Cli) -> anyhow::Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> std::process::ExitCode {
-    match execute(Cli::parse()).await {
-        Ok(()) => {
-            println!("Blog offline operation completed.");
-            std::process::ExitCode::SUCCESS
-        }
-        Err(_) => {
-            // Errors may carry input values. Never print a chained diagnostic
-            // from a password-consuming operation.
-            eprintln!(
-                "Blog offline operation failed. Verify configuration, permissions, current state, stopped writers and credential policy."
-            );
-            std::process::ExitCode::FAILURE
-        }
+async fn main() -> ExitCode {
+    if execute(Cli::parse()).await.is_ok() {
+        println!("Blog offline operation completed.");
+        ExitCode::SUCCESS
+    } else {
+        // The error chain may contain password input.
+        eprintln!(
+            "Blog offline operation failed. Verify configuration, permissions, current state, stopped writers and credential policy."
+        );
+        ExitCode::FAILURE
     }
 }

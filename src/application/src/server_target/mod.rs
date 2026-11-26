@@ -18,6 +18,8 @@ pub const SERVER_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 pub const SERVER_ARCHITECTURE: &str = "amd64";
 
 /// Assert that release/config metadata has not drifted from the compiled gate.
+/// # Errors
+/// The target differs from the supported native triple.
 pub fn require_server_target(value: &str) -> Result<(), UnsupportedServerTarget> {
     if value == SERVER_TARGET_TRIPLE {
         Ok(())
@@ -34,6 +36,7 @@ pub struct UnsupportedServerTarget {
 }
 
 impl UnsupportedServerTarget {
+    #[must_use]
     pub fn actual(&self) -> &str {
         &self.actual
     }

@@ -1,36 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
 
-async fn session(app: &Router) -> (String, String) {
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let response = body_json(response).await;
-    (cookie, response["csrf_token"].as_str().unwrap().to_owned())
-}
-
 async fn write(
     app: &Router,
     session: &(String, String),
@@ -39,15 +9,7 @@ async fn write(
     value: Value,
     key: Option<&str>,
 ) -> Response {
-    let mut request = Request::builder()
-        .method(method)
-        .uri(path)
-        .header(header::HOST, "127.0.0.1:18881")
-        .header(header::ORIGIN, "http://127.0.0.1:18881")
-        .header("sec-fetch-site", "same-origin")
-        .header(header::COOKIE, &session.0)
-        .header("x-csrf-token", &session.1)
-        .header(header::CONTENT_TYPE, "application/json");
+    let mut request = admin_headers(session, method, path);
     if let Some(key) = key {
         request = request.header("Idempotency-Key", key);
     }
@@ -65,7 +27,7 @@ async fn seed(pool: &SqlitePool) {
 #[tokio::test]
 async fn news_rejects_relative_times_and_invalid_calendar_dates_without_mutation() {
     let (_directory, app, pool) = setup().await;
-    let auth = session(&app).await;
+    let auth = login(&app).await;
     seed(&pool).await;
     let invalid = [
         "now",
@@ -136,7 +98,7 @@ async fn news_rejects_relative_times_and_invalid_calendar_dates_without_mutation
 #[tokio::test]
 async fn news_normalized_absolute_time_keeps_lost_response_retries_on_one_record() {
     let (_directory, app, pool) = setup().await;
-    let auth = session(&app).await;
+    let auth = login(&app).await;
     seed(&pool).await;
     let response = write(
         &app,
@@ -176,7 +138,7 @@ async fn news_normalized_absolute_time_keeps_lost_response_retries_on_one_record
 #[tokio::test]
 async fn news_accepts_absolute_utc_dates_and_blank_edit_preserves_the_saved_time() {
     let (_directory, app, pool) = setup().await;
-    let auth = session(&app).await;
+    let auth = login(&app).await;
     seed(&pool).await;
     for (time, expected) in [
         ("2024-02-29", "2024-02-29 00:00:00"),

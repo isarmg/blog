@@ -4928,6 +4928,37 @@
       ],
       "reason": "Apply the complete rustix 1.1.6 changes to the retained raw syscall sources, including the extended-attribute buffer and query implementations. Preserve the AMD64-only backend, local test paths and Cargo feature closure; keep the upstream ioctl regression under test/.",
       "production_behavior_change": true
+    },
+    {
+      "directory": "src/interface/macros",
+      "files": [
+        "Cargo.toml",
+        "INTEGRATED-SOURCES.json",
+        "src/lib.rs",
+        "src/token_join/attr.rs",
+        "src/token_join/error.rs",
+        "src/token_join/mod.rs",
+        "src/token_join/segment.rs"
+      ],
+      "reason": "Remove the redundant paste-derived implementation and its entry point after moving all maintained consumers to the existing token-concat package. Preserve the historical source and license receipts.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/syntax/token-concat",
+      "files": [
+        "Cargo.toml",
+        "src/attr.rs",
+        "src/lib.rs",
+        "src/segment.rs"
+      ],
+      "reason": "Use the pinned edition/toolchain, report attribute lexing and environment lookup failures as diagnostics, and share case conversion without blanket Clippy exemptions. Preserve token-concat’s expansion rules and move its environment regression with the retained implementation.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/interface/dom",
+      "file": "Cargo.toml",
+      "reason": "Route DOM compile-time name generation to the same local proc macro as the style compiler. No browser runtime or asset parsing dependency is added.",
+      "production_behavior_change": false
     }
   ]
 }

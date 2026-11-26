@@ -1,4 +1,4 @@
-//! Strict SQLx adapters for the Blog SQLite baseline.
+//! Strict `SQLx` adapters for the Blog SQLite baseline.
 //!
 //! This crate does not own product DDL, migrations, locking, backup, restore or
 //! file-permission policy. Opening an existing database and allowing SQLite to
@@ -53,6 +53,7 @@ pub const MAX_FOREIGN_KEY_EVIDENCE: usize = 32;
 /// Durability and correctness PRAGMAs are not configurable: every connection
 /// uses WAL, foreign keys, a five-second busy timeout and FULL synchronous.
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[must_use]
 pub struct PoolOptions {
     max_connections: u32,
     min_connections: u32,
@@ -75,11 +76,6 @@ impl PoolOptions {
         self
     }
 
-    pub const fn with_acquire_timeout(mut self, acquire_timeout: Duration) -> Self {
-        self.acquire_timeout = acquire_timeout;
-        self
-    }
-
     /// Apply native limits before product statements on every new connection,
     /// including connections replacing closed or failed pool members.
     pub const fn with_connection_limits(mut self, limits: ConnectionLimits) -> Self {
@@ -87,18 +83,23 @@ impl PoolOptions {
         self
     }
 
+    #[must_use]
     pub const fn max_connections(&self) -> u32 {
         self.max_connections
     }
 
+    #[must_use]
     pub const fn min_connections(&self) -> u32 {
         self.min_connections
     }
 
+    #[must_use]
     pub const fn acquire_timeout(&self) -> Duration {
         self.acquire_timeout
     }
 
+    /// # Errors
+    /// The pool size, acquisition timeout, or connection limits are invalid.
     pub fn validate(&self) -> Result<(), PoolOptionsError> {
         if self.max_connections == 0 {
             return Err(PoolOptionsError::ZeroMaxConnections);
@@ -129,6 +130,8 @@ impl Default for PoolOptions {
 
 /// Open an existing SQLite file. This operation never asks SQLite to create a
 /// missing file and reports an initially missing path as a typed error.
+/// # Errors
+/// Pool settings are invalid, the file is missing, or the database cannot be opened and configured.
 pub async fn open_existing(
     database_path: impl AsRef<Path>,
     options: PoolOptions,
@@ -156,6 +159,8 @@ pub async fn open_existing(
 
 /// Open a SQLite file, explicitly allowing SQLite to create it when missing.
 /// This is not a schema initializer and may also open an already-existing file.
+/// # Errors
+/// Pool settings are invalid or the database cannot be created, opened, or configured.
 pub async fn create_if_missing(
     database_path: impl AsRef<Path>,
     options: PoolOptions,
@@ -217,6 +222,8 @@ fn pool_connect_error(error: sqlx::Error) -> Error {
 }
 
 /// Require the complete integrity-check result to be the single value `ok`.
+/// # Errors
+/// The integrity check cannot run or its result is not the single value `ok`.
 pub async fn integrity_check(pool: &SqlitePool) -> Result<(), Error> {
     let messages: Vec<String> = sqlx::query_scalar("PRAGMA integrity_check")
         .fetch_all(pool)
@@ -239,6 +246,8 @@ pub struct ForeignKeyViolation {
 ///
 /// Failure retains at most the first 32 violations as evidence. It never treats
 /// a partial evidence collection as a successful integrity check.
+/// # Errors
+/// The check fails or reports a foreign-key violation.
 pub async fn foreign_key_check(pool: &SqlitePool) -> Result<(), Error> {
     let violations =
         sqlx::query("SELECT \"table\", rowid, parent, fkid FROM pragma_foreign_key_check LIMIT 32")
@@ -261,6 +270,8 @@ pub async fn foreign_key_check(pool: &SqlitePool) -> Result<(), Error> {
 }
 
 /// Truncate-checkpoint the WAL and reject both busy and incomplete results.
+/// # Errors
+/// The checkpoint fails, remains busy, or is incomplete.
 pub async fn checkpoint(pool: &SqlitePool) -> Result<(), Error> {
     let result: (i64, i64, i64) = sqlx::query_as("PRAGMA wal_checkpoint(TRUNCATE)")
         .fetch_one(pool)
@@ -286,14 +297,14 @@ fn validate_checkpoint_result(
     Ok(())
 }
 
-/// Read the canonically filtered and ordered rows using any SQLx SQLite
+/// Read the canonically filtered and ordered rows using any `SQLx` SQLite
 /// executor, including a pool, connection or transaction connection.
 ///
 /// At most 1024 objects / 4 MiB of UTF-8 fields are accepted. The SQL projection
 /// suppresses all text before transfer to the driver when either bound is
 /// exceeded. No fingerprint is computed from a truncated subset. This bounds
 /// the returned data, not SQLite's native schema loading or total process heap.
-pub async fn schema_rows<'executor, E>(executor: E) -> Result<Vec<SchemaRow>, Error>
+pub(crate) async fn schema_rows<'executor, E>(executor: E) -> Result<Vec<SchemaRow>, Error>
 where
     E: Executor<'executor, Database = Sqlite>,
 {
@@ -321,8 +332,10 @@ where
     .fetch_all(executor)
     .await?;
     if let Some(row) = rows.first()
-        && (row.try_get::<i64, _>(4)? > MAX_SCHEMA_OBJECTS as i64
-            || row.try_get::<i64, _>(5)? > MAX_SCHEMA_BYTES as i64)
+        && (row.try_get::<i64, _>(4)?
+            > i64::try_from(MAX_SCHEMA_OBJECTS).expect("compiled limit fits SQLite INTEGER")
+            || row.try_get::<i64, _>(5)?
+                > i64::try_from(MAX_SCHEMA_BYTES).expect("compiled limit fits SQLite INTEGER"))
     {
         return Err(Error::SchemaBudgetExceeded);
     }
@@ -340,8 +353,10 @@ where
     Ok(rows)
 }
 
-/// Calculate the canonical schema fingerprint using an arbitrary SQLx SQLite
+/// Calculate the canonical schema fingerprint using an arbitrary `SQLx` SQLite
 /// executor. The pure algorithm lives in `blog_application::schema_identity`.
+/// # Errors
+/// Reading or validating the bounded, ordered schema rows fails.
 pub async fn schema_fingerprint<'executor, E>(executor: E) -> Result<String, Error>
 where
     E: Executor<'executor, Database = Sqlite>,
@@ -351,7 +366,7 @@ where
 
 /// Validate the metadata table and return an identity only after its declared
 /// fingerprint has been verified against the actual schema.
-pub async fn read_schema_identity(
+pub(crate) async fn read_schema_identity(
     connection: &mut SqliteConnection,
 ) -> Result<SchemaIdentity, Error> {
     validate_metadata_table(connection).await?;
@@ -363,6 +378,8 @@ pub async fn read_schema_identity(
 }
 
 /// Validate an identity against exact compiled current values.
+/// # Errors
+/// The database cannot be read or its identity does not match the expected current schema.
 pub async fn require_current_schema(
     connection: &mut SqliteConnection,
     expected: &SchemaIdentity,
@@ -372,13 +389,17 @@ pub async fn require_current_schema(
     Ok(actual)
 }
 
-/// Pool convenience wrapper around [`read_schema_identity`].
+/// Acquire a pool connection and verify the schema identity against its actual fingerprint.
+/// # Errors
+/// A connection cannot be acquired or the database schema identity cannot be verified.
 pub async fn read_pool_schema_identity(pool: &SqlitePool) -> Result<SchemaIdentity, Error> {
     let mut connection = pool.acquire().await?;
     read_schema_identity(&mut connection).await
 }
 
 /// Pool convenience wrapper around [`require_current_schema`].
+/// # Errors
+/// A connection cannot be acquired or its database differs from the expected current schema.
 pub async fn require_pool_current_schema(
     pool: &SqlitePool,
     expected: &SchemaIdentity,

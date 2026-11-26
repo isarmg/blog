@@ -34,7 +34,7 @@ fn json_data_reason(error: &dyn std::error::Error) -> &'static str {
         let json_error = error.downcast_ref::<serde_json::Error>().or_else(|| {
             error
                 .downcast_ref::<serde::error_path::Error<serde_json::Error>>()
-                .map(|error| error.inner())
+                .map(serde::error_path::Error::inner)
         });
         if let Some(error) = json_error {
             // Inspect only the serializer's stable category prefixes. Neither

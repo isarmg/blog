@@ -3,17 +3,21 @@ use bytes::Bytes;
 
 /// Serve a precompressed WASM variant when the client accepts gzip.
 ///
-/// `serve` remains responsible for safe asset lookup, representation ETags and
+/// `serve` remains responsible for safe asset lookup, representation `ETags` and
 /// GET/HEAD/conditional responses. A missing gzip variant may fall back to
 /// identity only when it is acceptable; otherwise an existing resource returns
 /// an empty 406. Other files, missing resources and methods pass through intact.
+/// # Panics
+/// The built-in response headers cannot be encoded.
 pub fn response(
     path: &str,
     method: &http::Method,
     headers: &http::HeaderMap,
     serve: impl Fn(&str, &http::Method, &http::HeaderMap) -> http::Response<Bytes>,
 ) -> http::Response<Bytes> {
-    if !path.ends_with(".wasm") || (method != http::Method::GET && method != http::Method::HEAD) {
+    if path.strip_suffix(".wasm").is_none()
+        || (method != http::Method::GET && method != http::Method::HEAD)
+    {
         return serve(path, method, headers);
     }
     let accepted = http::header::accepted_encodings(headers);

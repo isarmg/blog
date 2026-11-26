@@ -27,15 +27,15 @@ fn limited<T>(resource: libc::__rlimit_resource_t, bytes: u64, f: impl FnOnce() 
     // the original limits and signal disposition are restored after f.
     unsafe {
         let mut old = std::mem::zeroed::<libc::rlimit>();
-        assert_eq!(libc::getrlimit(resource, &mut old), 0);
+        assert_eq!(libc::getrlimit(resource, &raw mut old), 0);
         let handler = libc::signal(libc::SIGXFSZ, libc::SIG_IGN);
         let new = libc::rlimit {
             rlim_cur: bytes,
             ..old
         };
-        assert_eq!(libc::setrlimit(resource, &new), 0);
+        assert_eq!(libc::setrlimit(resource, &raw const new), 0);
         let result = f();
-        assert_eq!(libc::setrlimit(resource, &old), 0);
+        assert_eq!(libc::setrlimit(resource, &raw const old), 0);
         libc::signal(libc::SIGXFSZ, handler);
         result
     }

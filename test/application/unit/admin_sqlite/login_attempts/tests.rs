@@ -212,7 +212,13 @@ async fn expired_unowned_registry_entry_releases_file_and_memory_identity_pins()
     let mut registry = Registry::default();
     let state = registry.acquire(scope, &owner, Some(file)).unwrap();
     state.admit_login_attempt().unwrap();
-    assert!(registry.entries[&scope]._database_identity_pin.is_some());
+    assert!(matches!(
+        registry.entries[&scope],
+        Entry {
+            _database_identity_pin: Some(_),
+            ..
+        }
+    ));
     let memory_owner = Arc::new(SqliteConnectOptions::new());
     let weak = Arc::downgrade(&memory_owner);
     let memory_scope = Scope::Memory(Arc::as_ptr(&memory_owner) as usize);

@@ -13,15 +13,52 @@ struct Case {
     replay: bool,
 }
 
+fn link_cases() -> [Case; 3] {
+    let link = json!({
+        "title":"mine", "classify":null, "cover":null, "url":"https://example.test/",
+        "introduction":null, "link_type":"favorites", "status":true
+    });
+    [
+        (
+            "create link",
+            "",
+            "POST",
+            "/api/v1/content/links",
+            link.clone(),
+        ),
+        (
+            "update link",
+            "INSERT INTO resource_path(id,title,type,status) VALUES(17,'old','favorites',0)",
+            "PUT",
+            "/api/v1/content/links/17",
+            link,
+        ),
+        (
+            "change link status",
+            "INSERT INTO resource_path(id,title,type,status) VALUES(17,'mine','favorites',0)",
+            "PUT",
+            "/api/v1/content/links/17/status",
+            json!({"active":true}),
+        ),
+    ]
+    .map(|(name, seed, method, path, input)| Case {
+        name,
+        seed,
+        method,
+        path,
+        input,
+        next_write: "DELETE FROM resource_path WHERE title='mine' AND status=1",
+        response_field: "/title",
+        expected: "mine",
+        replay: false,
+    })
+}
+
 fn cases() -> Vec<Case> {
     let article = json!({
         "article_title":"mine", "article_content":"My submitted body", "article_cover":null,
         "video_url":null, "sort_id":1, "label_id":1, "view_status":true,
         "recommend_status":false, "comment_status":true, "password":null, "tips":null
-    });
-    let link = json!({
-        "title":"mine", "classify":null, "cover":null, "url":"https://example.test/",
-        "introduction":null, "link_type":"favorites", "status":true
     });
     let family = json!({
         "bg_cover":null, "man_cover":null, "woman_cover":null, "man_name":"mine",
@@ -59,41 +96,7 @@ fn cases() -> Vec<Case> {
             next_write:"UPDATE article SET article_title='later' WHERE article_title IN ('mine','edited before retry')",
             response_field:"/article_title", expected:if replay {"edited before retry"} else {"mine"}, replay });
     }
-    for (name, seed, method, path, input) in [
-        (
-            "create link",
-            "",
-            "POST",
-            "/api/v1/content/links",
-            link.clone(),
-        ),
-        (
-            "update link",
-            "INSERT INTO resource_path(id,title,type,status) VALUES(17,'old','favorites',0)",
-            "PUT",
-            "/api/v1/content/links/17",
-            link,
-        ),
-        (
-            "change link status",
-            "INSERT INTO resource_path(id,title,type,status) VALUES(17,'mine','favorites',0)",
-            "PUT",
-            "/api/v1/content/links/17/status",
-            json!({"active":true}),
-        ),
-    ] {
-        cases.push(Case {
-            name,
-            seed,
-            method,
-            path,
-            input,
-            next_write: "DELETE FROM resource_path WHERE title='mine' AND status=1",
-            response_field: "/title",
-            expected: "mine",
-            replay: false,
-        });
-    }
+    cases.extend(link_cases());
     for (name, seed, method, path) in [
         ("create family", "", "POST", "/api/v1/content/family"),
         (
@@ -148,20 +151,12 @@ async fn committed_responses_survive_a_subsequent_writer_and_replays_read_curren
         if !case.seed.is_empty() {
             sqlx::raw_sql(case.seed).execute(&old_pool).await.unwrap();
         }
-        let session = session(&old_app).await;
+        let session = login(&old_app).await;
         if case.replay {
             let response = old_app
                 .clone()
                 .oneshot(
-                    Request::builder()
-                        .method("POST")
-                        .uri(case.path)
-                        .header(header::HOST, "127.0.0.1:18881")
-                        .header(header::ORIGIN, "http://127.0.0.1:18881")
-                        .header("sec-fetch-site", "same-origin")
-                        .header(header::COOKIE, &session.0)
-                        .header("x-csrf-token", &session.1)
-                        .header(header::CONTENT_TYPE, "application/json")
+                    admin_headers(&session, "POST", case.path)
                         .header("Idempotency-Key", "response-race")
                         .body(Body::from(case.input.to_string()))
                         .unwrap(),
@@ -213,18 +208,7 @@ async fn committed_responses_survive_a_subsequent_writer_and_replays_read_curren
             .connect_with(options)
             .await
             .unwrap();
-        let state = AppState {
-            scope: blog_application::server_runtime::WorkScope::new(),
-            pool: pool.clone(),
-            admin: Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
-                pool.clone(),
-            ))),
-            origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-            media: directory.path().to_path_buf(),
-            media_operations: Arc::new(tokio::sync::Mutex::new(())),
-            public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-            password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
-        };
+        let state = fixture_state(directory.path(), &pool);
         // Authentication itself is independent of response snapshot generation;
         // use a genuine service-created identity and retain transaction checks.
         let app = crate::content::admin_routes()

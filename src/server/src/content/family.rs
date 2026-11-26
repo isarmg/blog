@@ -6,7 +6,7 @@ use blog_application::server_cli::ContractPath as Path;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, sqlx::FromRow)]
-pub(super) struct Family {
+pub(super) struct PublicFamily {
     id: i64,
     bg_cover: Option<String>,
     man_cover: Option<String>,
@@ -18,9 +18,9 @@ pub(super) struct Family {
     countdown_time: Option<String>,
     family_info: Option<String>,
 }
-pub(super) async fn family(State(state): State<AppState>) -> ApiResult<Vec<Family>> {
+pub(super) async fn family(State(state): State<AppState>) -> ApiResult<Vec<PublicFamily>> {
     let author = crate::site_author_id(&state.pool).await?;
-    Ok(Json(sqlx::query_as::<_,Family>("SELECT id,bg_cover,man_cover,woman_cover,man_name,woman_name,timing,countdown_title,countdown_time,family_info FROM family WHERE user_id=? AND status=1")
+    Ok(Json(sqlx::query_as::<_,PublicFamily>("SELECT id,bg_cover,man_cover,woman_cover,man_name,woman_name,timing,countdown_title,countdown_time,family_info FROM family WHERE user_id=? AND status=1")
         .bind(author).fetch_all(&state.pool).await?))
 }
 
@@ -65,8 +65,8 @@ pub(super) struct FamilyInput {
     family_info: Option<String>,
     status: bool,
 }
-fn valid_image(value: &Option<String>) -> bool {
-    value.as_deref().is_none_or(|v| {
+fn valid_image(value: Option<&str>) -> bool {
+    value.is_none_or(|v| {
         v.len() <= 2048
             && (v.starts_with("https://") || v.starts_with("http://") || v.starts_with("/media/"))
     })
@@ -89,9 +89,9 @@ fn validate_family(input: &FamilyInput) -> Result<(), AppError> {
             .family_info
             .as_deref()
             .is_some_and(|v| v.chars().count() > 1024)
-        || !valid_image(&input.bg_cover)
-        || !valid_image(&input.man_cover)
-        || !valid_image(&input.woman_cover)
+        || !valid_image(input.bg_cover.as_deref())
+        || !valid_image(input.man_cover.as_deref())
+        || !valid_image(input.woman_cover.as_deref())
     {
         return Err(invalid("恋爱笔记内容无效"));
     }

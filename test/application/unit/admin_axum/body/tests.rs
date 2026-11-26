@@ -37,6 +37,18 @@ fn request(body: Body) -> Request {
         .unwrap()
 }
 
+struct BrokenBody;
+impl http_body::Body for BrokenBody {
+    type Data = Bytes;
+    type Error = std::io::Error;
+    fn poll_frame(
+        self: Pin<&mut Self>,
+        _: &mut Context<'_>,
+    ) -> Poll<Option<Result<Frame<Bytes>, Self::Error>>> {
+        Poll::Ready(Some(Err(std::io::Error::other("SECRET transport details"))))
+    }
+}
+
 #[test]
 fn global_budget_releases_permits_without_source_identity() {
     let admission = BodyAdmission::isolated();
@@ -199,17 +211,6 @@ async fn exact_size_boundary_and_malformed_transport_are_distinct_safe_errors() 
         .status(),
         StatusCode::PAYLOAD_TOO_LARGE
     );
-    struct BrokenBody;
-    impl http_body::Body for BrokenBody {
-        type Data = Bytes;
-        type Error = std::io::Error;
-        fn poll_frame(
-            self: Pin<&mut Self>,
-            _: &mut Context<'_>,
-        ) -> Poll<Option<Result<Frame<Bytes>, Self::Error>>> {
-            Poll::Ready(Some(Err(std::io::Error::other("SECRET transport details"))))
-        }
-    }
     let response = read_bounded(Body::new(BrokenBody), Scope::Login, None)
         .await
         .unwrap_err();

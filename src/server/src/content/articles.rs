@@ -30,7 +30,7 @@ pub(super) struct ArticleSummary {
 }
 
 #[derive(Serialize, sqlx::FromRow)]
-pub(super) struct Article {
+pub(super) struct ArticleDetail {
     id: i64,
     user_id: i64,
     article_title: String,
@@ -54,7 +54,7 @@ pub(super) struct Article {
     update_time: Option<String>,
 }
 
-const ARTICLE_SUMMARY_COLUMNS: &str = r#"SELECT id,article_title,article_cover,sort_id,label_id,
+const ARTICLE_SUMMARY_COLUMNS: &str = r"SELECT id,article_title,article_cover,sort_id,label_id,
     (SELECT sort_name FROM sort WHERE sort.id=article.sort_id) AS sort_name,
     (SELECT label_name FROM label WHERE label.id=article.label_id) AS label_name,
     view_count,like_count,
@@ -63,7 +63,7 @@ const ARTICLE_SUMMARY_COLUMNS: &str = r#"SELECT id,article_title,article_cover,s
     CASE WHEN password IS NULL THEN substr(article_content,1,400) ELSE NULL END AS excerpt,
     CASE WHEN ?2<>'' AND password IS NULL AND article_title NOT LIKE ?3 ESCAPE '\'
         THEN substr(article_content,max(1,instr(lower(article_content),lower(?2))-48),160)
-        ELSE NULL END AS search_snippet"#;
+        ELSE NULL END AS search_snippet";
 const ARTICLE_SQL: &str = "SELECT id,user_id,article_title,article_content,article_cover,video_url,
     sort_id,label_id,view_count,like_count,
     (SELECT COUNT(*) FROM comment WHERE source=article.id AND type='article') AS comment_count,
@@ -91,12 +91,6 @@ enum ArticleAudience {
     Administrator,
 }
 
-#[derive(Clone, Copy)]
-enum SearchMode {
-    Browse,
-    Search,
-}
-
 async fn list_articles(
     pool: &SqlitePool,
     query: ArticleQuery,
@@ -118,51 +112,9 @@ async fn list_articles(
             .replace('%', "\\%")
             .replace('_', "\\_")
     );
-    let predicate = match audience {
-        ArticleAudience::Public => "deleted=0 AND (view_status=1 OR password IS NOT NULL)",
-        ArticleAudience::Administrator => "deleted=0",
-    };
     let recommended = query.recommended.map(i64::from);
     let phrase = format!("\"{}\"", search.replace('"', "\"\""));
-    let body_match = match audience {
-        ArticleAudience::Public => "(password IS NULL AND article_content LIKE ?3 ESCAPE '\\')",
-        ArticleAudience::Administrator => "article_content LIKE ?3 ESCAPE '\\'",
-    };
-    // Bind positions stay fixed, while absent filters no longer hide useful
-    // equality constraints from SQLite behind parameter-dependent OR terms.
-    let filters = format!(
-        "{} AND {} AND {}",
-        if query.sort_id.is_some() {
-            "sort_id=?1"
-        } else {
-            "?1 IS NULL"
-        },
-        if query.label_id.is_some() {
-            "label_id=?6"
-        } else {
-            "?6 IS NULL"
-        },
-        if recommended.is_some() {
-            "recommend_status=?4"
-        } else {
-            "?4 IS NULL"
-        },
-    );
-    let search_mode = if search.is_empty() {
-        SearchMode::Browse
-    } else {
-        SearchMode::Search
-    };
-    let filter = match search_mode {
-        SearchMode::Browse => format!("{predicate} AND {filters}"),
-        SearchMode::Search => {
-            let search_index = " AND (length(?2)<3 OR id IN (SELECT rowid FROM article_search WHERE article_search MATCH ?5))";
-            format!(
-                "{predicate} AND {filters} AND (article_title LIKE ?3 ESCAPE '\\' OR {body_match}){search_index}"
-            )
-        }
-    };
-    let (count_sql, list_sql) = article_page_sql(&filter, &filters, audience, search_mode);
+    let (count_sql, list_sql) = article_page_sql(&query, audience, search);
     let mut transaction = pool.begin().await?;
     let total: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(count_sql))
         .bind(query.sort_id)
@@ -189,13 +141,21 @@ async fn list_articles(
 }
 
 fn article_page_sql(
-    filter: &str,
-    filters: &str,
+    query: &ArticleQuery,
     audience: ArticleAudience,
-    search_mode: SearchMode,
+    search: &str,
 ) -> (String, String) {
-    let (count, page) = match (audience, search_mode) {
-        (ArticleAudience::Public, SearchMode::Browse) => {
+    // Only column names and SQL fragments come from here; user values stay bound.
+    let filters = [
+        query.sort_id.map_or("?1 IS NULL", |_| "sort_id=?1"),
+        query.label_id.map_or("?6 IS NULL", |_| "label_id=?6"),
+        query
+            .recommended
+            .map_or("?4 IS NULL", |_| "recommend_status=?4"),
+    ]
+    .join(" AND ");
+    let (count, page) = match (audience, search) {
+        (ArticleAudience::Public, "") => {
             // The disjoint visible/protected branches preserve the public contract.
             // The visible branch can walk article_public_latest in date order.
             let visible = format!("deleted=0 AND view_status=1 AND {filters}");
@@ -214,20 +174,50 @@ fn article_page_sql(
                 ),
             )
         }
-        (ArticleAudience::Administrator, SearchMode::Browse)
-        | (ArticleAudience::Public, SearchMode::Search)
-        | (ArticleAudience::Administrator, SearchMode::Search) => {
-            let (rank, order) = match search_mode {
-                SearchMode::Search => (
-                    "CASE WHEN article_title LIKE ?3 ESCAPE '\\' THEN 0 ELSE 1 END",
-                    "page_search_rank,page_created_at DESC,article_id DESC",
+        (audience, search) => {
+            let (visible, body_guard) = match audience {
+                ArticleAudience::Public => (
+                    " AND (view_status=1 OR password IS NOT NULL)",
+                    "password IS NULL AND ",
                 ),
-                SearchMode::Browse => ("0", "page_created_at DESC,article_id DESC"),
+                ArticleAudience::Administrator => ("", ""),
             };
+            // With a taxonomy key, let its index drive the query and test FTS membership.
+            // Global trigram searches start from FTS hits, not all undeleted articles.
+            // Leave embedded NUL handling to the original SQLite length/LIKE predicates.
+            let (table, hits) = if search.is_empty() {
+                ("article", "")
+            } else if query.sort_id.is_none()
+                && query.label_id.is_none()
+                && !search.contains('\0')
+                && search.chars().nth(2).is_some()
+            {
+                (
+                    "(SELECT rowid AS hit_id FROM article_search WHERE article_search MATCH ?5) AS hits CROSS JOIN article ON article.id=hits.hit_id",
+                    "",
+                )
+            } else {
+                (
+                    "article",
+                    " AND (length(?2)<3 OR id IN (SELECT rowid FROM article_search WHERE article_search MATCH ?5))",
+                )
+            };
+            let (text, rank, order) = if search.is_empty() {
+                (String::new(), "0", "page_created_at DESC,article_id DESC")
+            } else {
+                (
+                    format!(
+                        r" AND (article_title LIKE ?3 ESCAPE '\' OR ({body_guard}article_content LIKE ?3 ESCAPE '\'))"
+                    ),
+                    r"CASE WHEN article_title LIKE ?3 ESCAPE '\' THEN 0 ELSE 1 END",
+                    "page_search_rank,page_created_at DESC,article_id DESC",
+                )
+            };
+            let from = format!("FROM {table} WHERE deleted=0{visible} AND {filters}{text}{hits}");
             (
-                format!("SELECT COUNT(*) FROM article WHERE {filter}"),
+                format!("SELECT COUNT(*) {from}"),
                 format!(
-                    "SELECT id AS article_id,create_time AS page_created_at,{rank} AS page_search_rank FROM article WHERE {filter} ORDER BY {order} LIMIT ?7 OFFSET ?8"
+                    "SELECT id AS article_id,create_time AS page_created_at,{rank} AS page_search_rank {from} ORDER BY {order} LIMIT ?7 OFFSET ?8"
                 ),
             )
         }
@@ -262,7 +252,7 @@ async fn load_article<'executor, E>(
     executor: E,
     id: i64,
     audience: ArticleAudience,
-) -> Result<Article, AppError>
+) -> Result<ArticleDetail, AppError>
 where
     E: sqlx::Executor<'executor, Database = sqlx::Sqlite>,
 {
@@ -270,7 +260,7 @@ where
         ArticleAudience::Administrator => "id=? AND deleted=0",
         ArticleAudience::Public => "id=? AND deleted=0 AND view_status=1 AND password IS NULL",
     };
-    sqlx::query_as::<_, Article>(sqlx::AssertSqlSafe(format!(
+    sqlx::query_as::<_, ArticleDetail>(sqlx::AssertSqlSafe(format!(
         "{ARTICLE_SQL} WHERE {condition}"
     )))
     .bind(id)
@@ -282,7 +272,7 @@ where
 pub(super) async fn public_article(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> ApiResult<Article> {
+) -> ApiResult<ArticleDetail> {
     let article = load_article(&state.pool, id, ArticleAudience::Public).await?;
     sqlx::query("UPDATE article SET view_count=view_count+1 WHERE id=?")
         .bind(id)
@@ -506,7 +496,7 @@ pub(super) async fn article_access(
 pub(super) async fn admin_article(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> ApiResult<Article> {
+) -> ApiResult<ArticleDetail> {
     Ok(Json(
         load_article(&state.pool, id, ArticleAudience::Administrator).await?,
     ))
@@ -521,7 +511,7 @@ pub(super) async fn unlock_article(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     crate::ContractJson(input): crate::ContractJson<UnlockRequest>,
-) -> ApiResult<Article> {
+) -> ApiResult<ArticleDetail> {
     if input.password.len() > 1024 {
         return Err(invalid("访问密码无效"));
     }
@@ -575,7 +565,7 @@ pub(super) async fn unlock_article(
             "文章访问权限已变更，请重试",
         ));
     }
-    let article = sqlx::query_as::<_, Article>(sqlx::AssertSqlSafe(format!(
+    let article = sqlx::query_as::<_, ArticleDetail>(sqlx::AssertSqlSafe(format!(
         "{ARTICLE_SQL} WHERE id=? AND deleted=0"
     )))
     .bind(id)
@@ -585,9 +575,9 @@ pub(super) async fn unlock_article(
     Ok(Json(article))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct ArticleInputDto {
+struct ArticleDraft {
     article_title: String,
     article_content: String,
     article_cover: Option<String>,
@@ -601,21 +591,9 @@ struct ArticleInputDto {
     tips: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
-#[serde(try_from = "ArticleInputDto")]
-pub(super) struct ArticleInput {
-    article_title: String,
-    article_content: String,
-    article_cover: Option<String>,
-    video_url: Option<String>,
-    sort_id: i64,
-    label_id: i64,
-    view_status: bool,
-    recommend_status: bool,
-    comment_status: bool,
-    password: Option<String>,
-    tips: Option<String>,
-}
+#[derive(Deserialize)]
+#[serde(try_from = "ArticleDraft")]
+pub(super) struct ArticleInput(ArticleDraft);
 
 #[derive(Debug, thiserror::Error)]
 enum ArticleInputError {
@@ -629,48 +607,23 @@ enum ArticleInputError {
     PublicPassword,
 }
 
-impl TryFrom<ArticleInputDto> for ArticleInput {
+impl TryFrom<ArticleDraft> for ArticleInput {
     type Error = ArticleInputError;
 
-    fn try_from(input: ArticleInputDto) -> Result<Self, Self::Error> {
-        let ArticleInputDto {
-            article_title,
-            article_content,
-            article_cover,
-            video_url,
-            sort_id,
-            label_id,
-            view_status,
-            recommend_status,
-            comment_status,
-            password,
-            tips,
-        } = input;
-        if article_title.trim().is_empty() || article_title.chars().count() > 120 {
+    fn try_from(input: ArticleDraft) -> Result<Self, Self::Error> {
+        if input.article_title.trim().is_empty() || input.article_title.chars().count() > 120 {
             return Err(ArticleInputError::Title);
         }
-        if article_content.trim().is_empty() || article_content.len() > 2_000_000 {
+        if input.article_content.trim().is_empty() || input.article_content.len() > 2_000_000 {
             return Err(ArticleInputError::Content);
         }
-        if sort_id < 1 || label_id < 1 {
+        if input.sort_id < 1 || input.label_id < 1 {
             return Err(ArticleInputError::Taxonomy);
         }
-        if view_status && password.is_some() {
+        if input.view_status && input.password.is_some() {
             return Err(ArticleInputError::PublicPassword);
         }
-        Ok(Self {
-            article_title,
-            article_content,
-            article_cover,
-            video_url,
-            sort_id,
-            label_id,
-            view_status,
-            recommend_status,
-            comment_status,
-            password,
-            tips,
-        })
+        Ok(Self(input))
     }
 }
 
@@ -678,7 +631,7 @@ impl TryFrom<ArticleInputDto> for ArticleInput {
 // An article must never commit a label from another (or a missing) category.
 async fn validate_article_taxonomy(
     transaction: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-    input: &ArticleInput,
+    input: &ArticleDraft,
 ) -> Result<(), AppError> {
     let matches: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM label l JOIN sort s ON s.id=l.sort_id WHERE l.id=? AND s.id=?)",
@@ -697,8 +650,8 @@ pub(super) async fn create_article(
     State(state): State<AppState>,
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     headers: HeaderMap,
-    crate::ContractJson(input): crate::ContractJson<ArticleInput>,
-) -> ApiResult<Article> {
+    crate::ContractJson(ArticleInput(input)): crate::ContractJson<ArticleInput>,
+) -> ApiResult<ArticleDetail> {
     if !input.view_status && input.password.is_none() {
         return Err(invalid("加密文章必须设置访问密码"));
     }
@@ -786,8 +739,8 @@ pub(super) async fn update_article(
     State(state): State<AppState>,
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     Path(id): Path<i64>,
-    crate::ContractJson(input): crate::ContractJson<ArticleInput>,
-) -> ApiResult<Article> {
+    crate::ContractJson(ArticleInput(input)): crate::ContractJson<ArticleInput>,
+) -> ApiResult<ArticleDetail> {
     let password = input
         .password
         .as_deref()

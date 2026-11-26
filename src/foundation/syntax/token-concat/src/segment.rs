@@ -1,20 +1,16 @@
 use crate::error::{Error, Result};
-use proc_macro::{token_stream, Delimiter, Ident, Span, TokenTree};
-use std::iter::Peekable;
+use proc_macro::{Delimiter, Ident, Span, TokenTree, token_stream};
+use std::{env::VarError, iter::Peekable};
 
 pub(crate) enum Segment {
     String(LitStr),
     Apostrophe(Span),
     Env(LitStr),
-    Modifier(Colon, Ident),
+    Modifier(Span, Ident),
 }
 
 pub(crate) struct LitStr {
     pub value: String,
-    pub span: Span,
-}
-
-pub(crate) struct Colon {
     pub span: Span,
 }
 
@@ -25,69 +21,18 @@ pub(crate) fn parse(tokens: &mut Peekable<token_stream::IntoIter>) -> Result<Vec
         Some(TokenTree::Punct(punct)) => punct.as_char() != '>',
         Some(_) => true,
     } {
-        match tokens.next().unwrap() {
+        match tokens.next().expect("invariant: peek saw a token") {
             TokenTree::Ident(ident) => {
                 let mut fragment = ident.to_string();
                 if fragment.starts_with("r#") {
                     fragment = fragment.split_off(2);
                 }
                 if fragment == "env"
-                    && match tokens.peek() {
-                        Some(TokenTree::Punct(punct)) => punct.as_char() == '!',
-                        _ => false,
-                    }
+                    && let Some(bang) = tokens.next_if(
+                        |token| matches!(token, TokenTree::Punct(punct) if punct.as_char() == '!'),
+                    )
                 {
-                    let bang = tokens.next().unwrap(); // `!`
-                    let expect_group = tokens.next();
-                    let parenthesized = match &expect_group {
-                        Some(TokenTree::Group(group))
-                            if group.delimiter() == Delimiter::Parenthesis =>
-                        {
-                            group
-                        }
-                        Some(wrong) => return Err(Error::new(wrong.span(), "expected `(`")),
-                        None => {
-                            return Err(Error::new2(
-                                ident.span(),
-                                bang.span(),
-                                "expected `(` after `env!`",
-                            ));
-                        }
-                    };
-                    let mut inner = parenthesized.stream().into_iter();
-                    let lit = match inner.next() {
-                        Some(TokenTree::Literal(lit)) => lit,
-                        Some(wrong) => {
-                            return Err(Error::new(wrong.span(), "expected string literal"))
-                        }
-                        None => {
-                            return Err(Error::new2(
-                                ident.span(),
-                                parenthesized.span(),
-                                "expected string literal as argument to env! macro",
-                            ))
-                        }
-                    };
-                    let lit_string = lit.to_string();
-                    if lit_string.starts_with('"')
-                        && lit_string.ends_with('"')
-                        && lit_string.len() >= 2
-                    {
-                        // TODO: maybe handle escape sequences in the string if
-                        // someone has a use case.
-                        segments.push(Segment::Env(LitStr {
-                            value: lit_string[1..lit_string.len() - 1].to_owned(),
-                            span: lit.span(),
-                        }));
-                    } else {
-                        return Err(Error::new(lit.span(), "expected string literal"));
-                    }
-                    if let Some(unexpected) = inner.next() {
-                        return Err(Error::new(
-                            unexpected.span(),
-                            "unexpected token in env! macro",
-                        ));
-                    }
+                    segments.push(parse_env(tokens, ident.span(), bang.span())?);
                 } else {
                     segments.push(Segment::String(LitStr {
                         value: fragment,
@@ -109,7 +54,6 @@ pub(crate) fn parse(tokens: &mut Peekable<token_stream::IntoIter>) -> Result<Vec
                 '\'' => segments.push(Segment::Apostrophe(punct.span())),
                 ':' => {
                     let colon_span = punct.span();
-                    let colon = Colon { span: colon_span };
                     let ident = match tokens.next() {
                         Some(TokenTree::Ident(ident)) => ident,
                         wrong => {
@@ -117,7 +61,7 @@ pub(crate) fn parse(tokens: &mut Peekable<token_stream::IntoIter>) -> Result<Vec
                             return Err(Error::new(span, "expected identifier after `:`"));
                         }
                     };
-                    segments.push(Segment::Modifier(colon, ident));
+                    segments.push(Segment::Modifier(colon_span, ident));
                 }
                 '#' => segments.push(Segment::String(LitStr {
                     value: "#".to_string(),
@@ -140,6 +84,45 @@ pub(crate) fn parse(tokens: &mut Peekable<token_stream::IntoIter>) -> Result<Vec
         }
     }
     Ok(segments)
+}
+
+fn parse_env(
+    tokens: &mut Peekable<token_stream::IntoIter>,
+    env: Span,
+    bang: Span,
+) -> Result<Segment> {
+    let args = match tokens.next() {
+        Some(TokenTree::Group(group)) if group.delimiter() == Delimiter::Parenthesis => group,
+        Some(wrong) => return Err(Error::new(wrong.span(), "expected `(`")),
+        None => return Err(Error::new2(env, bang, "expected `(` after `env!`")),
+    };
+    let mut inner = args.stream().into_iter();
+    let lit = match inner.next() {
+        Some(TokenTree::Literal(lit)) => lit,
+        Some(wrong) => return Err(Error::new(wrong.span(), "expected string literal")),
+        None => {
+            return Err(Error::new2(
+                env,
+                args.span(),
+                "expected string literal as argument to env! macro",
+            ));
+        }
+    };
+    let repr = lit.to_string();
+    let value = repr
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .ok_or_else(|| Error::new(lit.span(), "expected string literal"))?;
+    if let Some(unexpected) = inner.next() {
+        return Err(Error::new(
+            unexpected.span(),
+            "unexpected token in env! macro",
+        ));
+    }
+    Ok(Segment::Env(LitStr {
+        value: value.to_owned(),
+        span: lit.span(),
+    }))
 }
 
 pub(crate) fn paste(segments: &[Segment]) -> Result<String> {
@@ -171,104 +154,17 @@ pub(crate) fn paste(segments: &[Segment]) -> Result<String> {
                 is_lifetime = true;
             }
             Segment::Env(var) => {
-                let resolved = match std::env::var(&var.value) {
-                    Ok(resolved) => resolved,
-                    Err(_) => {
-                        return Err(Error::new(
-                            var.span,
-                            &format!("no such env var: {:?}", var.value),
-                        ));
-                    }
-                };
+                let resolved = std::env::var(&var.value).map_err(|error| {
+                    Error::new(var.span, &environment_error_message(&var.value, &error))
+                })?;
                 let resolved = resolved.replace('-', "_");
                 evaluated.push(resolved);
             }
             Segment::Modifier(colon, ident) => {
-                let last = match evaluated.pop() {
-                    Some(last) => last,
-                    None => {
-                        return Err(Error::new2(colon.span, ident.span(), "unexpected modifier"))
-                    }
-                };
-                match ident.to_string().as_str() {
-                    "lower" => {
-                        evaluated.push(last.to_lowercase());
-                    }
-                    "upper" => {
-                        evaluated.push(last.to_uppercase());
-                    }
-                    "snake" => {
-                        let mut acc = String::new();
-                        let mut prev = '_';
-                        for ch in last.chars() {
-                            if ch.is_uppercase() && prev != '_' {
-                                acc.push('_');
-                            }
-                            acc.push(ch);
-                            prev = ch;
-                        }
-                        evaluated.push(acc.to_lowercase());
-                    }
-                    "camel" | "upper_camel" | "lower_camel" => {
-                        let mut is_lower_camel = ident.to_string().as_str() == "lower_camel";
-                        let mut acc = String::new();
-                        let mut prev = '_';
-                        for ch in last.chars() {
-                            if ch != '_' {
-                                if prev == '_' {
-                                    if is_lower_camel {
-                                        for chl in ch.to_lowercase() {
-                                            acc.push(chl);
-                                        }
-                                        is_lower_camel = false;
-                                    } else {
-                                        for chu in ch.to_uppercase() {
-                                            acc.push(chu);
-                                        }
-                                    }
-                                } else if prev.is_uppercase() {
-                                    for chl in ch.to_lowercase() {
-                                        acc.push(chl);
-                                    }
-                                } else {
-                                    acc.push(ch);
-                                }
-                            }
-                            prev = ch;
-                        }
-                        evaluated.push(acc);
-                    }
-                    "camel_edge" => {
-                        let mut acc = String::new();
-                        let mut prev = '_';
-                        for ch in last.chars() {
-                            if ch != '_' {
-                                if prev == '_' {
-                                    for chu in ch.to_uppercase() {
-                                        acc.push(chu);
-                                    }
-                                } else if prev.is_uppercase() {
-                                    for chl in ch.to_lowercase() {
-                                        acc.push(chl);
-                                    }
-                                } else {
-                                    acc.push(ch);
-                                }
-                            } else if prev == '_' {
-                                acc.push(ch);
-                            }
-                            prev = ch;
-                        }
-                        evaluated.push(acc);
-                    }
-                    _ => {
-                        return Err(Error::new2(
-                            colon.span,
-                            ident.span(),
-                            "unsupported modifier",
-                        ));
-                    }
-                }
+                let last = evaluated
+                    .pop()
+                    .ok_or_else(|| Error::new2(*colon, ident.span(), "unexpected modifier"))?;
+                evaluated.push(apply_modifier(&last, *colon, ident)?);
             }
         }
     }
@@ -279,3 +175,71 @@ pub(crate) fn paste(segments: &[Segment]) -> Result<String> {
     }
     Ok(pasted)
 }
+
+fn apply_modifier(text: &str, colon: Span, ident: &Ident) -> Result<String> {
+    let modified = match ident.to_string().as_str() {
+        "lower" => text.to_lowercase(),
+        "upper" => text.to_uppercase(),
+        "snake" => {
+            let mut result = String::new();
+            let mut prev = '_';
+            for ch in text.chars() {
+                if ch.is_uppercase() && prev != '_' {
+                    result.push('_');
+                }
+                result.push(ch);
+                prev = ch;
+            }
+            result.to_lowercase()
+        }
+        "camel" | "upper_camel" => camel_case(text, CamelCase::Upper),
+        "lower_camel" => camel_case(text, CamelCase::Lower),
+        "camel_edge" => camel_case(text, CamelCase::Edge),
+        _ => return Err(Error::new2(colon, ident.span(), "unsupported modifier")),
+    };
+    Ok(modified)
+}
+
+#[derive(Clone, Copy)]
+enum CamelCase {
+    Upper,
+    Lower,
+    Edge,
+}
+
+fn camel_case(text: &str, style: CamelCase) -> String {
+    let mut result = String::new();
+    let mut prev = '_';
+    let mut lower_first = matches!(style, CamelCase::Lower);
+    for ch in text.chars() {
+        if ch == '_' {
+            if prev == '_' && matches!(style, CamelCase::Edge) {
+                result.push(ch);
+            }
+        } else if prev == '_' {
+            if lower_first {
+                result.extend(ch.to_lowercase());
+                lower_first = false;
+            } else {
+                result.extend(ch.to_uppercase());
+            }
+        } else if prev.is_uppercase() {
+            result.extend(ch.to_lowercase());
+        } else {
+            result.push(ch);
+        }
+        prev = ch;
+    }
+    result
+}
+
+fn environment_error_message(name: &str, error: &VarError) -> String {
+    match error {
+        VarError::NotPresent => format!("environment variable {name:?} is not set"),
+        VarError::NotUnicode(_) => format!("environment variable {name:?} is not valid Unicode"),
+    }
+}
+
+#[cfg(test)]
+#[path = "../../../../../test/foundation/syntax/token-concat/unit/segment.rs"]
+mod tests;

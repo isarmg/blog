@@ -4,4 +4,6 @@
 
 当前实现以语法变换为职责，运行状态与 DOM 生命周期由 [blog-dom](../dom/README.md) 提供。项目使用普通 Rust 视图 builder 构造页面。
 
-构建、示例与回归入口见[开发说明](../../../docs/development.md)及 `src/interface/tests/csr_components.rs`，本地 API 文档入口见[依赖文档](../../../docs/dependencies/README.md)。许可证保存在当前目录，原始来源材料保存在 `compliance/`。
+DOM 和样式编译器共用独立的[标识符拼接宏](../../foundation/syntax/token-concat/src/lib.rs)。
+
+构建、示例与回归入口见[开发说明](../../../docs/development.md)及[组件测试](../../../test/interface/integration/csr_components.rs)，本地 API 文档入口见[依赖文档](../../../docs/dependencies/README.md)。许可证保存在当前目录，原始来源材料保存在 `compliance/`。

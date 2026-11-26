@@ -31,7 +31,8 @@ fn parser_and_file_errors_keep_sources_outside_safe_diagnostics() {
         .permissions(std::fs::Permissions::from_mode(0o700))
         .tempdir()
         .unwrap();
-    let missing = read_private_file(&directory.path().join("private-input.json")).unwrap_err();
+    let missing =
+        read_managed_file(&directory.path().join("private-input.json"), true).unwrap_err();
     assert_eq!(missing.reason, Reason::MissingFile);
     let cause = missing
         .source()
@@ -69,7 +70,7 @@ impl<'de> Deserialize<'de> for ValidatedSecret {
 fn custom_deserializers_keep_nested_object_and_array_paths_without_values() {
     #[derive(Debug, Deserialize)]
     struct Nested {
-        _items: Vec<ValidatedSecret>,
+        items: Vec<ValidatedSecret>,
     }
     // Rename lets the test exercise JSON-pointer escaping in an actual field.
     #[derive(Debug, Deserialize)]
@@ -79,10 +80,10 @@ fn custom_deserializers_keep_nested_object_and_array_paths_without_values() {
     }
     for (value, expected) in [
         (
-            json!({"a/b~c":{"_items":["valid","private-input"]}}),
-            "/a~1b~0c/_items/1",
+            json!({"a/b~c":{"items":["valid","private-input"]}}),
+            "/a~1b~0c/items/1",
         ),
-        (json!({"a/b~c":{"_items":[1]}}), "/a~1b~0c/_items/0"),
+        (json!({"a/b~c":{"items":[1]}}), "/a~1b~0c/items/0"),
     ] {
         let error = strict::deserialize::<Config>(value, ConfigSource::File).unwrap_err();
         assert_eq!(error.path, expected);
@@ -92,9 +93,9 @@ fn custom_deserializers_keep_nested_object_and_array_paths_without_values() {
         assert!(!rendered.contains("sensitive validator diagnostic"));
     }
     let valid =
-        strict::deserialize::<Config>(json!({"a/b~c":{"_items":["valid"]}}), ConfigSource::File)
+        strict::deserialize::<Config>(json!({"a/b~c":{"items":["valid"]}}), ConfigSource::File)
             .unwrap();
-    assert_eq!(valid.nested._items.len(), 1);
+    assert_eq!(valid.nested.items.len(), 1);
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -124,6 +125,21 @@ fn defaults() -> Config {
         targets: vec![],
         optional: None,
     }
+}
+
+fn resolve<T: Serialize + DeserializeOwned>(
+    defaults: &T,
+    file_json: Option<&[u8]>,
+    environment: &[Override],
+    command_line: &[Override],
+) -> Result<Loaded<T>, ConfigError> {
+    resolve_validated(
+        defaults,
+        file_json,
+        environment,
+        command_line,
+        |_, _| Ok(()),
+    )
 }
 
 #[test]
@@ -242,7 +258,7 @@ fn rejects_duplicate_fields_invalid_arrays_missing_fields_and_null() {
             Reason::TypeMismatch,
             "/tls",
         ),
-        (&br#"[]"#[..], Reason::TypeMismatch, ""),
+        (&br"[]"[..], Reason::TypeMismatch, ""),
     ] {
         let error = resolve(&defaults(), Some(bytes), &[], &[]).err().unwrap();
         assert_eq!((error.reason, error.path.as_str()), (reason, path));
@@ -361,55 +377,19 @@ fn normal_current_serde_enum_contracts_work_with_safe_value_failures() {
     assert!(!format!("{error:?}").contains("enum-secret"));
 }
 
-#[cfg(unix)]
 #[test]
-fn private_configuration_read_is_bounded_readonly_and_rejects_unsafe_files() {
-    use std::{
-        fs,
-        os::unix::fs::{PermissionsExt, symlink},
-    };
-    let directory = tempfile::tempdir().unwrap();
-    fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o700)).unwrap();
+fn managed_configuration_read_accepts_the_byte_budget_without_side_effects() {
+    use std::{fs, os::unix::fs::PermissionsExt};
+    let directory = tempfile::Builder::new()
+        .permissions(fs::Permissions::from_mode(0o700))
+        .tempdir()
+        .unwrap();
     let path = directory.path().join("config.json");
-    fs::write(&path, b"{\"workers\":4}").unwrap();
+    let bytes = vec![b' '; MAX_CONFIG_BYTES];
+    fs::write(&path, &bytes).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
-    assert_eq!(read_private_file(&path).unwrap(), b"{\"workers\":4}");
+    assert_eq!(read_managed_file(&path, true).unwrap(), bytes);
     assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
-    let missing = directory.path().join("missing.json");
-    assert_eq!(
-        read_private_file(&missing)
-            .unwrap_err()
-            .envelope()
-            .code
-            .as_str(),
-        "config_file_not_found"
-    );
-    let fifo = directory.path().join("fifo.json");
-    rustix::fs::mkfifoat(
-        rustix::fs::CWD,
-        &fifo,
-        rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
-    )
-    .unwrap();
-    assert_eq!(
-        read_private_file(&fifo).unwrap_err().reason,
-        Reason::UnsafeFile
-    );
-    fs::remove_file(fifo).unwrap();
-    let link = directory.path().join("link.json");
-    symlink(&path, &link).unwrap();
-    assert!(read_private_file(&link).is_err());
-    fs::hard_link(&path, directory.path().join("alias.json")).unwrap();
-    assert!(read_private_file(&path).is_err());
-    fs::remove_file(directory.path().join("alias.json")).unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
-    assert!(read_private_file(&path).is_err());
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
-    fs::write(&path, vec![0; MAX_CONFIG_BYTES + 1]).unwrap();
-    assert_eq!(
-        read_private_file(&path).unwrap_err().reason,
-        Reason::LimitExceeded
-    );
 }
 
 #[test]
@@ -488,12 +468,9 @@ fn managed_configuration_rejects_unsafe_modes_links_groups_and_unbound_owner() {
         read_managed_file(&path, true).unwrap_err().reason,
         Reason::LimitExceeded
     );
-    assert_eq!(
-        read_managed_file(&directory.path().join("missing"), true)
-            .unwrap_err()
-            .reason,
-        Reason::MissingFile
-    );
+    let missing = read_managed_file(&directory.path().join("missing"), true).unwrap_err();
+    assert_eq!(missing.reason, Reason::MissingFile);
+    assert_eq!(missing.envelope().code.as_str(), "config_file_not_found");
     if rustix::process::geteuid().as_raw() == 0 {
         fs::write(&path, b"{} ").unwrap();
         chown(&path, Some(0), Some(33)).unwrap();
@@ -649,7 +626,6 @@ fn managed_configuration_uid_helper() {
     assert_eq!(fs::metadata(&path).unwrap().uid(), 0);
     assert_eq!(fs::metadata(&path).unwrap().gid(), 33);
     assert_eq!(read_managed_file(&path, false).unwrap(), b"{\"workers\":4}");
-    assert!(read_private_file(&path).is_err());
     let denied = |result: std::io::Result<()>| {
         assert_eq!(
             result.unwrap_err().kind(),

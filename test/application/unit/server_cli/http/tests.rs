@@ -31,52 +31,24 @@ async fn extraction_errors_are_flat_safe_bounded_and_uncacheable() {
         .route("/query", get(query))
         .route("/path/{number}", get(path))
         .layer(DefaultBodyLimit::max(64));
+    let json_case = |body, reason| {
+        (
+            "POST",
+            "/json",
+            Some("application/json"),
+            body,
+            400,
+            "contract_violation",
+            reason,
+        )
+    };
+    let get_case = |uri, reason| ("GET", uri, None, "", 400, "contract_violation", reason);
     for (method, uri, content_type, body, status, code, reason) in [
-        (
-            "POST",
-            "/json",
-            Some("application/json"),
-            r#"{"number":"SECRET"}"#,
-            400,
-            "contract_violation",
-            "TYPE_MISMATCH",
-        ),
-        (
-            "POST",
-            "/json",
-            Some("application/json"),
-            r#"{"number":2,"SECRET":2}"#,
-            400,
-            "contract_violation",
-            "UNKNOWN_FIELD",
-        ),
-        (
-            "POST",
-            "/json",
-            Some("application/json"),
-            "{}",
-            400,
-            "contract_violation",
-            "MISSING_FIELD",
-        ),
-        (
-            "POST",
-            "/json",
-            Some("application/json"),
-            "[]",
-            400,
-            "contract_violation",
-            "JSON_STRUCTURE",
-        ),
-        (
-            "POST",
-            "/json",
-            Some("application/json"),
-            r#"{"number":SECRET}"#,
-            400,
-            "contract_violation",
-            "INVALID_JSON",
-        ),
+        json_case(r#"{"number":"SECRET"}"#, "TYPE_MISMATCH"),
+        json_case(r#"{"number":2,"SECRET":2}"#, "UNKNOWN_FIELD"),
+        json_case("{}", "MISSING_FIELD"),
+        json_case("[]", "JSON_STRUCTURE"),
+        json_case(r#"{"number":SECRET}"#, "INVALID_JSON"),
         (
             "POST",
             "/json",
@@ -95,24 +67,8 @@ async fn extraction_errors_are_flat_safe_bounded_and_uncacheable() {
             "payload_too_large",
             "BODY_LIMIT",
         ),
-        (
-            "GET",
-            "/query?number=SECRET",
-            None,
-            "",
-            400,
-            "contract_violation",
-            "INVALID_QUERY",
-        ),
-        (
-            "GET",
-            "/path/SECRET",
-            None,
-            "",
-            400,
-            "contract_violation",
-            "INVALID_PATH",
-        ),
+        get_case("/query?number=SECRET", "INVALID_QUERY"),
+        get_case("/path/SECRET", "INVALID_PATH"),
     ] {
         let mut builder = Request::builder().method(method).uri(uri);
         if let Some(content_type) = content_type {

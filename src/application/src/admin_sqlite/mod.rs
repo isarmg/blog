@@ -24,7 +24,7 @@ pub const ADMIN_SESSIONS_QUERY_SQL: &str = "SELECT session_id, administrator_id,
 
 /// Validate the existing account in an already-open read-only snapshot.
 /// Does not open another database, initialize tables or change persistent state.
-pub async fn validate_administrators_on_connection(
+pub(crate) async fn validate_administrators_on_connection(
     connection: &mut SqliteConnection,
 ) -> Result<(), Error> {
     let rows = sqlx::query(ADMINISTRATORS_QUERY_SQL)
@@ -41,7 +41,7 @@ pub async fn validate_administrators_on_connection(
 
 /// Insert the sole administrator inside the caller's account-creation
 /// transaction, preserving a supplied stable identity and password hash.
-pub async fn insert_administrator_on_connection(
+pub(crate) async fn insert_administrator_on_connection(
     connection: &mut SqliteConnection,
     administrator: &AdministratorRecord,
 ) -> Result<(), Error> {
@@ -100,6 +100,7 @@ pub struct SqliteAdministratorStore {
 }
 
 impl SqliteAdministratorStore {
+    #[must_use]
     pub fn new(pool: SqlitePool) -> Self {
         Self {
             pool,
@@ -107,6 +108,7 @@ impl SqliteAdministratorStore {
             session_cleanup_cursor: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
+    #[must_use]
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
@@ -114,6 +116,8 @@ impl SqliteAdministratorStore {
     /// Scan at most `limit` rows per pass and delete only revoked/expired sessions.
     /// The keyset cursor advances past live rows and wraps after reaching the end;
     /// security audit retention is independently owned by the product.
+    /// # Errors
+    /// The timestamp or batch limit is invalid, or the cleanup transaction fails.
     pub async fn prune_inactive_sessions(&self, now_micros: u64, limit: u32) -> Result<u64, Error> {
         if !(1..=128).contains(&limit) {
             return Err(Error::IntegerRange);
@@ -167,6 +171,8 @@ impl SqliteAdministratorStore {
     /// Validates every stored administrator against the current xcss
     /// identity and password-hash contract before a server starts accepting
     /// requests.
+    /// # Errors
+    /// The database cannot be read or does not contain the required valid administrator.
     pub async fn validate_all_administrators(&self) -> Result<(), Error> {
         let mut connection = self.pool.acquire().await?;
         validate_administrators_on_connection(&mut connection).await
@@ -437,10 +443,10 @@ async fn enforce_session_caps(
     now: u64,
 ) -> Result<(), Error> {
     sqlx::query("UPDATE _common_admin_sessions SET revoked_at_micros=? WHERE session_id IN (SELECT session_id FROM _common_admin_sessions WHERE administrator_id=? AND revoked_at_micros IS NULL AND idle_expires_at_micros>? AND absolute_expires_at_micros>? ORDER BY created_at_micros DESC, session_id DESC LIMIT -1 OFFSET ?)")
-        .bind(to_i64(now)?).bind(session.administrator_id.as_str()).bind(to_i64(now)?).bind(to_i64(now)?).bind(SESSIONS_PER_ADMINISTRATOR as i64)
+        .bind(to_i64(now)?).bind(session.administrator_id.as_str()).bind(to_i64(now)?).bind(to_i64(now)?).bind(i64::try_from(SESSIONS_PER_ADMINISTRATOR).expect("compiled limit fits SQLite INTEGER"))
         .execute(&mut **transaction).await?;
     sqlx::query("UPDATE _common_admin_sessions SET revoked_at_micros=? WHERE session_id IN (SELECT session_id FROM _common_admin_sessions WHERE revoked_at_micros IS NULL AND idle_expires_at_micros>? AND absolute_expires_at_micros>? ORDER BY created_at_micros DESC, session_id DESC LIMIT -1 OFFSET ?)")
-        .bind(to_i64(now)?).bind(to_i64(now)?).bind(to_i64(now)?).bind(SESSIONS_GLOBAL as i64)
+        .bind(to_i64(now)?).bind(to_i64(now)?).bind(to_i64(now)?).bind(i64::try_from(SESSIONS_GLOBAL).expect("compiled limit fits SQLite INTEGER"))
         .execute(&mut **transaction).await?;
     Ok(())
 }

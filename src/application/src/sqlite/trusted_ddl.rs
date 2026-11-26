@@ -49,6 +49,8 @@ pub enum DdlFingerprintError {
 /// progress deadline; results are limited to 1024 schema objects / 4 MiB of UTF-8
 /// fields. The direct connection is explicitly closed on success and failure.
 /// Metadata and SQLite internal objects are excluded by fingerprint version 1.
+/// # Errors
+/// Input, execution, or schema budgets are exceeded, or the DDL cannot be executed and fingerprinted.
 pub fn fingerprint_trusted_ddl(ddl: &[&str]) -> Result<String, DdlFingerprintError> {
     if ddl.len() > MAX_FRAGMENTS
         || ddl
@@ -88,7 +90,9 @@ async fn evaluate(
 ) -> Result<String, DdlFingerprintError> {
     crate::sqlite::apply_connection_limits(
         connection,
-        crate::sqlite::ConnectionLimits::new(MAX_SCHEMA_BYTES as u32),
+        crate::sqlite::ConnectionLimits::new(
+            u32::try_from(MAX_SCHEMA_BYTES).expect("compiled schema budget fits u32"),
+        ),
     )
     .await
     .map_err(DdlFingerprintError::ConnectionLimits)?;

@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    AdministratorService, AdministratorStore, AuthenticatedIdentity, Error, PasswordWorkError,
+    RequestId, require_persistable_time,
+};
 
 /// The authorization snapshot must be revalidated by the store in the same
 /// transaction as the mutation, after any password hashing work has finished.
@@ -10,6 +13,8 @@ pub struct AdministratorManagementContext {
 }
 
 impl AdministratorManagementContext {
+    /// # Errors
+    /// The timestamp cannot be represented in persistent storage.
     pub fn validate(&self) -> Result<(), Error> {
         require_persistable_time(self.now_micros)?;
         Ok(())
@@ -48,7 +53,7 @@ pub enum ManagementError<StoreError: std::error::Error + Send + Sync + 'static> 
 impl<Store: AdministratorStore + 'static> AdministratorService<Store> {
     /// Verify the current credential before atomically updating the session's own
     /// account. The store repeats session/CSRF checks under its mutation lock.
-    pub async fn update_own_account(
+    pub(crate) async fn update_own_account(
         &self,
         context: &AdministratorManagementContext,
         username: &str,
@@ -69,23 +74,10 @@ impl<Store: AdministratorStore + 'static> AdministratorService<Store> {
         if !record.active || record.administrator_id != context.identity.administrator_id {
             return Err(ManagementError::Unauthorized);
         }
-        let permit = tokio::time::timeout(
-            Duration::from_micros(ARGON2_ACQUIRE_TIMEOUT_MICROS),
-            self.argon2_slots.clone().acquire_owned(),
-        )
-        .await
-        .map_err(PasswordWorkError::Capacity)?
-        .expect("invariant: password verification semaphore remains open");
-        let encoded = record.password_hash.clone();
-        let candidate = current_password.to_owned();
-        let matches = tokio::task::spawn_blocking(move || {
-            let matches = crate::admin_auth::verify_password(&candidate, &encoded);
-            drop(permit);
-            matches
-        })
-        .await
-        .map_err(PasswordWorkError::Worker)?;
-        if !matches {
+        if !self
+            .verify_password(current_password, &record.password_hash)
+            .await?
+        {
             return Err(ManagementError::InvalidCurrentPassword);
         }
         let password_hash = match new_password {

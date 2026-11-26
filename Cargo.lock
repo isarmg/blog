@@ -46,6 +46,7 @@ dependencies = [
  "blog-format-date-time",
  "blog-format-json",
  "blog-format-json-schema",
+ "blog-math-numeric-traits",
  "blog-network-body-stream",
  "blog-network-http-message",
  "blog-network-http-transport",
@@ -497,6 +498,7 @@ dependencies = [
  "blog-runtime-async-toolkit",
  "blog-sync-pinned-projection",
  "blog-syntax-alternative",
+ "blog-syntax-token-concat",
  "blog-wasm-browser-bridge",
 ]
 

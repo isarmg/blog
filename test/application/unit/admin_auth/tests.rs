@@ -130,7 +130,7 @@ fn csrf_derivation_is_canonical_stable_and_domain_separated() {
         derived
     );
     for value in [
-        "".to_owned(),
+        String::new(),
         "B".repeat(43),
         format!("{token}="),
         "A".repeat(42),

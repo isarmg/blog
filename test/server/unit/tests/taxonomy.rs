@@ -1,60 +1,5 @@
 use super::*;
 
-async fn login(app: &Router) -> (String, String) {
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let value = body_json(response).await;
-    (cookie, value["csrf_token"].as_str().unwrap().to_owned())
-}
-
-async fn write(
-    app: &Router,
-    session: &(String, String),
-    method: &str,
-    path: &str,
-    value: serde_json::Value,
-) -> Response {
-    app.clone()
-        .oneshot(
-            Request::builder()
-                .method(method)
-                .uri(path)
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(value.to_string()))
-                .unwrap(),
-        )
-        .await
-        .unwrap()
-}
-
 fn article(sort: i64, label: i64) -> serde_json::Value {
     serde_json::json!({
         "article_title":"Owned fixture", "article_content":"Test body", "article_cover":null,
@@ -77,7 +22,7 @@ async fn used_label_cannot_move_but_can_be_renamed_and_unused_label_can_move() {
     let (_directory, app, pool) = setup().await;
     let session = login(&app).await;
     seed(&pool).await;
-    let created = write(
+    let created = admin(
         &app,
         &session,
         "POST",
@@ -86,7 +31,7 @@ async fn used_label_cannot_move_but_can_be_renamed_and_unused_label_can_move() {
     )
     .await;
     assert_eq!(created.status(), StatusCode::OK);
-    let moved = write(
+    let moved = admin(
         &app,
         &session,
         "PUT",
@@ -101,7 +46,7 @@ async fn used_label_cannot_move_but_can_be_renamed_and_unused_label_can_move() {
             .unwrap()
             .contains("不能更改分类")
     );
-    let renamed = write(
+    let renamed = admin(
         &app,
         &session,
         "PUT",
@@ -111,7 +56,7 @@ async fn used_label_cannot_move_but_can_be_renamed_and_unused_label_can_move() {
     .await;
     assert_eq!(renamed.status(), StatusCode::OK);
     assert_eq!(body_json(renamed).await["label_name"], "Renamed");
-    let unused = write(
+    let unused = admin(
         &app,
         &session,
         "PUT",
@@ -134,7 +79,7 @@ async fn article_create_and_update_reject_mismatched_or_missing_taxonomy_without
     let session = login(&app).await;
     seed(&pool).await;
     for (sort, label) in [(1, 3), (2, 1), (999, 1), (1, 999)] {
-        let response = write(
+        let response = admin(
             &app,
             &session,
             "POST",
@@ -144,7 +89,7 @@ async fn article_create_and_update_reject_mismatched_or_missing_taxonomy_without
         .await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
-    let created = write(
+    let created = admin(
         &app,
         &session,
         "POST",
@@ -155,7 +100,7 @@ async fn article_create_and_update_reject_mismatched_or_missing_taxonomy_without
     assert_eq!(created.status(), StatusCode::OK);
     let id = body_json(created).await["id"].as_i64().unwrap();
     for (sort, label) in [(1, 3), (2, 1), (999, 1), (1, 999)] {
-        let response = write(
+        let response = admin(
             &app,
             &session,
             "PUT",
@@ -179,14 +124,14 @@ async fn concurrent_label_move_and_article_writes_cannot_commit_an_inconsistent_
     let session = login(&app).await;
     seed(&pool).await;
     let (created, moved) = tokio::join!(
-        write(
+        admin(
             &app,
             &session,
             "POST",
             "/api/v1/content/articles",
             article(1, 4)
         ),
-        write(
+        admin(
             &app,
             &session,
             "PUT",
@@ -198,7 +143,7 @@ async fn concurrent_label_move_and_article_writes_cannot_commit_an_inconsistent_
         (created.status(), moved.status()),
         (StatusCode::OK, StatusCode::CONFLICT) | (StatusCode::BAD_REQUEST, StatusCode::OK)
     ));
-    let created = write(
+    let created = admin(
         &app,
         &session,
         "POST",
@@ -210,8 +155,8 @@ async fn concurrent_label_move_and_article_writes_cannot_commit_an_inconsistent_
     let id = body_json(created).await["id"].as_i64().unwrap();
     let article_path = format!("/api/v1/content/articles/{id}");
     let (updated, moved) = tokio::join!(
-        write(&app, &session, "PUT", &article_path, article(1, 2)),
-        write(
+        admin(&app, &session, "PUT", &article_path, article(1, 2)),
+        admin(
             &app,
             &session,
             "PUT",
@@ -233,7 +178,7 @@ async fn deleting_an_empty_category_removes_its_labels_before_id_reuse() {
     let (_directory, app, pool) = setup().await;
     let session = login(&app).await;
     seed(&pool).await;
-    let deleted = write(
+    let deleted = admin(
         &app,
         &session,
         "DELETE",
@@ -250,7 +195,7 @@ async fn deleting_an_empty_category_removes_its_labels_before_id_reuse() {
         remaining, 0,
         "Deleted categories must not leave visible orphan labels or attach them to a later category that reuses the ID"
     );
-    let created = write(
+    let created = admin(
         &app,
         &session,
         "POST",
@@ -274,14 +219,14 @@ async fn category_deletion_and_label_creation_cannot_leave_orphan_labels() {
     let session = login(&app).await;
     seed(&pool).await;
     let (deleted, created) = tokio::join!(
-        write(
+        admin(
             &app,
             &session,
             "DELETE",
             "/api/v1/content/categories/2",
             serde_json::json!({})
         ),
-        write(
+        admin(
             &app,
             &session,
             "POST",
@@ -349,7 +294,7 @@ async fn article_create_receipt_tracks_initial_payload_and_current_article() {
     let mut edited = original.clone();
     edited["article_title"] = "Edited after initial save".into();
     assert_eq!(
-        write(
+        admin(
             &app,
             &session,
             "PUT",
@@ -372,7 +317,7 @@ async fn article_create_receipt_tracks_initial_payload_and_current_article() {
         StatusCode::CONFLICT
     );
     assert_eq!(
-        write(
+        admin(
             &app,
             &session,
             "DELETE",
@@ -404,7 +349,7 @@ async fn article_search_uses_html_utf16_limit() {
     let mut value = article(1, 1);
     value["article_title"] = "文".repeat(80).into();
     assert_eq!(
-        write(&app, &session, "POST", "/api/v1/content/articles", value)
+        admin(&app, &session, "POST", "/api/v1/content/articles", value)
             .await
             .status(),
         StatusCode::OK
@@ -520,7 +465,7 @@ async fn failed_taxonomy_leaves_key_available_and_unkeyed_posts_remain_independe
     );
     for _ in 0..2 {
         assert_eq!(
-            write(
+            admin(
                 &app,
                 &session,
                 "POST",
@@ -557,10 +502,15 @@ async fn article_receipt_survives_database_reopen_with_initial_fingerprint() {
     .fetch_one(&pool)
     .await
     .unwrap();
+    // Keep the canonical payload bytes stable for receipts already on disk.
+    assert_eq!(
+        hex::encode(&before.0),
+        "7c2d5250c90714c90af45f73deb19bd30c3e2a78cbe6fb898bcd87795d8ba3b0"
+    );
     let mut updated = original;
     updated["article_title"] = "changed".into();
     assert_eq!(
-        write(
+        admin(
             &app,
             &session,
             "PUT",

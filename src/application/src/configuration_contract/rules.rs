@@ -76,6 +76,10 @@ enum PathEncoding {
 /// Validate one current rule array without filesystem access. Unknown rules,
 /// arguments, missing referenced values and malformed definitions fail closed.
 /// Diagnostics contain field pointers, never candidate values or secrets.
+///
+/// # Errors
+/// Rejects malformed rule definitions, an invalid root, or configuration
+/// values that do not satisfy a rule.
 pub fn validate_rules(
     rules: &Value,
     value: &Value,
@@ -90,7 +94,7 @@ pub fn validate_rules(
     crate::server_layout::Layout::new(root)
         .map_err(|cause| invalid_mapping().with_cause(ConfigCause::RootLayout(cause)))?;
     for raw_rule in raw {
-        let rule: Rule = serde_json::from_value(raw_rule.clone())
+        let rule = Rule::deserialize(raw_rule)
             .map_err(|cause| invalid_mapping().with_cause(ConfigCause::ParseJson(cause)))?;
         if rule.fields.len() > MAX_FIELDS || rule.fields.iter().any(|field| !valid_pointer(field)) {
             return Err(invalid_mapping());
@@ -169,6 +173,19 @@ fn integer(arguments: &Map<String, Value>, name: &str) -> Result<u64> {
         .and_then(Value::as_u64)
         .ok_or(RuleFailure::from(Reason::InvalidMapping))
 }
+fn array<'a>(args: &'a Map<String, Value>, name: &str) -> Result<&'a [Value]> {
+    args.get(name)
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .ok_or(Reason::InvalidMapping.into())
+}
+
+fn path_spec(value: &Value) -> Result<PathSpec> {
+    PathSpec::deserialize(value).map_err(|cause| {
+        RuleFailure::caused_by(Reason::InvalidMapping, ConfigCause::ParseJson(cause))
+    })
+}
+
 fn keys(arguments: &Map<String, Value>, allowed: &[&str]) -> Result<()> {
     if arguments.keys().all(|key| allowed.contains(&key.as_str())) {
         Ok(())
@@ -206,348 +223,353 @@ fn relative(path: &str) -> bool {
 }
 
 fn apply(rule: &Rule, value: &Value, root: &Path) -> Result<()> {
-    let args = &rule.arguments;
     match rule.kind {
-        RuleKind::IntegerRange => {
-            fields(rule, 1)?;
-            keys(args, &["minimum", "maximum"])?;
-            let min = integer(args, "minimum")?;
-            let max = integer(args, "maximum")?;
-            if min > max {
-                return mapping();
-            }
-            let actual = candidate(value, &rule.fields[0])?
-                .as_u64()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-            if actual < min || actual > max {
-                return Err(Reason::InvalidValue.into());
-            }
+        RuleKind::IntegerRange => apply_integer_range(rule, value),
+        RuleKind::IntegerOrder => apply_integer_order(rule, value),
+        RuleKind::Enum => apply_enum(rule, value),
+        RuleKind::SocketAddress => apply_socket_address(rule, value),
+        RuleKind::DistinctSockets => apply_distinct_sockets(rule, value),
+        RuleKind::Path => apply_path(rule, value),
+        RuleKind::RootStatePaths => apply_root_state_paths(rule, value, root),
+        RuleKind::PathRelation => apply_path_relation(rule, value, root),
+        RuleKind::ExternalWebOverride => apply_external_web_override(rule, value),
+        RuleKind::Url => apply_url(rule, value),
+    }
+}
+
+fn apply_integer_range(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(args, &["minimum", "maximum"])?;
+    let min = integer(args, "minimum")?;
+    let max = integer(args, "maximum")?;
+    if min > max {
+        return mapping();
+    }
+    let actual = candidate(value, &rule.fields[0])?
+        .as_u64()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
+    if actual < min || actual > max {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_integer_order(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 2)?;
+    keys(args, &["relation", "left_scale", "right_scale"])?;
+    let relation = text(args, "relation")?;
+    if !matches!(relation, "less-or-equal" | "less-than") {
+        return mapping();
+    }
+    let scale = |name| match args.get(name) {
+        None => Ok(1),
+        Some(value) => value
+            .as_u64()
+            .filter(|n| *n != 0)
+            .ok_or(RuleFailure::from(Reason::InvalidMapping)),
+    };
+    let lhs = candidate(value, &rule.fields[0])?
+        .as_u64()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?
+        .checked_mul(scale("left_scale")?)
+        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
+    let rhs = candidate(value, &rule.fields[1])?
+        .as_u64()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?
+        .checked_mul(scale("right_scale")?)
+        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
+    if lhs > rhs || (relation == "less-than" && lhs == rhs) {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_enum(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(args, &["values"])?;
+    let choices = array(args, "values")?;
+    if choices.is_empty()
+        || choices.len() > MAX_RULES
+        || choices.iter().any(|v| {
+            !matches!(
+                v,
+                Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null
+            )
+        })
+    {
+        return mapping();
+    }
+    if !choices.contains(candidate(value, &rule.fields[0])?) {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_socket_address(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(args, &["nonzero", "loopback", "loopback_when"])?;
+    let actual = socket(candidate(value, &rule.fields[0])?)?;
+    let conditional = match args.get("loopback_when") {
+        None | Some(Value::Null) => false,
+        Some(Value::String(pointer)) if valid_pointer(pointer) => candidate(value, pointer)?
+            .as_bool()
+            .ok_or(RuleFailure::from(Reason::TypeMismatch))?,
+        _ => return mapping(),
+    };
+    if (flag(args, "nonzero", false)? && actual.port() == 0)
+        || ((flag(args, "loopback", false)? || conditional) && !actual.ip().is_loopback())
+    {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_distinct_sockets(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    keys(args, &[])?;
+    if rule.fields.len() < 2 {
+        return mapping();
+    }
+    let mut sockets = Vec::new();
+    for pointer in &rule.fields {
+        let address = socket(candidate(value, pointer)?)?;
+        if sockets.iter().any(|other: &SocketAddr| {
+            other.port() == address.port()
+                && (other.ip() == address.ip()
+                    || other.ip().is_unspecified()
+                    || address.ip().is_unspecified())
+        }) {
+            return Err(Reason::InvalidValue.into());
         }
-        RuleKind::IntegerOrder => {
-            fields(rule, 2)?;
-            keys(args, &["relation", "left_scale", "right_scale"])?;
-            let relation = text(args, "relation")?;
-            if !matches!(relation, "less-or-equal" | "less-than") {
-                return mapping();
-            }
-            let scale = |name| match args.get(name) {
-                None => Ok(1),
-                Some(value) => value
-                    .as_u64()
-                    .filter(|n| *n != 0)
-                    .ok_or(RuleFailure::from(Reason::InvalidMapping)),
-            };
-            let lhs = candidate(value, &rule.fields[0])?
-                .as_u64()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?
-                .checked_mul(scale("left_scale")?)
-                .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-            let rhs = candidate(value, &rule.fields[1])?
-                .as_u64()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?
-                .checked_mul(scale("right_scale")?)
-                .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-            if lhs > rhs || (relation == "less-than" && lhs == rhs) {
-                return Err(Reason::InvalidValue.into());
-            }
+        sockets.push(address);
+    }
+    Ok(())
+}
+
+fn apply_path(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(args, &["optional", "absolute"])?;
+    let optional = flag(args, "optional", false)?;
+    let absolute = flag(args, "absolute", false)?;
+    let actual = candidate(value, &rule.fields[0])?;
+    if actual.is_null() && optional {
+        return Ok(());
+    }
+    let path = actual
+        .as_str()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
+    if !normalized(Path::new(path), absolute) {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_root_state_paths(rule: &Rule, value: &Value, root: &Path) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 0)?;
+    keys(args, &["paths", "protected"])?;
+    let paths = array(args, "paths")?;
+    let protected = array(args, "protected")?;
+    if paths.is_empty() || paths.len() > MAX_FIELDS || protected.len() > MAX_RULES {
+        return mapping();
+    }
+    let mut resolved = Vec::new();
+    for raw in paths {
+        let spec = path_spec(raw)?;
+        let path = resolve(&spec, value, root, 0)?;
+        if path == Path::new("/") || path == root {
+            return Err(Reason::InvalidValue.into());
         }
-        RuleKind::Enum => {
-            fields(rule, 1)?;
-            keys(args, &["values"])?;
-            let choices = args
-                .get("values")
-                .and_then(Value::as_array)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            if choices.is_empty()
-                || choices.len() > MAX_RULES
-                || choices.iter().any(|v| {
-                    !matches!(
-                        v,
-                        Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null
-                    )
-                })
-            {
-                return mapping();
-            }
-            if !choices.contains(candidate(value, &rule.fields[0])?) {
-                return Err(Reason::InvalidValue.into());
-            }
-        }
-        RuleKind::SocketAddress => {
-            fields(rule, 1)?;
-            keys(args, &["nonzero", "loopback", "loopback_when"])?;
-            let actual = socket(candidate(value, &rule.fields[0])?)?;
-            let conditional = match args.get("loopback_when") {
-                None | Some(Value::Null) => false,
-                Some(Value::String(pointer)) if valid_pointer(pointer) => {
-                    candidate(value, pointer)?
-                        .as_bool()
-                        .ok_or(RuleFailure::from(Reason::TypeMismatch))?
-                }
-                _ => return mapping(),
-            };
-            if (flag(args, "nonzero", false)? && actual.port() == 0)
-                || ((flag(args, "loopback", false)? || conditional) && !actual.ip().is_loopback())
-            {
-                return Err(Reason::InvalidValue.into());
-            }
-        }
-        RuleKind::DistinctSockets => {
-            keys(args, &[])?;
-            if rule.fields.len() < 2 {
-                return mapping();
-            }
-            let mut sockets = Vec::new();
-            for pointer in &rule.fields {
-                let address = socket(candidate(value, pointer)?)?;
-                if sockets.iter().any(|other: &SocketAddr| {
-                    other.port() == address.port()
-                        && (other.ip() == address.ip()
-                            || other.ip().is_unspecified()
-                            || address.ip().is_unspecified())
-                }) {
-                    return Err(Reason::InvalidValue.into());
-                }
-                sockets.push(address);
-            }
-        }
-        RuleKind::Path => {
-            fields(rule, 1)?;
-            keys(args, &["optional", "absolute"])?;
-            let optional = flag(args, "optional", false)?;
-            let absolute = flag(args, "absolute", false)?;
-            let actual = candidate(value, &rule.fields[0])?;
-            if actual.is_null() && optional {
-                return Ok(());
-            }
-            let path = actual
+        for reserved in protected {
+            let reserved = reserved
                 .as_str()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-            if !normalized(Path::new(path), absolute) {
+                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
+            if !relative(reserved) {
+                return mapping();
+            }
+            let reserved = root.join(reserved);
+            if path.starts_with(&reserved) || reserved.starts_with(&path) {
                 return Err(Reason::InvalidValue.into());
             }
         }
-        RuleKind::RootStatePaths => {
-            fields(rule, 0)?;
-            keys(args, &["paths", "protected"])?;
-            let paths = args
-                .get("paths")
-                .and_then(Value::as_array)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            let protected = args
-                .get("protected")
-                .and_then(Value::as_array)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            if paths.is_empty() || paths.len() > MAX_FIELDS || protected.len() > MAX_RULES {
-                return mapping();
-            }
-            let mut resolved = Vec::new();
-            for raw in paths {
-                let spec: PathSpec = serde_json::from_value(raw.clone()).map_err(|cause| {
-                    RuleFailure::caused_by(Reason::InvalidMapping, ConfigCause::ParseJson(cause))
-                })?;
-                let path = resolve(&spec, value, root, 0)?;
-                if path == Path::new("/") || path == root {
-                    return Err(Reason::InvalidValue.into());
-                }
-                for reserved in protected {
-                    let reserved = reserved
-                        .as_str()
-                        .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-                    if !relative(reserved) {
-                        return mapping();
-                    }
-                    let reserved = root.join(reserved);
-                    if path.starts_with(&reserved) || reserved.starts_with(&path) {
-                        return Err(Reason::InvalidValue.into());
-                    }
-                }
-                resolved.push(path);
-            }
-            for (index, path) in resolved.iter().enumerate() {
-                if resolved[..index]
-                    .iter()
-                    .any(|other| path.starts_with(other) || other.starts_with(path))
-                {
-                    return Err(Reason::InvalidValue.into());
-                }
-            }
+        resolved.push(path);
+    }
+    for (index, path) in resolved.iter().enumerate() {
+        if resolved[..index]
+            .iter()
+            .any(|other| path.starts_with(other) || other.starts_with(path))
+        {
+            return Err(Reason::InvalidValue.into());
         }
-        RuleKind::PathRelation => {
-            fields(rule, 0)?;
-            keys(
-                args,
-                &[
-                    "parent",
-                    "child",
-                    "allow_child_subtree",
-                    "forbidden_child_first_component_prefixes",
-                ],
-            )?;
-            let parent: PathSpec = serde_json::from_value(
-                args.get("parent")
-                    .ok_or(RuleFailure::from(Reason::InvalidMapping))?
-                    .clone(),
-            )
-            .map_err(|cause| {
-                RuleFailure::caused_by(Reason::InvalidMapping, ConfigCause::ParseJson(cause))
-            })?;
-            let child: PathSpec = serde_json::from_value(
-                args.get("child")
-                    .ok_or(RuleFailure::from(Reason::InvalidMapping))?
-                    .clone(),
-            )
-            .map_err(|cause| {
-                RuleFailure::caused_by(Reason::InvalidMapping, ConfigCause::ParseJson(cause))
-            })?;
-            let parent = resolve(&parent, value, root, 0)?;
-            let child = resolve(&child, value, root, 0)?;
-            let allow = args
-                .get("allow_child_subtree")
-                .and_then(Value::as_bool)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            let prefixes = args
-                .get("forbidden_child_first_component_prefixes")
-                .and_then(Value::as_array)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            if prefixes.len() > MAX_RULES
-                || prefixes.iter().any(|v| {
-                    v.as_str()
-                        .is_none_or(|s| s.len() > MAX_TEXT_BYTES || s.chars().any(char::is_control))
-                })
-            {
-                return mapping();
-            }
-            if parent.starts_with(&child) {
-                return Err(Reason::InvalidValue.into());
-            }
-            if let Ok(relative) = child.strip_prefix(&parent) {
-                let first = relative
-                    .components()
-                    .next()
-                    .and_then(|c| c.as_os_str().to_str())
-                    .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-                if !allow
-                    || prefixes
-                        .iter()
-                        .any(|prefix| first.starts_with(prefix.as_str().expect("validated prefix")))
-                {
-                    return Err(Reason::InvalidValue.into());
-                }
-            }
+    }
+    Ok(())
+}
+
+fn apply_path_relation(rule: &Rule, value: &Value, root: &Path) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 0)?;
+    keys(
+        args,
+        &[
+            "parent",
+            "child",
+            "allow_child_subtree",
+            "forbidden_child_first_component_prefixes",
+        ],
+    )?;
+    let spec_for = |name| path_spec(args.get(name).ok_or(Reason::InvalidMapping)?);
+    let parent = spec_for("parent")?;
+    let child = spec_for("child")?;
+    let parent = resolve(&parent, value, root, 0)?;
+    let child = resolve(&child, value, root, 0)?;
+    let allow = args
+        .get("allow_child_subtree")
+        .and_then(Value::as_bool)
+        .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
+    let prefixes = array(args, "forbidden_child_first_component_prefixes")?;
+    if prefixes.len() > MAX_RULES
+        || prefixes.iter().any(|v| {
+            v.as_str()
+                .is_none_or(|s| s.len() > MAX_TEXT_BYTES || s.chars().any(char::is_control))
+        })
+    {
+        return mapping();
+    }
+    if parent.starts_with(&child) {
+        return Err(Reason::InvalidValue.into());
+    }
+    if let Ok(relative) = child.strip_prefix(&parent) {
+        let first = relative
+            .components()
+            .next()
+            .and_then(|c| c.as_os_str().to_str())
+            .ok_or(RuleFailure::from(Reason::InvalidValue))?;
+        if !allow
+            || prefixes
+                .iter()
+                .any(|prefix| first.starts_with(prefix.as_str().expect("validated prefix")))
+        {
+            return Err(Reason::InvalidValue.into());
         }
-        RuleKind::ExternalWebOverride => {
-            fields(rule, 1)?;
-            keys(args, &["development_pointer", "source_bound"])?;
-            let pointer = text(args, "development_pointer")?;
-            if !valid_pointer(pointer) {
-                return mapping();
-            }
-            let development = candidate(value, pointer)?
+    }
+    Ok(())
+}
+
+fn apply_external_web_override(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(args, &["development_pointer", "source_bound"])?;
+    let pointer = text(args, "development_pointer")?;
+    if !valid_pointer(pointer) {
+        return mapping();
+    }
+    let development = candidate(value, pointer)?
+        .as_bool()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
+    let bound = args
+        .get("source_bound")
+        .and_then(Value::as_bool)
+        .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
+    if !candidate(value, &rule.fields[0])?.is_null() && (!development || bound) {
+        return Err(Reason::InvalidValue.into());
+    }
+    Ok(())
+}
+
+fn apply_url(rule: &Rule, value: &Value) -> Result<()> {
+    let args = &rule.arguments;
+    fields(rule, 1)?;
+    keys(
+        args,
+        &[
+            "allowed_schemes",
+            "no_credentials",
+            "no_query",
+            "no_fragment",
+            "loopback_host",
+            "origin_only",
+            "production_public_rtsps",
+            "development_pointer",
+            "relative_path",
+        ],
+    )?;
+    let schemes = array(args, "allowed_schemes")?;
+    if schemes.is_empty()
+        || schemes.len() > MAX_FIELDS
+        || schemes.iter().any(|s| s.as_str().is_none())
+    {
+        return mapping();
+    }
+    let relative_path = flag(args, "relative_path", false)?;
+    let no_credentials = flag(args, "no_credentials", false)?;
+    let no_query = flag(args, "no_query", false)?;
+    let no_fragment = flag(args, "no_fragment", false)?;
+    let loopback_host = flag(args, "loopback_host", false)?;
+    let origin_only = flag(args, "origin_only", false)?;
+    let production_development = if flag(args, "production_public_rtsps", false)? {
+        let pointer = text(args, "development_pointer")?;
+        if !valid_pointer(pointer) {
+            return mapping();
+        }
+        Some(
+            candidate(value, pointer)?
                 .as_bool()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-            let bound = args
-                .get("source_bound")
-                .and_then(Value::as_bool)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            if !candidate(value, &rule.fields[0])?.is_null() && (!development || bound) {
-                return Err(Reason::InvalidValue.into());
-            }
+                .ok_or(RuleFailure::from(Reason::TypeMismatch))?,
+        )
+    } else {
+        None
+    };
+    let input = candidate(value, &rule.fields[0])?
+        .as_str()
+        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
+    if input.len() > MAX_TEXT_BYTES || input.chars().any(char::is_control) {
+        return Err(Reason::InvalidValue.into());
+    }
+    if relative_path && input.starts_with('/') && !input.starts_with("//") {
+        if input.contains(['?', '#']) {
+            return Err(Reason::InvalidValue.into());
         }
-        RuleKind::Url => {
-            fields(rule, 1)?;
-            keys(
-                args,
-                &[
-                    "allowed_schemes",
-                    "no_credentials",
-                    "no_query",
-                    "no_fragment",
-                    "loopback_host",
-                    "origin_only",
-                    "production_public_rtsps",
-                    "development_pointer",
-                    "relative_path",
-                ],
-            )?;
-            let schemes = args
-                .get("allowed_schemes")
-                .and_then(Value::as_array)
-                .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
-            if schemes.is_empty()
-                || schemes.len() > MAX_FIELDS
-                || schemes.iter().any(|s| s.as_str().is_none())
-            {
-                return mapping();
-            }
-            let relative_path = flag(args, "relative_path", false)?;
-            let no_credentials = flag(args, "no_credentials", false)?;
-            let no_query = flag(args, "no_query", false)?;
-            let no_fragment = flag(args, "no_fragment", false)?;
-            let loopback_host = flag(args, "loopback_host", false)?;
-            let origin_only = flag(args, "origin_only", false)?;
-            let production_development = if flag(args, "production_public_rtsps", false)? {
-                let pointer = text(args, "development_pointer")?;
-                if !valid_pointer(pointer) {
-                    return mapping();
-                }
-                Some(
-                    candidate(value, pointer)?
-                        .as_bool()
-                        .ok_or(RuleFailure::from(Reason::TypeMismatch))?,
-                )
-            } else {
-                None
-            };
-            let input = candidate(value, &rule.fields[0])?
-                .as_str()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-            if input.len() > MAX_TEXT_BYTES || input.chars().any(char::is_control) {
-                return Err(Reason::InvalidValue.into());
-            }
-            if relative_path && input.starts_with('/') && !input.starts_with("//") {
-                if input.contains(['?', '#']) {
-                    return Err(Reason::InvalidValue.into());
-                }
-                return Ok(());
-            }
-            let parsed = url_encoding::address::Url::parse(input).map_err(|cause| {
-                RuleFailure::caused_by(Reason::InvalidValue, ConfigCause::ParseUrl(cause))
-            })?;
-            let host = parsed
-                .host()
-                .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-            // Non-special schemes such as RTSP can expose a numeric host as
-            // Domain, including bracketed IPv6. Parse that representation too.
-            let address = match &host {
-                url_encoding::address::Host::Domain(s) => s
-                    .strip_prefix('[')
-                    .and_then(|s| s.strip_suffix(']'))
-                    .unwrap_or(s)
-                    .parse::<std::net::IpAddr>()
-                    .ok(),
-                url_encoding::address::Host::Ipv4(ip) => Some(std::net::IpAddr::V4(*ip)),
-                url_encoding::address::Host::Ipv6(ip) => Some(std::net::IpAddr::V6(*ip)),
-            };
-            let loopback = matches!(&host, url_encoding::address::Host::Domain(s) if s.eq_ignore_ascii_case("localhost"))
-                || address.is_some_and(|ip| ip.is_loopback());
-            let unspecified = address.is_some_and(|ip| ip.is_unspecified());
-            if !schemes.iter().any(|s| s.as_str() == Some(parsed.scheme()))
-                || (no_credentials
-                    && (!parsed.username().is_empty() || parsed.password().is_some()))
-                || (no_query && parsed.query().is_some())
-                || (no_fragment && parsed.fragment().is_some())
-                || (loopback_host && !loopback)
-                || (origin_only && !matches!(parsed.path(), "" | "/"))
-            {
-                return Err(Reason::InvalidValue.into());
-            }
-            if production_development == Some(false)
-                && (parsed.scheme() != "rtsps" || loopback || unspecified)
-            {
-                return Err(Reason::InvalidValue.into());
-            }
-        }
+        return Ok(());
+    }
+    let parsed = url_encoding::address::Url::parse(input).map_err(|cause| {
+        RuleFailure::caused_by(Reason::InvalidValue, ConfigCause::ParseUrl(cause))
+    })?;
+    let host = parsed
+        .host()
+        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
+    // Non-special schemes such as RTSP can expose a numeric host as
+    // Domain, including bracketed IPv6. Parse that representation too.
+    let address = match &host {
+        url_encoding::address::Host::Domain(s) => s
+            .strip_prefix('[')
+            .and_then(|s| s.strip_suffix(']'))
+            .unwrap_or(s)
+            .parse::<std::net::IpAddr>()
+            .ok(),
+        url_encoding::address::Host::Ipv4(ip) => Some(std::net::IpAddr::V4(*ip)),
+        url_encoding::address::Host::Ipv6(ip) => Some(std::net::IpAddr::V6(*ip)),
+    };
+    let loopback = matches!(&host, url_encoding::address::Host::Domain(s) if s.eq_ignore_ascii_case("localhost"))
+        || address.is_some_and(|ip| ip.is_loopback());
+    let unspecified = address.is_some_and(|ip| ip.is_unspecified());
+    if !schemes.iter().any(|s| s.as_str() == Some(parsed.scheme()))
+        || (no_credentials && (!parsed.username().is_empty() || parsed.password().is_some()))
+        || (no_query && parsed.query().is_some())
+        || (no_fragment && parsed.fragment().is_some())
+        || (loopback_host && !loopback)
+        || (origin_only && !matches!(parsed.path(), "" | "/"))
+    {
+        return Err(Reason::InvalidValue.into());
+    }
+    if production_development == Some(false)
+        && (parsed.scheme() != "rtsps" || loopback || unspecified)
+    {
+        return Err(Reason::InvalidValue.into());
     }
     Ok(())
 }

@@ -13,6 +13,7 @@ default = ["tracing"]
 tracing = []
 
 [dependencies]
+num-traits = { path = "../foundation/math/numeric-traits", package = "blog-math-numeric-traits" }
 schemars = { path = "../foundation/format/json-schema",package = "blog-format-json-schema"}
 argon2 = {  features = ["std"], path = "../foundation/crypto/password-derivation",package = "blog-crypto-password-derivation"}
 base64 = {  path = "../foundation/encoding/application-base-encoding",package = "blog-encoding-application-base-encoding"}

@@ -35,6 +35,7 @@ pub struct VerifiedAdministrator {
 }
 
 impl VerifiedAdministrator {
+    #[must_use]
     pub fn username(&self) -> &str {
         &self.username
     }
@@ -66,6 +67,8 @@ impl<Store> Clone for AdapterState<Store> {
     }
 }
 
+/// # Errors
+/// The product identifier cannot form a valid session cookie name.
 pub fn administrator_router<Store>(
     product_id: impl Into<String>,
     mode: AdministratorOriginMode,
@@ -102,6 +105,8 @@ where
     Ok(management::account_routes(router).with_state(state))
 }
 
+/// # Errors
+/// Returns a safe HTTP error response if request metadata, session authentication, or required CSRF validation fails.
 pub async fn authenticate_request<Store>(
     service: &AdministratorService<Store>,
     headers: &HeaderMap,
@@ -127,7 +132,7 @@ where
     let identity = service
         .authenticate_session(&token, now)
         .await
-        .map_err(|failure| Box::new(service_error(failure, id.as_ref())))?;
+        .map_err(|failure| Box::new(service_error(&failure, id.as_ref())))?;
     if !matches!(
         *method,
         Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
@@ -221,7 +226,7 @@ where
                 json_with_cookie(StatusCode::OK, &authenticated.administrator, &cookie),
             )
         }
-        Err(failure) => service_error(failure, request_id.as_ref()),
+        Err(failure) => service_error(&failure, request_id.as_ref()),
     }
 }
 
@@ -246,7 +251,7 @@ where
             authenticated.administrator.username().to_owned(),
             no_store(axum::Json(authenticated.administrator).into_response()),
         ),
-        Err(failure) => service_error(failure, request_id.as_ref()),
+        Err(failure) => service_error(&failure, request_id.as_ref()),
     }
 }
 
@@ -307,7 +312,7 @@ where
                 ),
             }
         }
-        Err(failure) => service_error(failure, request_id.as_ref()),
+        Err(failure) => service_error(&failure, request_id.as_ref()),
     }
 }
 
@@ -475,7 +480,7 @@ fn now_micros() -> Result<u64, Box<Response>> {
 }
 
 fn service_error<StoreError>(
-    failure: ServiceError<StoreError>,
+    failure: &ServiceError<StoreError>,
     request_id: Option<&RequestId>,
 ) -> Response
 where
@@ -490,7 +495,7 @@ where
                 crate::admin_core::LOGIN_ATTEMPTS_ERROR_CODE,
                 true,
                 request_id,
-                serde_json::Map::from_iter([("retry_after".into(), retry_after_seconds.into())]),
+                serde_json::Map::from_iter([("retry_after".into(), (*retry_after_seconds).into())]),
             );
             response.headers_mut().insert(
                 header::RETRY_AFTER,
@@ -588,7 +593,7 @@ fn error(
     retryable: bool,
     request_id: Option<&RequestId>,
 ) -> Response {
-    error_with_details(status, code, retryable, request_id, Default::default())
+    error_with_details(status, code, retryable, request_id, serde_json::Map::new())
 }
 
 fn error_with_details(

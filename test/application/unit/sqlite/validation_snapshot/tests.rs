@@ -137,7 +137,7 @@ async fn connection_limits_survive_pool_replacement_without_touching_source() {
         assert_eq!(
             error
                 .as_database_error()
-                .and_then(|error| error.code())
+                .and_then(sqlx::error::DatabaseError::code)
                 .as_deref(),
             Some("18")
         );

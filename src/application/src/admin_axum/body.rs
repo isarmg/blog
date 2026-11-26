@@ -125,7 +125,7 @@ async fn read_bounded(
         Ok(Err(failure)) => {
             let oversized = failure
                 .source()
-                .is_some_and(|source| source.is::<http_body::LengthLimitError>());
+                .is_some_and(<dyn std::error::Error>::is::<http_body::LengthLimitError>);
             Err(Box::new(error(
                 if oversized {
                     StatusCode::PAYLOAD_TOO_LARGE

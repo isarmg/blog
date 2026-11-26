@@ -98,7 +98,7 @@
 .original-public .original-tag-panel { max-width: none; margin: 0 0 24px; padding: 16px; background: var(--public-surface); box-shadow: none; }
 .original-public .original-tag-panel button { min-height: 44px; padding: 10px 16px; font-size: .95rem; }
 .original-public .original-article-list { max-width: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr)); gap: 24px; }
-.original-public .original-article-list > :is(h2, .pager, .original-empty-articles) { grid-column: 1/-1; margin-block: 0; }
+.original-public .original-article-list > :is(h2, .pager) { grid-column: 1/-1; margin-block: 0; }
 .original-public .original-list-card {
   display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); height: auto; min-height: 270px;
   margin: 0; border: 1px solid var(--public-border); background: var(--public-surface); color: var(--public-ink);

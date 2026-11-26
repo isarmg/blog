@@ -1,4 +1,5 @@
 use super::*;
+use std::fmt::Write as _;
 
 #[test]
 fn connection_error_adapter_preserves_native_io_error_codes() {
@@ -318,9 +319,10 @@ async fn schema_budget_rejects_complete_excess_and_preserves_canonical_bytes()
     );
 
     // This SQL is generated only from test-owned indices, never input data.
-    let ddl = (0..MAX_SCHEMA_OBJECTS - 1)
-        .map(|index| format!("CREATE TABLE owned_{index}(id INTEGER);"))
-        .collect::<String>();
+    let mut ddl = String::new();
+    for index in 0..MAX_SCHEMA_OBJECTS - 1 {
+        write!(ddl, "CREATE TABLE owned_{index}(id INTEGER);").unwrap();
+    }
     sqlx::raw_sql(sqlx::AssertSqlSafe(ddl.as_str()))
         .execute(&mut connection)
         .await?;
@@ -348,7 +350,9 @@ async fn schema_budget_rejects_complete_excess_and_preserves_canonical_bytes()
     )
     .fetch_one(&mut connection)
     .await?;
-    assert!(stored_bytes > MAX_SCHEMA_BYTES as i64);
+    assert!(
+        stored_bytes > i64::try_from(MAX_SCHEMA_BYTES).expect("compiled limit fits SQLite INTEGER")
+    );
     assert!(matches!(
         schema_rows(&mut connection).await,
         Err(Error::SchemaBudgetExceeded)

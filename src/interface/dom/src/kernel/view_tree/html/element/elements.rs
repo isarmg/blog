@@ -16,7 +16,7 @@ macro_rules! html_element_inner {
         [$($attr:ty),*]
         $escape:literal
     ) => {
-        blog_component_macros::paste! {
+        token_concat::paste! {
             #[$meta]
             #[track_caller]
             pub fn $tag() -> HtmlElement<$struct_name, (), ()>
@@ -100,7 +100,7 @@ macro_rules! html_elements {
       ),*
       $(,)?
     ) => {
-        blog_component_macros::paste! {
+        token_concat::paste! {
             $(html_element_inner! {
                 #[$meta]
                 $tag
@@ -120,7 +120,7 @@ macro_rules! html_self_closing_elements {
       ),*
       $(,)?
     ) => {
-        blog_component_macros::paste! {
+        token_concat::paste! {
             $(
                 #[$meta]
                 #[track_caller]

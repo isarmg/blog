@@ -5,7 +5,7 @@ use std::future::Future;
 /// Complete a trusted direct [`sqlx::SqliteConnection`] operation synchronously.
 ///
 /// SQLite connection creation, statements and explicit connection closure use
-/// SQLx's native worker thread and channels. They do not require a Tokio reactor.
+/// `SQLx`'s native worker thread and channels. They do not require a Tokio reactor.
 /// This entry point also works inside a Tokio current-thread or multi-thread
 /// runtime without starting a nested Tokio runtime.
 ///

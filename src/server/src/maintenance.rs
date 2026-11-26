@@ -1,7 +1,7 @@
 //! Explicit offline operations for the separate `blog-setup` executable.
 //! Every operation takes the same instance lock as the server. Runtime startup
 //! never calls these functions and never initializes or resets stored data.
-use crate::Error;
+use crate::{Error, error::finish_operation};
 use blog_application::{
     admin_auth,
     admin_core::{
@@ -15,6 +15,10 @@ use std::path::Path;
 /// Initialize a fresh current database without replacing any existing file.
 /// The administrator controls ROOT/config/config.json. Mutable directories may
 /// already exist, but must be private and owned by the invoking service user.
+///
+/// # Errors
+/// Returns an error for invalid credentials or settings, an occupied instance
+/// lock, or failure to create and publish the new database without replacement.
 pub async fn initialize(root: &Path, username: &str, password: &str) -> Result<(), Error> {
     crate::verify_compiled_identity()?;
     let username = admin_auth::normalize_administrator_username(username)?;
@@ -54,6 +58,10 @@ pub async fn initialize(root: &Path, username: &str, password: &str) -> Result<(
 }
 
 /// Validate a stopped instance using a bounded temporary database snapshot.
+///
+/// # Errors
+/// Returns an error if the stopped instance cannot be locked, its private
+/// directories cannot be opened, or its database snapshot fails validation.
 pub async fn check(root: &Path) -> Result<(), Error> {
     crate::verify_compiled_identity()?;
     let settings = crate::config::load_offline(root, &root.join("config/config.json"))?.value;
@@ -71,6 +79,10 @@ pub async fn check(root: &Path) -> Result<(), Error> {
 
 /// Reset the sole administrator's password and revoke every prior session in
 /// one database transaction, with the same audit records as current auth code.
+///
+/// # Errors
+/// Returns an error if the instance cannot be locked or validated, the named
+/// administrator does not exist, or the credential change cannot be committed.
 pub async fn reset_password(root: &Path, username: &str, password: &str) -> Result<(), Error> {
     crate::verify_compiled_identity()?;
     let username = admin_auth::normalize_administrator_username(username)?;
@@ -127,21 +139,6 @@ async fn reset_administrator_password(
         )
         .await?;
     Ok(())
-}
-
-fn finish_operation(
-    operation: Result<(), Error>,
-    release: Result<(), blog_application::state_file::Error>,
-) -> Result<(), Error> {
-    match (operation, release) {
-        (Ok(()), Ok(())) => Ok(()),
-        (Err(operation), Ok(())) => Err(operation),
-        (Ok(()), Err(release)) => Err(release.into()),
-        (Err(operation), Err(release)) => Err(Error::StateRelease {
-            operation: Box::new(operation),
-            release,
-        }),
-    }
 }
 
 #[cfg(test)]

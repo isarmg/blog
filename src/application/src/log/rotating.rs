@@ -70,6 +70,8 @@ impl RotatingLogFile {
     /// The caller creates the dedicated directory explicitly. Opening this
     /// sink never deletes unknown entries or repairs permissions. Existing
     /// files outside the declared retention policy are rejected.
+    /// # Errors
+    /// The storage policy or retention limits are invalid, the writer is busy, or inspecting or opening files fails.
     pub fn open(
         path: impl AsRef<Path>,
         stem: &str,
@@ -90,6 +92,8 @@ impl RotatingLogFile {
 
     /// Use an explicit active filename in an existing private directory.
     /// Archives are `<filename>.1` through the declared retention count.
+    /// # Errors
+    /// The active filename, existing files, or retention limits are unsafe, or the writer cannot be opened.
     pub fn open_file(
         active_path: impl AsRef<Path>,
         retention: LogRetention,
@@ -128,7 +132,7 @@ impl RotatingLogFile {
         }
         let directory = OpenOptions::new()
             .read(true)
-            .custom_flags((OFlags::DIRECTORY | OFlags::NOFOLLOW).bits() as i32)
+            .custom_flags((OFlags::DIRECTORY | OFlags::NOFOLLOW).bits().cast_signed())
             .open(path)?;
         let metadata = directory.metadata()?;
         if !metadata.is_dir()
@@ -188,6 +192,8 @@ impl RotatingLogFile {
         Ok(sink)
     }
 
+    /// # Errors
+    /// The record cannot be encoded, appended, or rotated safely.
     pub fn write(&mut self, record: &LogRecord) -> Result<(), LogError> {
         let line = record.encode()?;
         self.write_line(&line)

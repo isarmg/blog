@@ -46,7 +46,7 @@ test('server and browser groups are independent and preserve every gate', () => 
   assert.match(browser, /group: \[admin, public\]/);
   for (const command of [
     'cargo fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check',
-    'cargo clippy --locked --offline --all-targets -- -D warnings',
+    'cargo clippy --locked --offline --all-targets --all-features -- -D clippy::pedantic -D warnings',
     'cargo clippy --locked --offline -p blog-assets -p blog-browser-domain-tests --all-targets -- -D warnings',
     'cargo clippy --locked --offline -p blog-browser --target wasm32-unknown-unknown -- -D warnings',
     'cargo test --locked --offline', 'cargo build --locked --offline', 'bash test/operations/smoke.sh',

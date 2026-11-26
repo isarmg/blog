@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub use crate::config_definition::Settings;
 
+#[derive(Clone, Copy)]
 enum EnvironmentSource {
     Runtime,
     #[cfg(feature = "maintenance")]
@@ -42,37 +43,18 @@ fn load_with_environment(
         cfg!(debug_assertions) && env!("BLOG_SOURCE_REVISION") == "unbound",
     )?;
     let mappings = [
-        EnvMapping {
-            variable: "BLOG_DATA_DIR",
-            path: "/data_dir",
-            kind: EnvValueKind::String,
-        },
-        EnvMapping {
-            variable: "BLOG_LOG_LEVEL",
-            path: "/log_level",
-            kind: EnvValueKind::String,
-        },
-        EnvMapping {
-            variable: "BLOG_MEDIA",
-            path: "/media",
-            kind: EnvValueKind::String,
-        },
-        EnvMapping {
-            variable: "BLOG_BIND",
-            path: "/bind",
-            kind: EnvValueKind::String,
-        },
-        EnvMapping {
-            variable: "BLOG_DEVELOPMENT",
-            path: "/development",
-            kind: EnvValueKind::Boolean,
-        },
-        EnvMapping {
-            variable: "BLOG_DEV_WEB_DIR",
-            path: "/web",
-            kind: EnvValueKind::String,
-        },
-    ];
+        ("BLOG_DATA_DIR", "/data_dir", EnvValueKind::String),
+        ("BLOG_LOG_LEVEL", "/log_level", EnvValueKind::String),
+        ("BLOG_MEDIA", "/media", EnvValueKind::String),
+        ("BLOG_BIND", "/bind", EnvValueKind::String),
+        ("BLOG_DEVELOPMENT", "/development", EnvValueKind::Boolean),
+        ("BLOG_DEV_WEB_DIR", "/web", EnvValueKind::String),
+    ]
+    .map(|(variable, path, kind)| EnvMapping {
+        variable,
+        path,
+        kind,
+    });
     let mut values = std::collections::BTreeMap::new();
     if matches!(environment_source, EnvironmentSource::Runtime) {
         for mapping in &mappings {

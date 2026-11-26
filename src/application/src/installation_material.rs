@@ -29,6 +29,10 @@ pub enum Error {
 
 /// Generate shared fragments. Only the control-plane profile owns the shared
 /// platform metadata; `None` exports the shared administrator tables alone.
+/// # Errors
+/// The release identity, schema, profile, target, or credential policy cannot produce a current installation contract.
+/// # Panics
+/// An embedded credential fixture does not have the expected structure.
 pub fn common(
     identity: &ReleaseIdentity,
     schema: &SchemaIdentity,
@@ -113,6 +117,16 @@ pub fn common(
         audit(admin_core::SecurityAction::AdministratorPasswordChanged),
         audit(admin_core::SecurityAction::AdministratorSessionsRevoked),
     ];
+    let credentials = credential_contract(&definition);
+    Ok(json!({
+        "contract_version":1,"identity":identity,"schema_identity":schema,
+        "authority_sources": authority_sources(), "credentials":credentials,
+        "database": {"schema_identity":schema,"schema_stamp":schema,"fingerprint_algorithm":"sqlite-schema-v1","initialize":initialize,"reset_administrator":reset,"checks":checks,"validation":[]},
+        "definitions": {"administrator":definition,"envelope":crate::secret_envelope::envelope_contract(),"platform":{"generation":platform_db::PLATFORM_GENERATION,"schema_revision":platform_db::PLATFORM_SCHEMA_REVISION,"ddl":platform_db::PLATFORM_METADATA_DDL,"insert_sql":platform_db::PLATFORM_METADATA_INSERT_SQL,"check_sql":platform_db::PLATFORM_METADATA_CHECK_SQL}}
+    }))
+}
+
+fn credential_contract(definition: &Value) -> Value {
     let vectors = &definition["credential_validation_vectors"];
     let mut cases = Vec::new();
     for vector in vectors["username"]
@@ -131,7 +145,7 @@ pub fn common(
         cases.push(json!({"name":format!("password-{}", cases.len()),"username":"admin","password":vector["input"],"normalized_username":"admin","valid":vector["valid"]}));
     }
     let policy = &definition["credential_policy"];
-    let credentials = json!({
+    json!({
         "policy_revision": admin_core::POLICY_REVISION,
         "username": {"normalization":"ascii-trim-lowercase","minimum_bytes":policy["username"]["min_bytes"],"maximum_bytes":policy["username"]["max_bytes"],"pattern":admin_auth::ADMINISTRATOR_USERNAME_PATTERN,"reject_ascii_control":true},
         "password": {"minimum_bytes":policy["password"]["min_bytes"],"maximum_bytes":policy["password"]["max_bytes"],"reject_ascii_control":true},
@@ -144,23 +158,25 @@ pub fn common(
         "identifier_max_bytes":admin_core::IDENTIFIER_MAX_BYTES,
         "identifier_random_bytes":admin_auth::SESSION_TOKEN_BYTES,
         "cases":cases
-    });
-    Ok(json!({
-        "contract_version":1,"identity":identity,"schema_identity":schema,
-        "authority_sources": authority_sources(), "credentials":credentials,
-        "database": {"schema_identity":schema,"schema_stamp":schema,"fingerprint_algorithm":"sqlite-schema-v1","initialize":initialize,"reset_administrator":reset,"checks":checks,"validation":[]},
-        "definitions": {"administrator":definition,"envelope":crate::secret_envelope::envelope_contract(),"platform":{"generation":platform_db::PLATFORM_GENERATION,"schema_revision":platform_db::PLATFORM_SCHEMA_REVISION,"ddl":platform_db::PLATFORM_METADATA_DDL,"insert_sql":platform_db::PLATFORM_METADATA_INSERT_SQL,"check_sql":platform_db::PLATFORM_METADATA_CHECK_SQL}}
-    }))
+    })
 }
 
 fn parameter(source: &str, value: Value, kind: &str) -> Value {
-    json!({"source":source,"value":value,"type":kind})
+    Value::from_iter([
+        ("source", source.into()),
+        ("value", value),
+        ("type", kind.into()),
+    ])
 }
 fn literal(value: Value, kind: &str) -> Value {
     parameter("literal", value, kind)
 }
 fn statement(sql: &str, parameters: Vec<Value>, expected_changes: Option<u64>) -> Value {
-    json!({"sql":sql,"parameters":parameters,"expected_changes":expected_changes})
+    Value::from_iter([
+        ("sql", sql.into()),
+        ("parameters", Value::Array(parameters)),
+        ("expected_changes", expected_changes.into()),
+    ])
 }
 fn audit(action: admin_core::SecurityAction) -> Value {
     statement(

@@ -32,3 +32,12 @@ pub mod state_file;
 #[path = "../../../test/application/support/mod.rs"]
 pub(crate) mod testkit;
 pub mod web_assets;
+
+fn hexadecimal(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(output, "{byte:02x}").expect("writing to a String is infallible");
+    }
+    output
+}

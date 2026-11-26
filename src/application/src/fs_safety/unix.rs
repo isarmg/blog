@@ -305,6 +305,7 @@ pub(super) fn atomic_create(
     atomic_write(directory, destination.as_os_str(), bytes, WriteMode::Create)
 }
 
+#[derive(Clone, Copy)]
 enum WriteMode {
     Create,
     Replace,

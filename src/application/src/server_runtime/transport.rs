@@ -2,8 +2,9 @@ use crate::server_runtime::http1::{
     AcceptBackoff, WriteIdleTimeout, accept_with_backoff, log_connection_error,
 };
 use crate::server_runtime::{
-    BoundListeners, Error, LifecycleParticipant, ProcessSignals, ServerRuntime, ShutdownFailure,
-    ShutdownLimits, ShutdownPhase, ShutdownReport, request_service, wait_for_shutdown,
+    BoundListeners, Error, LifecycleParticipant, ProcessSignals, RuntimeHandle, ServerRuntime,
+    ShutdownFailure, ShutdownLimits, ShutdownPhase, ShutdownReport, request_service,
+    wait_for_shutdown,
 };
 use axum::{body::Body, extract::Request, response::Response};
 use futures::{FutureExt, future::FusedFuture};
@@ -47,6 +48,7 @@ pub struct HttpServer {
     pub participant: Option<Arc<dyn LifecycleParticipant>>,
 }
 impl HttpServer {
+    #[must_use]
     pub fn new(listeners: BoundListeners, signals: ProcessSignals) -> Self {
         Self {
             listeners,
@@ -61,6 +63,10 @@ impl HttpServer {
 impl ServerRuntime {
     /// The sole process HTTP entry point. The Tower service may wrap an Axum
     /// Router with a product-owned raw-URI validator, before routing happens.
+    /// # Errors
+    /// The limits are invalid, a listener or critical task fails, or shutdown cannot finish safely.
+    /// # Panics
+    /// The connection quota unexpectedly closes or a shutdown phase lock is poisoned.
     pub async fn serve<S>(self, mut server: HttpServer, service: S) -> Result<ShutdownReport, Error>
     where
         S: Service<Request, Response = Response, Error = Infallible>
@@ -71,9 +77,10 @@ impl ServerRuntime {
         S::Future: Send,
     {
         let limits = server.limits;
-        if limits.max_connections == 0
+        let capacity = u32::try_from(limits.max_connections)
+            .map_err(|_| Error::InvalidDescriptor("HTTP/1 or shutdown limits"))?;
+        if capacity == 0
             || limits.max_connections > Semaphore::MAX_PERMITS
-            || limits.max_connections > u32::MAX as usize
             || limits.max_buffer_bytes < 8192
             || limits.header_read_timeout.is_zero()
             || limits.write_idle_timeout.is_zero()
@@ -121,21 +128,15 @@ impl ServerRuntime {
                 )
                 .await
                 {
-                    let service = service.clone();
-                    let logging_service = logging_service.clone();
-                    let (stop, force) = (stop.clone(), force.clone());
-                    connections.spawn(async move {
-                        serve_connection(
-                            socket,
-                            logging_service,
-                            service,
-                            limits,
-                            stop,
-                            force,
-                            permit,
-                        )
-                        .await;
-                    });
+                    connections.spawn(serve_connection(
+                        socket,
+                        logging_service.clone(),
+                        service.clone(),
+                        limits,
+                        stop.clone(),
+                        force.clone(),
+                        permit,
+                    ));
                 }
             });
         }
@@ -155,9 +156,37 @@ impl ServerRuntime {
         }
         listeners.wait().await;
         connections.close();
-        let phase = Arc::new(std::sync::Mutex::new(ShutdownPhase::DrainingRequests));
-        let phase_worker = phase.clone();
-        let participant = server.participant.clone();
+        server
+            .finish(
+                handle,
+                runtime,
+                connections,
+                ConnectionQuota { slots, capacity },
+                force,
+                listeners_failed,
+            )
+            .await
+    }
+}
+
+struct ConnectionQuota {
+    slots: Arc<Semaphore>,
+    capacity: u32,
+}
+
+impl HttpServer {
+    async fn finish(
+        mut self,
+        handle: RuntimeHandle,
+        mut runtime: impl FusedFuture<Output = ()> + Unpin,
+        connections: TaskTracker,
+        quota: ConnectionQuota,
+        force: CancellationToken,
+        listeners_failed: bool,
+    ) -> Result<ShutdownReport, Error> {
+        let ConnectionQuota { slots, capacity } = quota;
+        let phase = std::sync::Mutex::new(ShutdownPhase::DrainingRequests);
+        let participant = self.participant.clone();
         let drain = async {
             // A paused runtime health probe may itself hold a product request
             // admission guard. Poll its shutdown alongside request draining;
@@ -180,18 +209,17 @@ impl ServerRuntime {
             // Upgraded sockets also own connection capacity until their real
             // I/O object drops, not merely until the HTTP handshake returns.
             let all_sockets = slots
-                .clone()
-                .acquire_many_owned(limits.max_connections as u32)
+                .acquire_many(capacity)
                 .await
                 .expect("connection quota remains open");
             // This is a barrier, not an active connection. Release it before
             // commit draining so incomplete reports count real sockets only.
             drop(all_sockets);
-            *phase_worker.lock().expect("phase lock") = ShutdownPhase::DrainingCommits;
+            *phase.lock().expect("phase lock") = ShutdownPhase::DrainingCommits;
             if let Some(participant) = &participant {
                 participant.drain_commits().await;
             }
-            *phase_worker.lock().expect("phase lock") = ShutdownPhase::ClosingState;
+            *phase.lock().expect("phase lock") = ShutdownPhase::ClosingState;
             if let Some(participant) = &participant {
                 participant
                     .close_state()
@@ -203,8 +231,8 @@ impl ServerRuntime {
         tokio::pin!(drain);
         let first = tokio::select! {
             result = &mut drain => Some(result),
-            _ = tokio::time::sleep(server.shutdown_limits.grace) => None,
-            _ = server.signals.recv() => None,
+            () = tokio::time::sleep(self.shutdown_limits.grace) => None,
+            _ = self.signals.recv() => None,
         };
         let clean = if let Some(result) = first {
             result?;
@@ -212,16 +240,16 @@ impl ServerRuntime {
         } else {
             *phase.lock().expect("phase lock") = ShutdownPhase::CancellingOrdinaryWork;
             force.cancel();
-            if let Some(participant) = &server.participant {
+            if let Some(participant) = &self.participant {
                 participant.cancel_ordinary_work();
             }
             tokio::select! {
                 result = &mut drain => { result?; true },
-                _ = tokio::time::sleep(server.shutdown_limits.forced) => false,
-                _ = server.signals.recv() => false,
+                () = tokio::time::sleep(self.shutdown_limits.forced) => false,
+                _ = self.signals.recv() => false,
             }
         };
-        let (ordinary, commits) = server
+        let (ordinary, commits) = self
             .participant
             .as_ref()
             .map_or((0, 0), |p| p.active_tasks());
@@ -239,14 +267,14 @@ impl ServerRuntime {
             } else {
                 *phase.lock().expect("phase lock")
             },
-            unfinished_connections: limits.max_connections - slots.available_permits(),
+            unfinished_connections: self.limits.max_connections - slots.available_permits(),
             unfinished_ordinary_work: ordinary + background,
             unfinished_commits: commits,
         };
         if !clean {
             return Err(Error::ShutdownIncomplete(ShutdownFailure {
                 report,
-                _retained: server.participant,
+                _retained: self.participant,
             }));
         }
         if listeners_failed {
@@ -294,10 +322,10 @@ async fn serve_connection<S>(
         .with_upgrades();
     tokio::pin!(connection);
     let result = tokio::select! {
-        _ = force.cancelled() => return,
-        _ = stop.cancelled() => {
+        () = force.cancelled() => return,
+        () = stop.cancelled() => {
             connection.as_mut().graceful_shutdown();
-            tokio::select! { _ = force.cancelled() => return, result = &mut connection => result }
+            tokio::select! { () = force.cancelled() => return, result = &mut connection => result }
         },
         result = &mut connection => result,
     };

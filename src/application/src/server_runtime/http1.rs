@@ -29,7 +29,7 @@ pub(crate) struct WriteIdleTimeout<T> {
     timer: Option<Pin<Box<tokio::time::Sleep>>>,
     // The permit must follow the socket even when HTTP upgrades transfer it
     // out of the connection future (e.g. a managed WebSocket).
-    _permit: Option<OwnedSemaphorePermit>,
+    permit: Option<OwnedSemaphorePermit>,
     forced: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
 }
 
@@ -40,7 +40,7 @@ impl<T> WriteIdleTimeout<T> {
             inner,
             timeout,
             timer: None,
-            _permit: None,
+            permit: None,
             forced: None,
         }
     }
@@ -54,7 +54,7 @@ impl<T> WriteIdleTimeout<T> {
         permit: OwnedSemaphorePermit,
         force: CancellationToken,
     ) -> Self {
-        self._permit = Some(permit);
+        self.permit = Some(permit);
         self.forced = Some(Box::pin(force.cancelled_owned()));
         self
     }
@@ -187,7 +187,7 @@ pub(crate) async fn accept_with_backoff(
     loop {
         let readiness = tokio::select! {
             biased;
-            _ = shutdown.cancelled() => return None,
+            () = shutdown.cancelled() => return None,
             result = listener.readable() => result,
         };
         let mut readiness = match readiness {
@@ -226,7 +226,7 @@ pub(crate) async fn accept_with_backoff(
         // permit that bounds its lifetime.
         let connection_permit = tokio::select! {
             biased;
-            _ = shutdown.cancelled() => return None,
+            () = shutdown.cancelled() => return None,
             permit = connection_slots.clone().acquire_owned() => {
                 permit.expect("the connection semaphore is never closed")
             }
@@ -296,8 +296,8 @@ async fn wait_after_accept_error(
     log_accept_error(service, listener_addr, err, retry_delay);
     tokio::select! {
         biased;
-        _ = shutdown.cancelled() => false,
-        _ = sleep(retry_delay) => true,
+        () = shutdown.cancelled() => false,
+        () = sleep(retry_delay) => true,
     }
 }
 
@@ -338,7 +338,12 @@ fn log_accept_error(
         .and_then(|record| record.with_attribute("category", category))
         .and_then(|record| record.with_attribute("io_kind", format!("{:?}", err.kind())))
         .and_then(|record| record.with_attribute("os_error", serde_json::json!(err.raw_os_error())))
-        .and_then(|record| record.with_attribute("retry_ms", retry_delay.as_millis() as u64))
+        .and_then(|record| {
+            record.with_attribute(
+                "retry_ms",
+                u64::try_from(retry_delay.as_millis()).expect("bounded accept retry delay"),
+            )
+        })
         .expect("validated service and bounded transport attributes form a log record");
     emit_record(&record);
 }
@@ -416,9 +421,7 @@ pub(crate) fn log_connection_error(
     } else {
         "unknown"
     };
-    let io_kind = io_kind
-        .map(|kind| format!("{kind:?}"))
-        .unwrap_or_else(|| "-".to_string());
+    let io_kind = io_kind.map_or_else(|| "-".to_string(), |kind| format!("{kind:?}"));
     let event = if category == "disconnect" {
         CommonEvent::HttpConnectionClosed
     } else {

@@ -17,12 +17,15 @@ pub const MAX_REQUEST_ID_BYTES: usize = 128;
 pub struct ErrorCode(String);
 
 impl ErrorCode {
+    /// # Errors
+    /// The supplied code is outside the permitted length or identifier alphabet.
     pub fn new(value: impl Into<String>) -> Result<Self, InvalidErrorCode> {
         let value = value.into();
         validate_error_code(&value)?;
         Ok(Self(value))
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -91,12 +94,15 @@ fn validate_error_code(value: &str) -> Result<(), InvalidErrorCode> {
 pub struct RequestId(String);
 
 impl RequestId {
+    /// # Errors
+    /// The request identifier is outside the permitted length or ASCII alphabet.
     pub fn new(value: impl Into<String>) -> Result<Self, InvalidRequestId> {
         let value = value.into();
         validate_request_id(&value)?;
         Ok(Self(value))
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -163,6 +169,7 @@ pub(crate) fn validate_request_id(value: &str) -> Result<(), InvalidRequestId> {
 /// additive. Sensitive diagnostics belong in server logs, not this envelope.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[must_use]
 pub struct ErrorEnvelope {
     pub code: ErrorCode,
     pub message: String,
@@ -205,6 +212,8 @@ impl ErrorEnvelope {
         }
     }
 
+    /// # Errors
+    /// The supplied request identifier is invalid.
     pub fn with_request_id(
         mut self,
         request_id: impl Into<String>,
@@ -247,6 +256,7 @@ pub enum HttpStatus {
 }
 
 impl HttpStatus {
+    #[must_use]
     pub fn code(self) -> &'static str {
         match self {
             Self::BadRequest => "bad_request",
@@ -261,10 +271,14 @@ impl HttpStatus {
         }
     }
 
+    /// # Panics
+    /// A built-in HTTP error code is not a valid machine-readable identifier.
+    #[must_use]
     pub fn error_code(self) -> ErrorCode {
         ErrorCode::new(self.code()).expect("built-in HTTP error code is valid")
     }
 
+    #[must_use]
     pub const fn status(self) -> u16 {
         match self {
             Self::BadRequest => 400,
@@ -279,7 +293,7 @@ impl HttpStatus {
         }
     }
 
-    pub const fn default_retryable(self) -> bool {
+    pub(crate) const fn default_retryable(self) -> bool {
         matches!(self, Self::TooManyRequests | Self::ServiceUnavailable)
     }
 }

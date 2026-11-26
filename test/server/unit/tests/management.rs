@@ -4,61 +4,6 @@ use serde_json::{Value, json};
 #[path = "commit_responses.rs"]
 mod commit_responses;
 
-async fn session(app: &Router) -> (String, String) {
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let value = body_json(response).await;
-    (cookie, value["csrf_token"].as_str().unwrap().to_owned())
-}
-
-async fn admin(
-    app: &Router,
-    session: &(String, String),
-    method: &str,
-    path: &str,
-    value: Value,
-) -> Response {
-    app.clone()
-        .oneshot(
-            Request::builder()
-                .method(method)
-                .uri(path)
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(value.to_string()))
-                .unwrap(),
-        )
-        .await
-        .unwrap()
-}
-
 async fn public(app: &Router, path: &str) -> Value {
     let response = app
         .clone()
@@ -182,7 +127,7 @@ async fn content_mutations_recheck_revocable_authority_after_request_body_waits(
         "UPDATE _common_administrators SET session_version=session_version+1",
     ] {
         let (_directory, app, pool) = setup().await;
-        let session = session(&app).await;
+        let session = login(&app).await;
         let (request, release) = pause_administrator_request(
             &app,
             &session,
@@ -212,7 +157,7 @@ async fn media_upload_rechecks_authority_before_publishing_a_file_or_resource() 
     use sha2::{Digest, Sha256};
 
     let (directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let (request, release) =
         pause_administrator_request(&app, &session, "/api/v1/content/upload", "image/png").await;
     sqlx::query("UPDATE _common_admin_sessions SET revoked_at_micros=1")
@@ -240,7 +185,7 @@ async fn media_upload_rechecks_authority_before_publishing_a_file_or_resource() 
 #[tokio::test]
 async fn article_mutation_rechecks_authority_after_waiting_for_a_database_writer() {
     let (_directory, app, pool) = setup_with_pool_limit(2).await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     sqlx::raw_sql("INSERT INTO sort(id,sort_name) VALUES(1,'Category'); INSERT INTO label(id,sort_id,label_name) VALUES(1,1,'Label');")
         .execute(&pool).await.unwrap();
     let (request, release) = pause_administrator_request(
@@ -314,7 +259,7 @@ async fn malformed_reply_floor_is_rejected_without_creating_a_thread_or_receipt(
 #[tokio::test]
 async fn validated_letter_limits_cover_worst_case_json_escaping() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let content = json!({
         "recipient":"\0".repeat(100),
         "sender":"\0".repeat(100),
@@ -344,7 +289,7 @@ async fn validated_letter_limits_cover_worst_case_json_escaping() {
 #[tokio::test]
 async fn home_section_targets_are_parsed_before_replacing_the_existing_sections() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     sqlx::query("INSERT INTO sort(id,sort_name) VALUES(1,'Category')")
         .execute(&pool)
         .await
@@ -393,7 +338,7 @@ async fn home_section_targets_are_parsed_before_replacing_the_existing_sections(
 #[tokio::test]
 async fn link_kinds_are_parsed_at_request_boundaries_before_database_writes() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let link = |kind| {
         json!({
             "title": kind,
@@ -444,7 +389,7 @@ async fn link_kinds_are_parsed_at_request_boundaries_before_database_writes() {
 #[tokio::test]
 async fn notes_images_visibility_and_edits_complete_real_request_flow() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let image = uploaded_image(&app, &session).await;
     let response = admin(
         &app,
@@ -508,7 +453,7 @@ async fn notes_images_visibility_and_edits_complete_real_request_flow() {
 #[tokio::test]
 async fn notes_bad_image_and_shape_are_rejected_without_mutation() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let image = uploaded_image(&app, &session).await;
     for invalid in [
         note("", None, true),
@@ -570,7 +515,7 @@ async fn notes_bad_image_and_shape_are_rejected_without_mutation() {
 #[tokio::test]
 async fn site_author_name_updates_business_content_but_not_credentials() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let response = admin(&app, &session, "GET", "/api/v1/content/site", json!({})).await;
     assert_eq!(response.status(), StatusCode::OK);
     let mut site = body_json(response).await;
@@ -626,7 +571,7 @@ async fn site_author_name_updates_business_content_but_not_credentials() {
         StatusCode::BAD_REQUEST
     );
     // Administrator credentials live in shared tables, not this display identity.
-    let _fresh_session = self::session(&app).await;
+    let _fresh_session = self::login(&app).await;
     sqlx::query("INSERT INTO user(id,username) VALUES(2,'reserved-name')")
         .execute(&pool)
         .await
@@ -650,7 +595,7 @@ async fn site_author_name_updates_business_content_but_not_credentials() {
 #[tokio::test]
 async fn site_media_is_explicit_persistent_and_clearable_without_default_assets() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let empty = public(&app, "/api/v1/site").await;
     let keys = [
         "logo",
@@ -727,7 +672,7 @@ async fn site_media_is_explicit_persistent_and_clearable_without_default_assets(
 #[tokio::test]
 async fn site_media_rejects_invalid_shapes_and_urls_before_mutating_saved_state() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let response = admin(&app, &session, "GET", "/api/v1/content/site", json!({})).await;
     let mut original = body_json(response).await;
     original["web_name"] = "Kept".into();
@@ -810,7 +755,7 @@ async fn site_media_rejects_invalid_shapes_and_urls_before_mutating_saved_state(
 #[tokio::test]
 async fn news_pagination_reaches_history_beyond_public_limit_and_scopes_updates() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     sqlx::query("INSERT INTO article(id,user_id,sort_id,label_id,article_title,article_content) VALUES(1,1,1,1,'First','Body'),(2,1,1,1,'Second','Body')").execute(&pool).await.unwrap();
     for id in 1..=105_i64 {
         sqlx::query("INSERT INTO wei_yan(id,user_id,content,type,source,is_public,create_time) VALUES(?,1,?,'news',1,1,'2026-10-12 00:00:00')")
@@ -912,7 +857,7 @@ async fn news_pagination_reaches_history_beyond_public_limit_and_scopes_updates(
 #[tokio::test]
 async fn letter_reads_do_not_create_and_private_public_flow_is_isolated() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     assert!(public(&app, "/api/v1/letter").await.is_null());
     let response = admin(&app, &session, "GET", "/api/v1/content/letter", json!({})).await;
     assert_eq!(response.status(), StatusCode::OK);
@@ -997,7 +942,7 @@ async fn letter_reads_do_not_create_and_private_public_flow_is_isolated() {
 #[tokio::test]
 async fn concurrent_letter_puts_keep_single_owned_row() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     let mut second = letter(true);
     second["content"] = "Second complete draft".into();
     let (first, second_response) = tokio::join!(
@@ -1038,7 +983,7 @@ async fn concurrent_letter_puts_keep_single_owned_row() {
 #[tokio::test]
 async fn letter_invalid_input_and_corrupt_storage_never_publish() {
     let (_directory, app, pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     for invalid in [
         json!({"recipient":"","sender":"Owner","content":"Body","is_public":true}),
         json!({"recipient":"Partner","sender":"","content":"Body","is_public":true}),
@@ -1131,7 +1076,7 @@ async fn letter_invalid_input_and_corrupt_storage_never_publish() {
 #[tokio::test]
 async fn management_routes_require_administrator_and_csrf() {
     let (_directory, app, _pool) = setup().await;
-    let session = session(&app).await;
+    let session = login(&app).await;
     for (method, path, value) in [
         (
             "PUT",
@@ -1198,31 +1143,24 @@ async fn publish_news_with_key(
 ) -> Response {
     app.clone()
         .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(format!("/api/v1/content/articles/{article}/news"))
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
-                .header("Idempotency-Key", key)
-                .body(Body::from(value.to_string()))
-                .unwrap(),
+            admin_headers(
+                session,
+                "POST",
+                &format!("/api/v1/content/articles/{article}/news"),
+            )
+            .header("Idempotency-Key", key)
+            .body(Body::from(value.to_string()))
+            .unwrap(),
         )
         .await
         .unwrap()
 }
 
-#[tokio::test]
-async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
-    let (directory, app, pool) = setup().await;
-    let auth = session(&app).await;
+async fn create_two_news_articles(app: &Router, auth: &(String, String)) -> (i64, i64) {
     assert_eq!(
         admin(
-            &app,
-            &auth,
+            app,
+            auth,
             "POST",
             "/api/v1/content/categories",
             json!({"name":"Review"})
@@ -1233,8 +1171,8 @@ async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
     );
     assert_eq!(
         admin(
-            &app,
-            &auth,
+            app,
+            auth,
             "POST",
             "/api/v1/content/labels",
             json!({"sort_id":1,"name":"Review"})
@@ -1244,19 +1182,48 @@ async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
         StatusCode::OK
     );
     let input = json!({"article_title":"Review article","article_content":"Review body","sort_id":1,"label_id":1,"view_status":true,"recommend_status":false,"comment_status":true});
-    let first = admin(
-        &app,
-        &auth,
-        "POST",
-        "/api/v1/content/articles",
-        input.clone(),
-    )
-    .await;
+    let first = admin(app, auth, "POST", "/api/v1/content/articles", input.clone()).await;
     assert_eq!(first.status(), StatusCode::OK);
     let id = body_json(first).await["id"].as_i64().unwrap();
-    let second = admin(&app, &auth, "POST", "/api/v1/content/articles", input).await;
+    let second = admin(app, auth, "POST", "/api/v1/content/articles", input).await;
     assert_eq!(second.status(), StatusCode::OK);
     let other_id = body_json(second).await["id"].as_i64().unwrap();
+    (id, other_id)
+}
+
+async fn assert_news_receipts_survive_reopen(pool: &SqlitePool, database: &std::path::Path) {
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM article_news_submission")
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        2
+    );
+    let before: Vec<(String, Vec<u8>, Option<i64>)> = sqlx::query_as(
+        "SELECT request_id,request_hash,news_id FROM article_news_submission ORDER BY request_id",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap();
+    close_fixture_pool(pool).await;
+    let reopened = open_database(database).await.unwrap();
+    let after: Vec<(String, Vec<u8>, Option<i64>)> = sqlx::query_as(
+        "SELECT request_id,request_hash,news_id FROM article_news_submission ORDER BY request_id",
+    )
+    .fetch_all(&reopened)
+    .await
+    .unwrap();
+    assert_eq!(
+        before, after,
+        "Live and deleted receipts survive database reopen"
+    );
+}
+
+#[tokio::test]
+async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
+    let (directory, app, pool) = setup().await;
+    let auth = login(&app).await;
+    let (id, other_id) = create_two_news_articles(&app, &auth).await;
     let payload = json!({"content":"One intended update","create_time":null});
     let committed = publish_news_with_key(&app, &auth, id, "first-publish", payload.clone()).await;
     assert_eq!(committed.status(), StatusCode::OK);
@@ -1290,36 +1257,21 @@ async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
         public(&app, &public_path).await.as_array().unwrap().len(),
         1
     );
-    assert_eq!(
-        publish_news_with_key(
-            &app,
-            &auth,
+    for (article, changed) in [
+        (id, json!({"content":"Different","create_time":null})),
+        (
             id,
-            "first-publish",
-            json!({"content":"Different","create_time":null})
-        )
-        .await
-        .status(),
-        StatusCode::CONFLICT
-    );
-    assert_eq!(
-        publish_news_with_key(
-            &app,
-            &auth,
-            id,
-            "first-publish",
-            json!({"content":"One intended update","create_time":"2026-10-01T00:00:00Z"})
-        )
-        .await
-        .status(),
-        StatusCode::CONFLICT
-    );
-    assert_eq!(
-        publish_news_with_key(&app, &auth, other_id, "first-publish", payload.clone())
-            .await
-            .status(),
-        StatusCode::CONFLICT
-    );
+            json!({"content":"One intended update","create_time":"2026-10-01T00:00:00Z"}),
+        ),
+        (other_id, payload.clone()),
+    ] {
+        assert_eq!(
+            publish_news_with_key(&app, &auth, article, "first-publish", changed)
+                .await
+                .status(),
+            StatusCode::CONFLICT
+        );
+    }
     let (one, two) = tokio::join!(
         publish_news_with_key(&app, &auth, id, "second-publish", payload.clone()),
         publish_news_with_key(&app, &auth, id, "second-publish", payload.clone())
@@ -1360,33 +1312,7 @@ async fn news_publish_retries_preserve_identity_and_deliberate_repeats() {
             .status(),
         StatusCode::BAD_REQUEST
     );
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM article_news_submission")
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        2
-    );
-    let before: Vec<(String, Vec<u8>, Option<i64>)> = sqlx::query_as(
-        "SELECT request_id,request_hash,news_id FROM article_news_submission ORDER BY request_id",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-    close_fixture_pool(&pool).await;
-    let reopened = open_database(&directory.path().join("site.sqlite"))
-        .await
-        .unwrap();
-    let after: Vec<(String, Vec<u8>, Option<i64>)> = sqlx::query_as(
-        "SELECT request_id,request_hash,news_id FROM article_news_submission ORDER BY request_id",
-    )
-    .fetch_all(&reopened)
-    .await
-    .unwrap();
-    assert_eq!(
-        before, after,
-        "Live and deleted receipts survive database reopen"
-    );
+    assert_news_receipts_survive_reopen(&pool, &directory.path().join("site.sqlite")).await;
 }
 
 async fn create_note_with_key(
@@ -1397,15 +1323,7 @@ async fn create_note_with_key(
 ) -> Response {
     app.clone()
         .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/content/notes")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
+            admin_headers(session, "POST", "/api/v1/content/notes")
                 .header("Idempotency-Key", key)
                 .body(Body::from(value.to_string()))
                 .unwrap(),
@@ -1414,10 +1332,45 @@ async fn create_note_with_key(
         .unwrap()
 }
 
+async fn assert_independent_note_creations(
+    app: &Router,
+    auth: &(String, String),
+    pool: &SqlitePool,
+) {
+    let parallel = note("Concurrent note", None, true);
+    let (first, second) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        tokio::join!(
+            create_note_with_key(app, auth, "parallel-note", parallel.clone()),
+            create_note_with_key(app, auth, "parallel-note", parallel.clone()),
+        )
+    })
+    .await
+    .expect("note receipts must not nest pool checkout");
+    assert_eq!(first.status(), StatusCode::OK);
+    assert_eq!(second.status(), StatusCode::OK);
+    assert_eq!(body_json(first).await["id"], body_json(second).await["id"]);
+    for _ in 0..2 {
+        assert_eq!(
+            admin(app, auth, "POST", "/api/v1/content/notes", parallel.clone())
+                .await
+                .status(),
+            StatusCode::OK,
+            "unkeyed posts remain deliberate independent creations"
+        );
+    }
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wei_yan WHERE type='friend'")
+            .fetch_one(pool)
+            .await
+            .unwrap(),
+        4
+    );
+}
+
 #[tokio::test]
 async fn note_creation_receipts_recover_lost_responses_without_overwriting_later_edits() {
     let (_directory, app, pool) = setup_with_pool_limit(1).await;
-    let auth = session(&app).await;
+    let auth = login(&app).await;
     let image = uploaded_image(&app, &auth).await;
     let original = note("  One intended note  ", Some(&image), true);
     let first = create_note_with_key(&app, &auth, "original-note", original.clone()).await;
@@ -1479,40 +1432,7 @@ async fn note_creation_receipts_recover_lost_responses_without_overwriting_later
             StatusCode::CONFLICT
         );
     }
-    let parallel = note("Concurrent note", None, true);
-    let (first, second) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        tokio::join!(
-            create_note_with_key(&app, &auth, "parallel-note", parallel.clone()),
-            create_note_with_key(&app, &auth, "parallel-note", parallel.clone()),
-        )
-    })
-    .await
-    .expect("note receipts must not nest pool checkout");
-    assert_eq!(first.status(), StatusCode::OK);
-    assert_eq!(second.status(), StatusCode::OK);
-    assert_eq!(body_json(first).await["id"], body_json(second).await["id"]);
-    for _ in 0..2 {
-        assert_eq!(
-            admin(
-                &app,
-                &auth,
-                "POST",
-                "/api/v1/content/notes",
-                parallel.clone()
-            )
-            .await
-            .status(),
-            StatusCode::OK,
-            "unkeyed posts remain deliberate independent creations"
-        );
-    }
-    assert_eq!(
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wei_yan WHERE type='friend'")
-            .fetch_one(&pool)
-            .await
-            .unwrap(),
-        4
-    );
+    assert_independent_note_creations(&app, &auth, &pool).await;
     assert_eq!(
         admin(
             &app,
@@ -1542,9 +1462,9 @@ async fn note_creation_receipts_recover_lost_responses_without_overwriting_later
 #[tokio::test]
 async fn note_receipts_validate_keys_and_commit_atomically_then_survive_database_reopen() {
     let (directory, app, pool) = setup().await;
-    let auth = session(&app).await;
+    let auth = login(&app).await;
     let draft = note("Durable note", None, true);
-    for key in ["".to_owned(), "has space".to_owned(), "x".repeat(129)] {
+    for key in [String::new(), "has space".to_owned(), "x".repeat(129)] {
         assert_eq!(
             create_note_with_key(&app, &auth, &key, draft.clone())
                 .await
@@ -1583,22 +1503,7 @@ async fn note_receipts_validate_keys_and_commit_atomically_then_survive_database
     let pool = open_database(&directory.path().join("site.sqlite"))
         .await
         .unwrap();
-    let app = router(
-        AppState {
-            scope: blog_application::server_runtime::WorkScope::new(),
-            pool: pool.clone(),
-            admin: Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
-                pool.clone(),
-            ))),
-            origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-            media: directory.path().to_path_buf(),
-            media_operations: Arc::new(tokio::sync::Mutex::new(())),
-            public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-            password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
-        },
-        None,
-    )
-    .unwrap();
+    let app = router(fixture_state(directory.path(), &pool), None).unwrap();
     let replay = create_note_with_key(&app, &auth, "durable-note", draft).await;
     assert_eq!(replay.status(), StatusCode::OK);
     assert_eq!(body_json(replay).await, saved);
@@ -1632,7 +1537,7 @@ async fn paginated_content_keeps_counts_items_and_source_reads_in_one_snapshot()
         ("/api/v1/content/statistics", 1),
     ] {
         let (directory, app, fixture_pool) = setup().await;
-        let auth = session(&app).await;
+        let auth = login(&app).await;
         sqlx::raw_sql(
             "INSERT INTO article(id,user_id,sort_id,label_id,article_title,article_content) VALUES(1,1,1,1,'Before edit','Body');
              INSERT INTO wei_yan(id,user_id,type,content,is_public,source) VALUES(1,1,'friend','Before edit',1,NULL),(2,1,'news','Before edit',1,1);
@@ -1667,16 +1572,8 @@ async fn paginated_content_keeps_counts_items_and_source_reads_in_one_snapshot()
             .connect_lazy_with((*fixture_pool.connect_options()).clone());
         let app = router(
             AppState {
-                scope: blog_application::server_runtime::WorkScope::new(),
                 pool: pool.clone(),
-                admin: Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
-                    fixture_pool.clone(),
-                ))),
-                origin: AdministratorOriginMode::LoopbackDevelopmentHttp,
-                media: directory.path().to_path_buf(),
-                media_operations: Arc::new(tokio::sync::Mutex::new(())),
-                public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
-                password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
+                ..fixture_state(directory.path(), &fixture_pool)
             },
             None,
         )
@@ -1693,7 +1590,7 @@ async fn paginated_content_keeps_counts_items_and_source_reads_in_one_snapshot()
             assert_eq!(body["total"], expected_total, "{path}");
             assert_eq!(
                 body["items"].as_array().unwrap().len(),
-                expected_total as usize,
+                expected_total,
                 "{path}"
             );
         }

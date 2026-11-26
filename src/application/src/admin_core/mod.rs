@@ -50,6 +50,8 @@ impl Identifier {
         crate::admin_auth::random_token().map(Self)
     }
 
+    /// # Errors
+    /// The identifier is empty, too long, or contains an unsupported byte.
     pub fn new(value: impl Into<String>) -> Result<Self, Error> {
         let value = value.into();
         if value.is_empty()
@@ -64,6 +66,7 @@ impl Identifier {
         Ok(Self(value))
     }
 
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -100,6 +103,8 @@ impl fmt::Debug for AdministratorRecord {
 }
 
 impl AdministratorRecord {
+    /// # Errors
+    /// The stored account violates the username, password-hash, version, or timestamp contract.
     pub fn validate(&self) -> Result<(), Error> {
         require_canonical_administrator_username(&self.username)?;
         require_current_password_hash(&self.password_hash)?;
@@ -132,6 +137,8 @@ pub struct SessionRecord {
 }
 
 impl SessionRecord {
+    /// # Errors
+    /// The session's version or timestamps do not satisfy the storage contract.
     pub fn validate(&self) -> Result<(), Error> {
         for value in [
             self.created_at_micros,
@@ -154,6 +161,7 @@ impl SessionRecord {
         Ok(())
     }
 
+    #[must_use]
     pub fn status(&self, administrator: &AdministratorRecord, now_micros: u64) -> SessionStatus {
         if self.revoked_at_micros.is_some() {
             SessionStatus::Revoked
@@ -170,7 +178,7 @@ impl SessionRecord {
         }
     }
 
-    pub fn should_write_last_seen(&self, now_micros: u64) -> bool {
+    pub(crate) fn should_write_last_seen(&self, now_micros: u64) -> bool {
         now_micros.saturating_sub(self.last_seen_at_micros)
             >= SESSION_LAST_SEEN_WRITE_INTERVAL_MICROS
     }
@@ -193,6 +201,7 @@ pub enum AuditOutcome {
 }
 
 impl AuditOutcome {
+    #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Success => "success",
@@ -214,6 +223,7 @@ pub enum SecurityAction {
 }
 
 impl SecurityAction {
+    #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::AdministratorCreated => "administrator.created",
@@ -241,6 +251,8 @@ pub struct SecurityAuditEvent {
 }
 
 impl SecurityAuditEvent {
+    /// # Errors
+    /// Audit metadata or its bounded JSON detail is invalid.
     pub fn validate(&self) -> Result<(), Error> {
         require_persistable_time(self.occurred_at_micros)?;
         if self.detail_json.len() > AUDIT_DETAILS_MAX_BYTES {
@@ -325,6 +337,8 @@ pub struct LoginContext {
 }
 
 impl LoginContext {
+    /// # Errors
+    /// The login timestamp cannot be persisted.
     pub fn validate(&self) -> Result<(), Error> {
         require_persistable_time(self.now_micros)?;
         Ok(())
@@ -356,18 +370,22 @@ pub struct AuthenticatedIdentity {
 }
 
 impl AuthenticatedIdentity {
+    #[must_use]
     pub fn administrator_id(&self) -> &Identifier {
         &self.administrator_id
     }
 
+    #[must_use]
     pub fn username(&self) -> &str {
         &self.username
     }
 
+    #[must_use]
     pub fn session_id(&self) -> &Identifier {
         &self.session_id
     }
 
+    #[must_use]
     pub fn csrf_hash(&self) -> &[u8; DIGEST_BYTES] {
         &self.csrf_hash
     }
@@ -401,15 +419,37 @@ where
         &self.store
     }
 
-    async fn hash_password(&self, password: &str) -> Result<String, PasswordWorkError> {
-        let password = crate::admin_auth::Password::new(password)?;
-        let permit = tokio::time::timeout(
+    async fn password_permit(
+        &self,
+    ) -> Result<tokio::sync::OwnedSemaphorePermit, PasswordWorkError> {
+        Ok(tokio::time::timeout(
             Duration::from_micros(ARGON2_ACQUIRE_TIMEOUT_MICROS),
             self.argon2_slots.clone().acquire_owned(),
         )
         .await
         .map_err(PasswordWorkError::Capacity)?
-        .expect("invariant: password verification semaphore remains open");
+        .expect("invariant: password verification semaphore remains open"))
+    }
+
+    async fn verify_password(
+        &self,
+        password: &str,
+        encoded: &str,
+    ) -> Result<bool, PasswordWorkError> {
+        let permit = self.password_permit().await?;
+        let password = password.to_owned();
+        let encoded = encoded.to_owned();
+        tokio::task::spawn_blocking(move || {
+            let _permit = permit;
+            crate::admin_auth::verify_password(&password, &encoded)
+        })
+        .await
+        .map_err(PasswordWorkError::Worker)
+    }
+
+    async fn hash_password(&self, password: &str) -> Result<String, PasswordWorkError> {
+        let password = crate::admin_auth::Password::new(password)?;
+        let permit = self.password_permit().await?;
         tokio::task::spawn_blocking(move || {
             let result = password.hash();
             drop(permit);
@@ -420,6 +460,10 @@ where
         .map_err(PasswordWorkError::Hashing)
     }
 
+    /// # Errors
+    /// Admission, credential verification, session creation, or its storage transaction fails.
+    /// # Panics
+    /// The shared password work semaphore was unexpectedly closed.
     pub async fn login(
         &self,
         username_candidate: &str,
@@ -462,22 +506,7 @@ where
         let encoded = administrator
             .as_ref()
             .map_or(DUMMY_PASSWORD_HASH, |value| value.password_hash.as_str());
-        let permit = tokio::time::timeout(
-            Duration::from_micros(ARGON2_ACQUIRE_TIMEOUT_MICROS),
-            self.argon2_slots.clone().acquire_owned(),
-        )
-        .await
-        .map_err(PasswordWorkError::Capacity)?
-        .expect("invariant: password verification semaphore remains open");
-        let password = password.to_owned();
-        let encoded = encoded.to_owned();
-        let password_matches = tokio::task::spawn_blocking(move || {
-            let matches = crate::admin_auth::verify_password(&password, &encoded);
-            drop(permit);
-            matches
-        })
-        .await
-        .map_err(PasswordWorkError::Worker)?;
+        let password_matches = self.verify_password(password, encoded).await?;
         let Some(administrator) = administrator.filter(|value| value.active && password_matches)
         else {
             return Err(ServiceError::InvalidCredentials);
@@ -533,7 +562,7 @@ where
         })
     }
 
-    pub async fn restore_session(
+    pub(crate) async fn restore_session(
         &self,
         session_token: &str,
         now_micros: u64,
@@ -551,6 +580,8 @@ where
         })
     }
 
+    /// # Errors
+    /// The token or session is invalid, its administrator is ineligible, or the store fails.
     pub async fn authenticate_session(
         &self,
         session_token: &str,
@@ -618,6 +649,8 @@ where
         })
     }
 
+    /// # Errors
+    /// The session is invalid or inactive, or revocation cannot be persisted.
     pub async fn logout(
         &self,
         session_token: &str,
@@ -665,6 +698,8 @@ where
             .map_err(ServiceError::Store)
     }
 
+    /// # Errors
+    /// The session is invalid, its CSRF token does not match, or the store fails.
     pub async fn require_csrf(
         &self,
         session_token: &str,
@@ -754,7 +789,7 @@ where
     Authentication(#[from] crate::admin_auth::Error),
 }
 
-pub fn session_cookie_name(
+pub(crate) fn session_cookie_name(
     product_id: &str,
     mode: AdministratorOriginMode,
 ) -> Result<String, Error> {
@@ -766,7 +801,7 @@ pub fn session_cookie_name(
     Ok(format!("{prefix}{product_id}-session"))
 }
 
-pub fn session_set_cookie(
+pub(crate) fn session_set_cookie(
     product_id: &str,
     mode: AdministratorOriginMode,
     token: &str,
@@ -784,7 +819,7 @@ pub fn session_set_cookie(
     ))
 }
 
-pub fn session_clear_cookie(
+pub(crate) fn session_clear_cookie(
     product_id: &str,
     mode: AdministratorOriginMode,
 ) -> Result<String, Error> {
@@ -814,7 +849,7 @@ fn require_product_id(value: &str) -> Result<(), Error> {
 }
 
 fn require_persistable_time(value: u64) -> Result<(), Error> {
-    if value <= i64::MAX as u64 {
+    if i64::try_from(value).is_ok() {
         Ok(())
     } else {
         Err(Error::InvalidTimestamp)

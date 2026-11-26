@@ -13,107 +13,8 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, fmt};
 
-pub const MAX_CONFIG_BYTES: usize = 1024 * 1024;
-pub const MAX_OVERRIDES: usize = 256;
-
-/// Read one existing, private configuration file without creating directories,
-/// locks or files. The directory must be mode 0700 and the single-linked file
-/// mode 0600, both owned by this process user. Path replacement or mutation
-/// during the bounded read is rejected; file contents never enter diagnostics.
-#[cfg(unix)]
-pub fn read_private_file(path: &std::path::Path) -> Result<Vec<u8>, ConfigError> {
-    use std::{
-        fs,
-        io::Read,
-        os::unix::fs::{MetadataExt, OpenOptionsExt},
-    };
-    let invalid = || ConfigError::new(Reason::UnsafeFile, "", ConfigSource::File);
-    let read_failed =
-        |cause| ConfigError::new(Reason::ReadFailed, "", ConfigSource::File).with_cause(cause);
-    let parent = path.parent().ok_or_else(invalid)?;
-    let directory = crate::state_file::PrivateStateDirectory::open(parent)
-        .map_err(|cause| invalid().with_cause(ConfigCause::PrivateDirectory(cause)))?;
-    let mut file = fs::OpenOptions::new()
-        .read(true)
-        .custom_flags((rustix::fs::OFlags::NOFOLLOW | rustix::fs::OFlags::NONBLOCK).bits() as i32)
-        .open(path)
-        .map_err(|error| {
-            ConfigError::new(
-                if error.kind() == std::io::ErrorKind::NotFound {
-                    Reason::MissingFile
-                } else if error.raw_os_error() == Some(rustix::io::Errno::LOOP.raw_os_error()) {
-                    Reason::UnsafeFile
-                } else {
-                    Reason::ReadFailed
-                },
-                "",
-                ConfigSource::File,
-            )
-            .with_cause(ConfigCause::OpenFile(error))
-        })?;
-    let before = file
-        .metadata()
-        .map_err(|cause| read_failed(ConfigCause::InspectFile(cause)))?;
-    if !before.is_file()
-        || before.nlink() != 1
-        || before.mode() & 0o777 != 0o600
-        || before.uid() != directory.owner_uid()
-    {
-        return Err(invalid());
-    }
-    if before.len() > MAX_CONFIG_BYTES as u64 {
-        return Err(ConfigError::new(
-            Reason::LimitExceeded,
-            "",
-            ConfigSource::File,
-        ));
-    }
-    let mut bytes = Vec::new();
-    (&mut file)
-        .take(MAX_CONFIG_BYTES as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|cause| read_failed(ConfigCause::ReadFile(cause)))?;
-    if bytes.len() > MAX_CONFIG_BYTES {
-        return Err(ConfigError::new(
-            Reason::LimitExceeded,
-            "",
-            ConfigSource::File,
-        ));
-    }
-    let stamp = |metadata: &fs::Metadata| {
-        (
-            metadata.dev(),
-            metadata.ino(),
-            metadata.len(),
-            metadata.mtime(),
-            metadata.mtime_nsec(),
-            metadata.ctime(),
-            metadata.ctime_nsec(),
-            metadata.uid(),
-            metadata.mode(),
-            metadata.nlink(),
-        )
-    };
-    let after = file
-        .metadata()
-        .map_err(|cause| read_failed(ConfigCause::InspectFile(cause)))?;
-    let named =
-        fs::symlink_metadata(path).map_err(|cause| read_failed(ConfigCause::InspectFile(cause)))?;
-    if stamp(&before) != stamp(&after)
-        || stamp(&before) != stamp(&named)
-        || bytes.len() as u64 != before.len()
-    {
-        return Err(ConfigError::new(
-            Reason::SourceChanged,
-            "",
-            ConfigSource::File,
-        ));
-    }
-    directory
-        .verify_identity()
-        .map_err(|cause| invalid().with_cause(ConfigCause::PrivateDirectory(cause)))?;
-    Ok(bytes)
-}
+const MAX_CONFIG_BYTES: usize = 1024 * 1024;
+const MAX_OVERRIDES: usize = 256;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -158,8 +59,6 @@ pub struct ConfigError {
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ConfigCause {
-    #[error("failed to open the private configuration directory")]
-    PrivateDirectory(#[source] crate::state_file::Error),
     #[error("failed to open the configuration source")]
     OpenFile(#[source] std::io::Error),
     #[error("failed to inspect the configuration source")]
@@ -199,6 +98,10 @@ impl ConfigError {
         self
     }
 
+    /// Convert to the public, redacted configuration error.
+    ///
+    /// # Panics
+    /// If a built-in error code violates the code grammar.
     pub fn envelope(&self) -> crate::error::ErrorEnvelope {
         let (code, message) = match self.reason {
             Reason::MissingFile => (
@@ -310,6 +213,10 @@ pub struct EnvMapping<'a> {
 
 /// Read only declared names. The caller supplies lookup, so tests and embedded
 /// applications never have to mutate process-global environment variables.
+///
+/// # Errors
+/// Rejects invalid or duplicate mappings, oversized inputs, and values that
+/// fail to parse as the declared type.
 pub fn read_environment(
     mappings: &[EnvMapping<'_>],
     mut lookup: impl FnMut(&str) -> Option<String>,
@@ -390,32 +297,17 @@ pub struct Loaded<T> {
     pub sources: BTreeMap<String, ConfigSource>,
 }
 
-/// Defaults < current JSON file < explicitly mapped environment < CLI.
+/// Resolve defaults, JSON file, environment, and command line in that order.
 ///
-/// Validate each layer before applying the next: a higher-priority value must
-/// not hide an unknown field, incorrect type or invalid lower-priority value.
-/// No historical aliases or coercion are supported. Semantic checks which
-/// require multiple fields or external resources remain product-owned.
-pub fn resolve<T: Serialize + DeserializeOwned>(
-    defaults: &T,
-    file_json: Option<&[u8]>,
-    environment: &[Override],
-    command_line: &[Override],
-) -> Result<Loaded<T>, ConfigError> {
-    resolve_validated(
-        defaults,
-        file_json,
-        environment,
-        command_line,
-        |_, _| Ok(()),
-    )
-}
-
 /// Validate product-owned field constraints at each source boundary. The hook
 /// checks each complete source layer (including related field constraints); it
 /// must defer absent required inputs and filesystem/dependency checks until
 /// the caller validates the final effective configuration. Errors retain the
 /// actual source even if a later source would override the offending value.
+///
+/// # Errors
+/// Rejects malformed or oversized inputs, invalid overrides, and violations
+/// of either the data type or the caller's validation hook in any layer.
 pub fn resolve_validated<T: Serialize + DeserializeOwned>(
     defaults: &T,
     file_json: Option<&[u8]>,
@@ -472,10 +364,10 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
             if !seen.insert(&item.path) {
                 return Err(ConfigError::new(Reason::DuplicateField, &item.path, source));
             }
-            let segments = pointer_segments(&item.path)
+            let (parents, field) = pointer_segments(&item.path)
                 .ok_or_else(|| ConfigError::new(Reason::InvalidMapping, &item.path, source))?;
             let mut parent = &mut effective;
-            for segment in &segments[..segments.len() - 1] {
+            for segment in &parents {
                 parent = parent
                     .as_object_mut()
                     .and_then(|map| map.get_mut(segment))
@@ -484,10 +376,7 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
             let map = parent
                 .as_object_mut()
                 .ok_or_else(|| ConfigError::new(Reason::TypeMismatch, &item.path, source))?;
-            map.insert(
-                segments.last().expect("nonempty pointer").clone(),
-                item.value.clone(),
-            );
+            map.insert(field, item.value.clone());
             // Reject structural errors immediately so later entries cannot hide
             // unknown fields or invalid types. Product constraints are checked
             // after the complete source, not against a partly applied layer.
@@ -502,29 +391,25 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
     Ok(Loaded { value, sources })
 }
 
-fn pointer_segments(pointer: &str) -> Option<Vec<String>> {
-    if !pointer.starts_with('/') {
-        return None;
-    }
-    pointer[1..]
-        .split('/')
-        .map(|part| {
-            let mut decoded = String::new();
-            let mut chars = part.chars();
-            while let Some(c) = chars.next() {
-                if c == '~' {
-                    decoded.push(match chars.next()? {
-                        '0' => '~',
-                        '1' => '/',
-                        _ => return None,
-                    });
-                } else {
-                    decoded.push(c);
+fn pointer_segments(pointer: &str) -> Option<(Vec<String>, String)> {
+    let mut segments = pointer.strip_prefix('/')?.split('/').map(|part| {
+        let mut decoded = String::new();
+        let mut chars = part.chars();
+        while let Some(c) = chars.next() {
+            decoded.push(if c == '~' {
+                match chars.next()? {
+                    '0' => '~',
+                    '1' => '/',
+                    _ => return None,
                 }
-            }
-            Some(decoded)
-        })
-        .collect()
+            } else {
+                c
+            });
+        }
+        Some(decoded)
+    });
+    let field = segments.next_back()??;
+    Some((segments.collect::<Option<_>>()?, field))
 }
 
 fn child_path(parent: &str, key: &str) -> String {

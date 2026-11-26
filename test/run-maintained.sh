@@ -16,6 +16,7 @@ cargo test --locked --offline -p blog-runtime-task-scheduler --test async-fd-con
 cargo test --locked --offline -p blog-runtime-task-scheduler --doc 'io::async_fd::AsyncFd<T>::register'
 cargo test --locked --offline -p blog-assets-compiler --lib --test compiler-safety
 cargo test --locked --offline -p blog-assets-style-compiler --lib
+cargo test --locked --offline -p blog-syntax-token-concat --lib
 cargo test --locked --offline -p blog-assets -p blog-encoding-compression --test contracts
 cargo test --locked --offline -p blog-format-parser-combinators --test numeric-contracts
 cargo test --locked --offline -p blog-format-json-schema --test serialization-contracts

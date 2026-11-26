@@ -24,6 +24,11 @@ const PRODUCT_ID: &str = "blog";
 
 mod runtime;
 
+/// Serve the configured instance at `root` until shutdown.
+///
+/// # Errors
+/// Returns an error if the installation or database cannot be validated,
+/// a listener cannot start, or the service cannot finish shutting down.
 pub async fn run(root: &std::path::Path) -> Result<(), Error> {
     runtime::run(root).await
 }
@@ -40,6 +45,10 @@ pub mod maintenance;
 
 /// Verify the identity compiled into this product before runtime or offline work.
 /// This consumes canonical identity bytes and their digest in both executables.
+///
+/// # Errors
+/// Returns an error if the embedded identity is malformed, fails its digest
+/// check, or disagrees with the inputs compiled into this executable.
 pub fn verify_compiled_identity() -> Result<(), Error> {
     static_assets::verify_identity()?;
     Ok(())

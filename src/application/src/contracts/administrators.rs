@@ -1,10 +1,13 @@
-use super::*;
+use super::{
+    Deserialize, Deserializer, deserialize_administrator_username_candidate,
+    deserialize_secret_text,
+};
 
 pub const ADMINISTRATORS_PATH: &str = "/api/v1/platform/administrators";
 
 pub const ADMIN_ACCOUNT_PATH: &str = "/api/v1/platform/administrators/self";
 
-/// Self-service always verifies the current password; omit new_password to keep it.
+/// Self-service always verifies the current password; omit `new_password` to keep it.
 /// No account identifier is accepted from the caller.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

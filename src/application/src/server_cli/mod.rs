@@ -159,6 +159,8 @@ pub fn snapshot_error(error: &SnapshotError) -> ErrorEnvelope {
 pub struct ServiceIdentity(HeaderValue);
 
 impl ServiceIdentity {
+    /// # Errors
+    /// The service name cannot be represented as an HTTP header value.
     pub fn new(service: &str) -> Result<Self, axum::http::header::InvalidHeaderValue> {
         HeaderValue::from_str(service).map(Self)
     }
@@ -212,6 +214,8 @@ fn write_error(
     }
 }
 
+/// # Errors
+/// The runtime log directory is missing, inaccessible, or not private.
 pub fn validate_runtime_log_directory(data_dir: &Path) -> Result<(), ErrorEnvelope> {
     crate::fs_safety::PrivateDirectory::open_existing(data_dir).map_err(|_| {
         failure(

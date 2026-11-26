@@ -59,6 +59,7 @@ struct MediaUpload {
 
 impl MediaUpload {
     fn parse(kind: MediaKind, headers: &HeaderMap, body: Bytes) -> Result<Self, AppError> {
+        use sha2::{Digest, Sha256};
         let original_name = headers
             .get("x-file-name")
             .map(|value| {
@@ -78,7 +79,6 @@ impl MediaUpload {
         let format = kind
             .detect(&body)
             .ok_or_else(|| crate::invalid(kind.invalid_format_message()))?;
-        use sha2::{Digest, Sha256};
         let filename = MediaFilename::from_digest(Sha256::digest(&body).into(), format);
         Ok(Self {
             body,
@@ -144,8 +144,8 @@ async fn save_media(
                         source,
                     })??;
             let mut transaction = crate::content::begin_mutation(&owned.pool, &identity).await?;
-            let owner = crate::site_author_id(&mut *transaction).await?;
-            let result = storage::save(&owned, &mut transaction, upload, owner).await?;
+            let author = crate::site_author_id(&mut *transaction).await?;
+            let result = storage::save(&owned, &mut transaction, upload, author).await?;
             transaction.commit().await?;
             Ok::<_, AppError>(result)
         })?

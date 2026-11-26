@@ -32,7 +32,7 @@ fn validate(host: &str, target: &str, package: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn check() {
+pub(crate) fn check() {
     // Cargo already tracks the build script's Rust sources and target. Limit
     // the fallback package scan to the package's own manifest.
     println!("cargo:rerun-if-changed=Cargo.toml");

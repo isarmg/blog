@@ -21,7 +21,7 @@ struct Entry {
     // Pin memory-scope pointer identity too: an allocator cannot reuse the
     // options address while its unexpired registry entry still exists.
     owner: Weak<SqliteConnectOptions>,
-    _memory_identity_pin: Option<Arc<SqliteConnectOptions>>,
+    memory_identity_pin: Option<Arc<SqliteConnectOptions>>,
     // Keeping the verified main file open prevents an unlinked database's
     // device/inode from being recycled into a different installation scope.
     // O_PATH is essential: closing an ordinary descriptor for the same inode
@@ -48,7 +48,7 @@ impl Registry {
         // Never evict a live counter or an unexpired window: recreating a
         // service/pool must not reset the installation's admitted attempts.
         self.entries.retain(|_, entry| {
-            entry.owner.strong_count() > usize::from(entry._memory_identity_pin.is_some())
+            entry.owner.strong_count() > usize::from(entry.memory_identity_pin.is_some())
                 || Arc::strong_count(&entry.state) != 1
                 || !entry.state.can_retire()
         });
@@ -61,7 +61,7 @@ impl Registry {
             Entry {
                 state: state.clone(),
                 owner: Arc::downgrade(owner),
-                _memory_identity_pin: matches!(scope, Scope::Memory(_)).then(|| owner.clone()),
+                memory_identity_pin: matches!(scope, Scope::Memory(_)).then(|| owner.clone()),
                 _database_identity_pin: database_identity_pin,
             },
         );
@@ -69,6 +69,7 @@ impl Registry {
     }
 }
 
+static REGISTRY: OnceLock<Mutex<Registry>> = OnceLock::new();
 pub(super) async fn state_for_pool(
     pool: &SqlitePool,
 ) -> Result<Arc<AuthenticationState>, AuthenticationStateError<super::Error>> {
@@ -110,7 +111,6 @@ pub(super) async fn state_for_pool(
             Some(file),
         )
     };
-    static REGISTRY: OnceLock<Mutex<Registry>> = OnceLock::new();
     REGISTRY
         .get_or_init(|| Mutex::new(Registry::default()))
         .lock()

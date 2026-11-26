@@ -2,7 +2,7 @@ use super::*;
 #[test]
 fn gzip_variant_keeps_representation_etag_head_and_304() {
     let serve = |path: &str, method: &http::Method, headers: &http::HeaderMap| {
-        let compressed = path.ends_with(".gz");
+        let compressed = path.strip_suffix(".gz").is_some();
         let etag = if compressed { "\"gzip\"" } else { "\"raw\"" };
         let unchanged = headers
             .get(http::header::IF_NONE_MATCH)
@@ -69,7 +69,11 @@ fn absent_compressed_asset_falls_back_and_errors_stay_errors() {
     );
     let serve = |path: &str, _: &http::Method, _: &http::HeaderMap| {
         http::Response::builder()
-            .status(if path.ends_with(".gz") { 404 } else { 200 })
+            .status(if path.strip_suffix(".gz").is_some() {
+                404
+            } else {
+                200
+            })
             .body(Bytes::from_static(b"raw"))
             .unwrap()
     };
@@ -101,7 +105,7 @@ fn compressed_asset_failures_preserve_status_and_vary_instead_of_serving_identit
             ] {
                 let result = response("/app.wasm", method, &headers, |path, method, _| {
                     http::Response::builder()
-                        .status(if path.ends_with(".gz") {
+                        .status(if path.strip_suffix(".gz").is_some() {
                             failure
                         } else {
                             http::StatusCode::OK
@@ -149,7 +153,11 @@ fn rejected_identity_is_not_a_compressed_fallback() {
         for method in [&http::Method::GET, &http::Method::HEAD] {
             let result = response("/app.wasm", method, &headers, |path, _, _| {
                 http::Response::builder()
-                    .status(if path.ends_with(".gz") { 404 } else { 200 })
+                    .status(if path.strip_suffix(".gz").is_some() {
+                        404
+                    } else {
+                        200
+                    })
                     .header(http::header::ETAG, "\"raw\"")
                     .body(Bytes::from_static(b"unencoded payload"))
                     .unwrap()

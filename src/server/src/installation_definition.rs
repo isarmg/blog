@@ -6,10 +6,7 @@ use sha2::{Digest, Sha256};
 use std::{io, path::Path};
 
 fn sha(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    hex::encode(Sha256::digest(bytes))
 }
 
 fn root_path(value: &str) -> Value {
@@ -45,9 +42,10 @@ pub(crate) fn emit(
     std::fs::create_dir_all(&directory)?;
     let mut material = blog_application::installation_material::common(identity, schema, None)
         .expect("generate authoritative public installation material");
-    let definitions = material
+    let fields = material
         .as_object_mut()
-        .expect("invariant: common installation material is an object")
+        .expect("invariant: common installation material is an object");
+    let definitions = fields
         .remove("definitions")
         .expect("invariant: common installation material includes definitions");
     asset(
@@ -56,9 +54,7 @@ pub(crate) fn emit(
         &serde_json::to_vec(&definitions)
             .expect("invariant: installation definitions are JSON values"),
     )?;
-    let mut database = material
-        .as_object_mut()
-        .expect("invariant: common installation material is an object")
+    let mut database = fields
         .remove("database")
         .expect("invariant: common installation material includes a database");
     database["name"] = json!("site");
@@ -78,6 +74,62 @@ pub(crate) fn emit(
             }),
         );
     material["databases"] = json!([database]);
+    material["config"] = configuration_contract();
+    material["secrets"] = json!([]);
+    let state = crate::config_definition::data_path_spec();
+    let media = crate::config_definition::media_path_spec();
+    let mut instance_lock = state.clone();
+    instance_lock["suffix"] = json!(".state-instance.lock");
+    material["resources"] = json!({
+        "state_paths":[state,root_path("config"),media],
+        "writable_paths":[state,media,root_path("logs"),root_path("run")],
+        "readonly_paths":[root_path("config/config.json")],
+        "shared_paths":[],"business_paths":[media],"business_directories":[],"config_write_paths":[],
+        "private_directories":[state,root_path("logs"),root_path("run")],
+        "runtime_locks":[{"path":instance_lock,"kind":"file"}]
+    });
+    material["writers"] = json!([{"role":"server","service":"blog.service",
+        "configuration_paths":[root_path("config/config.json")]}]);
+    material["media"] = Value::Null;
+    for (path, bytes) in [
+        (
+            "src/server/src/schema_definition.rs",
+            include_bytes!("schema_definition.rs").as_slice(),
+        ),
+        (
+            "src/server/src/config_definition.rs",
+            include_bytes!("config_definition.rs").as_slice(),
+        ),
+        (
+            "src/server/src/installation_definition.rs",
+            include_bytes!("installation_definition.rs").as_slice(),
+        ),
+        (
+            "src/server/schema/product.sql",
+            include_bytes!("../schema/product.sql").as_slice(),
+        ),
+        (
+            "src/server/schema/initialize-site-author.sql",
+            include_bytes!("../schema/initialize-site-author.sql").as_slice(),
+        ),
+    ] {
+        material["authority_sources"]
+            .as_array_mut()
+            .expect("invariant: common material includes an authority source array")
+            .push(json!({"path":path,
+            "sha256":sha(bytes),
+            "generator":format!("blog/src/server/build.rs@{}",identity.source_revision)}));
+    }
+    asset(
+        &directory,
+        "install.json",
+        &serde_json::to_vec(&material)
+            .expect("invariant: installation material contains JSON values"),
+    )?;
+    Ok(())
+}
+
+fn configuration_contract() -> Value {
     let mut config =
         blog_application::configuration_contract::generate::<crate::config_definition::Settings>()
             .expect("derive current runtime configuration shape");
@@ -154,57 +206,5 @@ pub(crate) fn emit(
     cases
         .push(json!({"name":"development-must-be-loopback","value":bad_development,"valid":false}));
     config["cases"] = json!(cases);
-    material["config"] = config;
-    material["secrets"] = json!([]);
-    let state = crate::config_definition::data_path_spec();
-    let media = crate::config_definition::media_path_spec();
-    let mut instance_lock = state.clone();
-    instance_lock["suffix"] = json!(".state-instance.lock");
-    material["resources"] = json!({
-        "state_paths":[state,root_path("config"),media],
-        "writable_paths":[state,media,root_path("logs"),root_path("run")],
-        "readonly_paths":[root_path("config/config.json")],
-        "shared_paths":[],"business_paths":[media],"business_directories":[],"config_write_paths":[],
-        "private_directories":[state,root_path("logs"),root_path("run")],
-        "runtime_locks":[{"path":instance_lock,"kind":"file"}]
-    });
-    material["writers"] = json!([{"role":"server","service":"blog.service",
-        "configuration_paths":[root_path("config/config.json")]}]);
-    material["media"] = Value::Null;
-    for (path, bytes) in [
-        (
-            "src/server/src/schema_definition.rs",
-            include_bytes!("schema_definition.rs").as_slice(),
-        ),
-        (
-            "src/server/src/config_definition.rs",
-            include_bytes!("config_definition.rs").as_slice(),
-        ),
-        (
-            "src/server/src/installation_definition.rs",
-            include_bytes!("installation_definition.rs").as_slice(),
-        ),
-        (
-            "src/server/schema/product.sql",
-            include_bytes!("../schema/product.sql").as_slice(),
-        ),
-        (
-            "src/server/schema/initialize-site-author.sql",
-            include_bytes!("../schema/initialize-site-author.sql").as_slice(),
-        ),
-    ] {
-        material["authority_sources"]
-            .as_array_mut()
-            .expect("invariant: common material includes an authority source array")
-            .push(json!({"path":path,
-            "sha256":sha(bytes),
-            "generator":format!("blog/src/server/build.rs@{}",identity.source_revision)}));
-    }
-    asset(
-        &directory,
-        "install.json",
-        &serde_json::to_vec(&material)
-            .expect("invariant: installation material contains JSON values"),
-    )?;
-    Ok(())
+    config
 }

@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 macro_rules! mathml_global {
 	($tag:ty, $attr:ty) => {
-		blog_component_macros::paste! {
+		token_concat::paste! {
             /// A MathML attribute.
 			pub fn $attr<V>(self, value: V) -> HtmlElement <
 				[<$tag:camel>],
@@ -42,7 +42,7 @@ macro_rules! mathml_global {
 
 macro_rules! mathml_elements {
 	($($tag:ident  [$($attr:ty),*]),* $(,)?) => {
-        blog_component_macros::paste! {
+        token_concat::paste! {
             $(
                 // `tag()` function
                 /// A MathML element.

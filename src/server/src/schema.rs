@@ -12,7 +12,7 @@ pub async fn initialize_identity(pool: &SqlitePool) -> Result<(), Error> {
     let identity = current_identity();
     sqlx::query("INSERT INTO product_metadata(singleton,application,application_version,schema_revision,schema_sha256) VALUES(1,?,?,?,?)")
         .bind(&identity.application).bind(&identity.application_version)
-        .bind(identity.schema_revision as i64).bind(&identity.schema_sha256)
+        .bind(i64::try_from(identity.schema_revision).expect("invariant: the current schema revision fits SQLite integers")).bind(&identity.schema_sha256)
         .execute(pool).await?;
     Ok(())
 }

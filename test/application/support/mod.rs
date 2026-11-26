@@ -111,22 +111,20 @@ where
     F: Fn(Request<Body>) -> Fut,
     Fut: Future<Output = Response>,
 {
+    assert_login_headers(&send, product_id).await;
+    assert_login_content_type(&send).await;
+    assert_login_admission(&send).await;
+    assert_session_lifecycle(&send, product_id).await;
+}
+
+async fn assert_login_headers<Fut: Future<Output = Response>>(
+    send: &impl Fn(Request<Body>) -> Fut,
+    product_id: &str,
+) {
     let cookie = format!("admin-{product_id}-session={}", "A".repeat(43));
     for separate_lines in [false, true] {
         let mut ambiguous = request(Method::POST, ADMIN_LOGIN_PATH, LOGIN_JSON);
-        if separate_lines {
-            ambiguous
-                .headers_mut()
-                .append(header::COOKIE, HeaderValue::from_str(&cookie).unwrap());
-            ambiguous
-                .headers_mut()
-                .append(header::COOKIE, HeaderValue::from_str(&cookie).unwrap());
-        } else {
-            ambiguous.headers_mut().insert(
-                header::COOKIE,
-                HeaderValue::from_str(&format!("{cookie}; {cookie}")).unwrap(),
-            );
-        }
+        duplicate_cookie(&mut ambiguous, &cookie, separate_lines);
         let response = send(ambiguous).await;
         assert!(!response.headers().contains_key(header::SET_COOKIE));
         assert_error(response, StatusCode::BAD_REQUEST, "auth.invalid_cookie").await;
@@ -168,7 +166,11 @@ where
         "auth.origin_rejected",
     )
     .await;
+}
 
+async fn assert_login_content_type<Fut: Future<Output = Response>>(
+    send: &impl Fn(Request<Body>) -> Fut,
+) {
     let unknown = request(
         Method::POST,
         ADMIN_LOGIN_PATH,
@@ -220,7 +222,11 @@ where
         "auth.content_type_required",
     )
     .await;
+}
 
+async fn assert_login_admission<Fut: Future<Output = Response>>(
+    send: &impl Fn(Request<Body>) -> Fut,
+) {
     // Hold all 32 unfinished readers through the real adapter, not a test-only limiter.
     let mut readers = Vec::new();
     for _ in 0..32 {
@@ -273,7 +279,12 @@ where
     let error: ErrorEnvelope = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(error.code.as_str(), "auth.invalid_credentials");
     assert_eq!(error.request_id.unwrap().as_str(), REQUEST_ID);
+}
 
+async fn assert_session_lifecycle<Fut: Future<Output = Response>>(
+    send: &impl Fn(Request<Body>) -> Fut,
+    product_id: &str,
+) {
     // Absolute-form requests supply authority when no Host field is present.
     let mut login = request(Method::POST, ADMIN_LOGIN_PATH, LOGIN_JSON);
     login.headers_mut().remove(header::HOST);
@@ -295,19 +306,7 @@ where
 
     for duplicate_field_lines in [false, true] {
         let mut duplicate = request(Method::GET, ADMIN_SESSION_PATH, Body::empty());
-        if duplicate_field_lines {
-            duplicate
-                .headers_mut()
-                .append(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
-            duplicate
-                .headers_mut()
-                .append(header::COOKIE, HeaderValue::from_str(cookie).unwrap());
-        } else {
-            duplicate.headers_mut().insert(
-                header::COOKIE,
-                HeaderValue::from_str(&format!("{cookie}; {cookie}")).unwrap(),
-            );
-        }
+        duplicate_cookie(&mut duplicate, cookie, duplicate_field_lines);
         assert_error(
             send(duplicate).await,
             StatusCode::UNAUTHORIZED,
@@ -376,4 +375,17 @@ where
         "auth.session_required",
     )
     .await;
+}
+
+fn duplicate_cookie(request: &mut Request<Body>, cookie: &str, separate: bool) {
+    if separate {
+        let header = HeaderValue::from_str(cookie).unwrap();
+        request.headers_mut().append(header::COOKIE, header.clone());
+        request.headers_mut().append(header::COOKIE, header);
+    } else {
+        request.headers_mut().insert(
+            header::COOKIE,
+            HeaderValue::from_str(&format!("{cookie}; {cookie}")).unwrap(),
+        );
+    }
 }

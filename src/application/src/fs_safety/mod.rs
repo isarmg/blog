@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 use std::fs;
+use std::os::unix::fs::MetadataExt;
 use std::{
     ffi::OsStr,
     fs::File,
@@ -17,6 +18,8 @@ pub struct RelativePath(PathBuf);
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct EntryName(PathBuf);
 impl EntryName {
+    /// # Errors
+    /// The name is not exactly one canonical directory entry.
     pub fn new(name: impl AsRef<OsStr>) -> Result<Self, Error> {
         let path = RelativePath::new(Path::new(name.as_ref()))?;
         if path.as_path().components().count() != 1 {
@@ -24,12 +27,15 @@ impl EntryName {
         }
         Ok(Self(path.0))
     }
+    #[must_use]
     pub fn as_path(&self) -> &Path {
         &self.0
     }
+    #[must_use]
     pub fn as_os_str(&self) -> &OsStr {
         self.0.as_os_str()
     }
+    #[must_use]
     pub fn as_relative(&self) -> RelativePath {
         RelativePath(self.0.clone())
     }
@@ -42,6 +48,8 @@ pub struct FileEntry {
 }
 
 impl RelativePath {
+    /// # Errors
+    /// The path is empty, absolute, or contains a noncanonical component.
     pub fn new(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
         if path.as_os_str().is_empty()
@@ -58,6 +66,7 @@ impl RelativePath {
         }
         Ok(Self(path.to_path_buf()))
     }
+    #[must_use]
     pub fn as_path(&self) -> &Path {
         &self.0
     }
@@ -76,43 +85,59 @@ impl PrivateDirectory {
     /// exact 0700 permissions. Newly created files keep that owner's uid/gid;
     /// existing files and directories are never repaired. Runtime callers must
     /// use [`Self::open_existing`].
+    /// # Errors
+    /// The directory cannot be opened or does not meet the administrative ownership and permission policy.
     pub fn open_for_administration(path: impl AsRef<Path>) -> Result<Self, Error> {
         unix::open_administrative_directory(path.as_ref())
     }
     /// Create or validate a direct child of this held private directory.
+    /// # Errors
+    /// The child cannot be created or does not meet the private-directory policy.
     pub fn create_child(&self, name: &EntryName) -> Result<Self, Error> {
         unix::create_private_child(self, name)
     }
 
     /// Open an existing private directory without creating or changing anything.
+    /// # Errors
+    /// The existing directory cannot be opened with the required identity and permissions.
     pub fn open_existing(path: impl AsRef<Path>) -> Result<Self, Error> {
         unix::open_private_directory(path.as_ref())
     }
 
     /// Enumerate only regular, single-linked children with hard entry/byte budgets.
+    /// # Errors
+    /// A child is unsafe, a budget is exceeded, or enumeration fails.
     pub fn files(&self, limits: InventoryLimits) -> Result<Vec<FileEntry>, Error> {
         unix::files(self, limits)
     }
+    /// # Errors
+    /// The file cannot be safely read within the specified byte limit.
     pub fn read_bounded(&self, name: &EntryName, max_bytes: usize) -> Result<Vec<u8>, Error> {
         unix::read_bounded(self, name, max_bytes)
     }
+    /// # Errors
+    /// The entry cannot be safely removed from the held directory.
     pub fn remove_file(&self, name: &EntryName) -> Result<(), Error> {
         unix::remove_file(self, name)
     }
+    /// # Errors
+    /// The private directory cannot be created or verified.
     pub fn create(path: impl AsRef<Path>) -> Result<Self, Error> {
         unix::create_private_directory(path.as_ref())
     }
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
     /// Confirm that the named directory still refers to this held handle.
+    /// # Errors
+    /// The path's identity, type, ownership, or permissions no longer match the held directory.
     pub fn verify_identity(&self) -> Result<(), Error> {
         let named = std::fs::symlink_metadata(&self.path)?;
         let held = self.directory.metadata()?;
         if !named.is_dir() || named.file_type().is_symlink() {
             return Err(Error::UnsafeFileType(self.path.clone()));
         }
-        use std::os::unix::fs::MetadataExt;
         if named.dev() != held.dev() || named.ino() != held.ino() {
             return Err(Error::UnsafeFileType(self.path.clone()));
         }
@@ -124,9 +149,12 @@ impl PrivateDirectory {
         }
         Ok(())
     }
+    #[must_use]
     pub fn resolve(&self, relative: &RelativePath) -> PathBuf {
         self.path.join(relative.as_path())
     }
+    /// # Errors
+    /// The operating system cannot synchronize the directory.
     pub fn sync(&self) -> Result<(), Error> {
         self.directory.sync_all()?;
         Ok(())
@@ -136,6 +164,8 @@ impl PrivateDirectory {
 pub struct AtomicFile;
 
 impl AtomicFile {
+    /// # Errors
+    /// The destination already exists or writing, synchronizing, or publishing the new file fails.
     pub fn create(
         directory: &PrivateDirectory,
         destination: &EntryName,
@@ -144,18 +174,8 @@ impl AtomicFile {
         unix::atomic_create(directory, destination, bytes)
     }
 
-    pub fn is_temporary_name(name: &EntryName) -> bool {
-        name.as_os_str()
-            .to_str()
-            .and_then(|value| value.strip_prefix(".state-atomic-"))
-            .and_then(|value| value.strip_suffix(".tmp"))
-            .is_some_and(|value| {
-                value.len() == 32
-                    && value
-                        .bytes()
-                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-            })
-    }
+    /// # Errors
+    /// The destination is unsafe or writing, synchronizing, or publishing its replacement fails.
     pub fn replace(
         directory: &PrivateDirectory,
         destination: &RelativePath,
@@ -170,6 +190,8 @@ impl NoClobberPublish {
     /// Publish a single-linked regular staging file within one held private directory.
     /// The staging file is synchronized before the no-clobber rename; the
     /// containing directory is synchronized before success is returned.
+    /// # Errors
+    /// The staging file or destination is unsafe, the destination exists, or durable publication fails.
     pub fn publish(
         directory: &PrivateDirectory,
         source: &RelativePath,
@@ -187,6 +209,8 @@ pub struct AdvisoryLock {
 }
 
 impl AdvisoryLock {
+    /// # Errors
+    /// The lock file is unsafe or the exclusive lock cannot be acquired.
     pub fn acquire(directory: &PrivateDirectory, name: &RelativePath) -> Result<Self, Error> {
         unix::advisory_lock(directory, name)
     }
@@ -203,6 +227,8 @@ pub struct DirectoryInventory {
     pub total_bytes: u64,
 }
 
+/// # Errors
+/// Directory contents are unsafe, exceed the configured inventory limits, or cannot be inspected.
 pub fn bounded_directory_inventory(
     path: &Path,
     limits: InventoryLimits,
@@ -210,17 +236,15 @@ pub fn bounded_directory_inventory(
     unix::bounded_inventory(path, limits)
 }
 
+/// # Errors
+/// Inspecting or synchronizing the file or its parent directory fails.
 pub fn sync_file_and_parent(path: &Path) -> Result<(), Error> {
     unix::sync_file_and_parent(path)
-}
-pub fn sync_directory(path: &Path) -> Result<(), Error> {
-    unix::open_directory(path)?.sync_all()?;
-    Ok(())
 }
 fn temporary_name() -> Result<String, Error> {
     let mut bytes = [0u8; 16];
     getrandom::fill(&mut bytes).map_err(Error::Randomness)?;
-    let nonce: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    let nonce: String = crate::hexadecimal(&bytes);
     Ok(format!(".state-atomic-{nonce}.tmp"))
 }
 

@@ -23,9 +23,7 @@ fn main() -> Result<()> {
         .to_path_buf();
     let source_digest = core_source_sha256(&root.join("src/application"))?;
     println!("cargo:rustc-env=BLOG_CORE_SOURCE_SHA256={source_digest}");
-    let web = env::var_os("BLOG_WEB_DIST")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| root.join("src/web/dist"));
+    let web = env::var_os("BLOG_WEB_DIST").map_or_else(|| root.join("src/web/dist"), PathBuf::from);
     let target = env::var("TARGET").expect("Cargo build target");
     let revision = match env::var("BLOG_SOURCE_REVISION") {
         Ok(revision) => revision,
@@ -89,36 +87,23 @@ fn emit_offline_metadata(schema_hash: &str, ddl: &str, revision: String) -> Resu
             sha256: schema_hash.into(),
         }),
         maintenance_locks: vec![".state-instance.lock".into()],
-        resources: vec![
-            StateResource {
-                name: "state".into(),
-                kind: StateResourceKind::DataTree,
-                required: true,
-            },
-            StateResource {
-                name: "media".into(),
-                kind: StateResourceKind::DataTree,
-                required: true,
-            },
-            StateResource {
-                name: "config".into(),
-                kind: StateResourceKind::Configuration,
-                required: true,
-            },
-            StateResource {
-                name: "logs".into(),
-                kind: StateResourceKind::DataTree,
-                required: true,
-            },
-        ],
+        resources: [
+            ("state", StateResourceKind::DataTree),
+            ("media", StateResourceKind::DataTree),
+            ("config", StateResourceKind::Configuration),
+            ("logs", StateResourceKind::DataTree),
+        ]
+        .map(|(name, kind)| StateResource {
+            name: name.into(),
+            kind,
+            required: true,
+        })
+        .into(),
         external_requirements: vec![],
         companion_contracts: vec![],
     };
     let bytes = serde_json::to_vec(&contract)?;
-    let digest = Sha256::digest(&bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+    let digest = hex::encode(Sha256::digest(&bytes));
     let identity = blog_application::contracts::ReleaseIdentity {
         product: "blog".into(),
         version: env!("CARGO_PKG_VERSION").into(),
@@ -174,9 +159,5 @@ fn core_source_sha256(directory: &std::path::Path) -> Result<String> {
         hash.update(fs::read(&path)?);
         hash.update([0]);
     }
-    Ok(hash
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(hex::encode(hash.finalize()))
 }

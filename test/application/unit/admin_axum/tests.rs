@@ -12,7 +12,7 @@ async fn password_hashing_failure_stays_internal_and_preserves_its_source() {
         crate::admin_auth::Error::Random(getrandom::Error::UNSUPPORTED),
     ));
     assert!(failure.source().unwrap().source().is_some());
-    let response = service_error(failure, None);
+    let response = service_error(&failure, None);
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     let bytes = to_bytes(response.into_body(), 8192).await.unwrap();
     let envelope: ErrorEnvelope = serde_json::from_slice(&bytes).unwrap();
@@ -74,7 +74,7 @@ async fn authentication_primitive_failures_are_distinct_from_csrf_rejections() {
         ),
     ] {
         let response = service_error(
-            ServiceError::<std::io::Error>::Authentication(failure),
+            &ServiceError::<std::io::Error>::Authentication(failure),
             Some(&id),
         );
         assert_eq!(response.status(), status);

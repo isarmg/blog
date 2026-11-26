@@ -1,60 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
-
-async fn login(app: &Router) -> (String, String) {
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let value = body_json(response).await;
-    (cookie, value["csrf_token"].as_str().unwrap().to_owned())
-}
-
-async fn admin(
-    app: &Router,
-    session: &(String, String),
-    method: &str,
-    path: &str,
-    value: Value,
-) -> Response {
-    app.clone()
-        .oneshot(
-            Request::builder()
-                .method(method)
-                .uri(path)
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(value.to_string()))
-                .unwrap(),
-        )
-        .await
-        .unwrap()
-}
+use std::fmt::Write as _;
 
 async fn get(app: &Router, path: &str) -> Response {
     app.clone()
@@ -438,12 +384,11 @@ async fn encoded_markdown_and_json_image_references_cannot_be_deleted() {
             .unwrap();
     }
     let json_path = json!([path]).to_string();
-    let unicode_path = format!(
-        "[\"{}\"]",
-        path.chars()
-            .map(|ch| format!("\\u{:04x}", u32::from(ch)))
-            .collect::<String>()
-    );
+    let mut unicode_path = String::from("[\"");
+    for ch in path.chars() {
+        write!(unicode_path, "\\u{:04x}", u32::from(ch)).unwrap();
+    }
+    unicode_path.push_str("\"]");
     for encoded in [
         json_path.replace('/', "\\/"),
         json_path.replace('/', "\\u002f"),
@@ -801,7 +746,12 @@ async fn real_video_upload_range_and_site_references_share_managed_media_lifecyc
     let video = body_json(response).await;
     assert_eq!(video["mime_type"], "video/webm");
     assert_eq!(video["size"], bytes.len());
-    assert!(video["path"].as_str().unwrap().ends_with(".webm"));
+    assert_eq!(
+        std::path::Path::new(video["path"].as_str().unwrap())
+            .extension()
+            .unwrap(),
+        "webm"
+    );
     let kind: String = sqlx::query_scalar("SELECT type FROM resource WHERE id=?")
         .bind(video["id"].as_i64().unwrap())
         .fetch_one(&pool)

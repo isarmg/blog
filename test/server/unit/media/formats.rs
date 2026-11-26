@@ -1,18 +1,21 @@
 use super::*;
 
-fn boxed(kind: &[u8; 4], payload: &[u8]) -> Vec<u8> {
-    let mut bytes = ((payload.len() + 8) as u32).to_be_bytes().to_vec();
-    bytes.extend_from_slice(kind);
+fn boxed(kind: [u8; 4], payload: &[u8]) -> Vec<u8> {
+    let mut bytes = u32::try_from(payload.len() + 8)
+        .unwrap()
+        .to_be_bytes()
+        .to_vec();
+    bytes.extend_from_slice(&kind);
     bytes.extend_from_slice(payload);
     bytes
 }
 
-fn mp4(handler: &[u8; 4], brand: &[u8; 4]) -> Vec<u8> {
+fn mp4(handler: [u8; 4], brand: [u8; 4]) -> Vec<u8> {
     let header = [brand.as_slice(), &[0; 4], brand.as_slice()].concat();
     let handler = [&[0; 8][..], handler.as_slice(), &[0; 12][..]].concat();
-    let media = boxed(b"mdia", &boxed(b"hdlr", &handler));
-    let movie = boxed(b"moov", &boxed(b"trak", &media));
-    [boxed(b"ftyp", &header), movie, boxed(b"mdat", b"frame")].concat()
+    let media = boxed(*b"mdia", &boxed(*b"hdlr", &handler));
+    let movie = boxed(*b"moov", &boxed(*b"trak", &media));
+    [boxed(*b"ftyp", &header), movie, boxed(*b"mdat", b"frame")].concat()
 }
 
 #[test]
@@ -20,10 +23,10 @@ fn video_formats_require_container_metadata_and_a_video_track() {
     let video_type = |bytes: &[u8]| {
         super::video_type(bytes).map(|format| (format.extension(), format.mime_type()))
     };
-    let video = mp4(b"vide", b"mp42");
+    let video = mp4(*b"vide", *b"mp42");
     assert_eq!(video_type(&video), Some(("mp4", "video/mp4")));
-    assert_eq!(video_type(&mp4(b"soun", b"mp42")), None);
-    assert_eq!(video_type(&mp4(b"vide", b"avif")), None);
+    assert_eq!(video_type(&mp4(*b"soun", *b"mp42")), None);
+    assert_eq!(video_type(&mp4(*b"vide", *b"avif")), None);
     assert_eq!(video_type(b"<html>not a video</html>"), None);
     assert_eq!(video_type(b"\x89PNG\r\n\x1a\n"), None);
     for size in 0..video.len() {
@@ -89,7 +92,7 @@ fn canonical_formats_are_unique_and_roundtrip_detected_upload_identity() {
         assert_eq!(MediaFormat::from_filename(&filename), Some(format));
     }
 
-    let mp4 = mp4(b"vide", b"mp42");
+    let mp4 = mp4(*b"vide", *b"mp42");
     for (kind, data) in [
         (
             MediaKind::Image,

@@ -69,7 +69,6 @@
       "purpose": "CSR 组件和属性的纯语法编译宏",
       "origins": [
         "leptos_hot_reload@0.8.7",
-        "paste@1.0.15",
         "typed-builder-macro@0.23.2"
       ]
     }

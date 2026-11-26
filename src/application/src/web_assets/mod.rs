@@ -58,13 +58,14 @@ pub struct AssetRecord {
 pub struct VerifiedManifest(AssetManifest);
 
 impl VerifiedManifest {
+    #[must_use]
     pub fn files(&self) -> &[AssetRecord] {
         &self.0.files
     }
 }
 
 /// Verify inventory format, canonical ordering/serialization and its bound digest.
-pub fn verify_manifest(manifest: &str, digest: &str) -> Result<VerifiedManifest> {
+pub(crate) fn verify_manifest(manifest: &str, digest: &str) -> Result<VerifiedManifest> {
     if manifest.len() > 8 * 1024 * 1024 {
         return Err(Error::ManifestBudget);
     }
@@ -108,6 +109,8 @@ pub fn verify_manifest(manifest: &str, digest: &str) -> Result<VerifiedManifest>
 
 /// Verify a generated registry against the manifest and every embedded byte.
 /// Intended for build acceptance and release validation, not every HTTP request.
+/// # Errors
+/// The registry differs from the manifest or its embedded bytes do not match their declared size and digest.
 pub fn verify_embedded(assets: &[EmbeddedAsset], manifest: &str, digest: &str) -> Result<()> {
     let parsed = verify_manifest(manifest, digest)?;
     if parsed.files().len() != assets.len() {
@@ -129,8 +132,9 @@ pub fn verify_embedded(assets: &[EmbeddedAsset], manifest: &str, digest: &str) -
 
 /// Serve exact embedded resources. Empty path and `/` select `index.html`.
 /// Unknown paths are 404, unsupported methods are 405; no SPA fallback is implicit.
-/// HTML is never stored. Other resources revalidate through a strong SHA-256 ETag.
-/// The generated registry must be strictly path-sorted, as checked by verify_embedded.
+/// HTML is never stored. Other resources revalidate through a strong SHA-256 `ETag`.
+/// The generated registry must be strictly path-sorted, as checked by `verify_embedded`.
+#[must_use]
 pub fn response(
     assets: &'static [EmbeddedAsset],
     path: &str,
@@ -167,6 +171,8 @@ pub struct DirectoryAssets {
 
 impl DirectoryAssets {
     /// Open an absolute development directory. No production mode is selected here.
+    /// # Errors
+    /// The path is not a safe absolute directory or cannot be opened.
     pub fn new(root: impl AsRef<Path>) -> Result<Self> {
         let root = root.as_ref();
         let result = Self::open(root)?;
@@ -192,6 +198,7 @@ impl DirectoryAssets {
         })
     }
 
+    #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -330,19 +337,13 @@ fn valid_digest(digest: &str) -> bool {
 }
 
 pub(crate) fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    crate::hexadecimal(&Sha256::digest(bytes))
 }
 
 /// Explicit MIME mappings; unknown outputs remain binary and cannot be sniffed.
+#[must_use]
 pub fn content_type(path: &str) -> &'static str {
-    match path
-        .rsplit('.')
-        .next()
-        .expect("invariant: split always yields at least one item")
-    {
+    match path.rsplit_once('.').map_or(path, |(_, suffix)| suffix) {
         "html" | "htm" => "text/html; charset=utf-8",
         "js" | "mjs" => "text/javascript; charset=utf-8",
         "css" => "text/css; charset=utf-8",

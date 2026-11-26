@@ -1,66 +1,11 @@
 use super::*;
 
-async fn login(app: &Router) -> (String, String) {
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let value = body_json(response).await;
-    (cookie, value["csrf_token"].as_str().unwrap().to_owned())
-}
-
 fn details(visible: bool) -> serde_json::Value {
     serde_json::json!({
         "bg_cover":null, "man_cover":null, "woman_cover":null,
         "man_name":"Owner", "woman_name":"Partner", "timing":"2026-10-01",
         "countdown_title":null, "countdown_time":null, "family_info":"Our home", "status":visible
     })
-}
-
-async fn admin_request(
-    app: &Router,
-    session: &(String, String),
-    method: &str,
-    path: &str,
-    value: serde_json::Value,
-) -> Response {
-    app.clone()
-        .oneshot(
-            Request::builder()
-                .method(method)
-                .uri(path)
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::COOKIE, &session.0)
-                .header("x-csrf-token", &session.1)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(value.to_string()))
-                .unwrap(),
-        )
-        .await
-        .unwrap()
 }
 
 async fn public_home(app: &Router) -> serde_json::Value {
@@ -78,20 +23,7 @@ async fn public_home(app: &Router) -> serde_json::Value {
     body_json(response).await
 }
 
-#[tokio::test]
-async fn family_is_admin_owned_and_other_authors_stay_isolated() {
-    let (_directory, app, pool) = setup().await;
-    sqlx::query("INSERT INTO user(id,username,user_type,user_status) VALUES(2,'other-author',2,1)")
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO family(id,user_id,man_name,woman_name,status) VALUES(2,1,'Current','Partner',1),(3,2,'Other','Partner',1)")
-        .execute(&pool).await.unwrap();
-    let home = public_home(&app).await;
-    assert_eq!(home.as_array().unwrap().len(), 1);
-    assert_eq!(home[0]["id"], 2);
-    assert!(home[0].get("like_count").is_none());
-
+async fn assert_family_requires_login(app: &Router) {
     for (method, path) in [
         ("GET", "/api/v1/content/family"),
         ("POST", "/api/v1/content/family"),
@@ -116,8 +48,25 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
             "{method} {path}"
         );
     }
+}
+
+#[tokio::test]
+async fn family_is_admin_owned_and_other_authors_stay_isolated() {
+    let (_directory, app, pool) = setup().await;
+    sqlx::query("INSERT INTO user(id,username,user_type,user_status) VALUES(2,'other-author',2,1)")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO family(id,user_id,man_name,woman_name,status) VALUES(2,1,'Current','Partner',1),(3,2,'Other','Partner',1)")
+        .execute(&pool).await.unwrap();
+    let home = public_home(&app).await;
+    assert_eq!(home.as_array().unwrap().len(), 1);
+    assert_eq!(home[0]["id"], 2);
+    assert!(home[0].get("like_count").is_none());
+
+    assert_family_requires_login(&app).await;
     let session = login(&app).await;
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "GET",
@@ -131,7 +80,7 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     assert_eq!(homes[0]["id"], 2);
     for id in [1, 3] {
         for method in ["PUT", "DELETE"] {
-            let response = admin_request(
+            let response = admin(
                 &app,
                 &session,
                 method,
@@ -142,7 +91,7 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
             assert_eq!(response.status(), StatusCode::NOT_FOUND, "{method} {id}");
         }
     }
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "PUT",
@@ -152,7 +101,7 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     .await;
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(public_home(&app).await, serde_json::json!([]));
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "POST",
@@ -161,7 +110,7 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     )
     .await;
     assert_eq!(response.status(), StatusCode::CONFLICT);
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "DELETE",
@@ -171,7 +120,7 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     .await;
     assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(public_home(&app).await, serde_json::json!([]));
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "GET",
@@ -188,9 +137,9 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     assert_eq!(retained, vec![(3, Some(2), "Other".into())]);
     let mut forged = details(true);
     forged["user_id"] = 2.into();
-    let response = admin_request(&app, &session, "POST", "/api/v1/content/family", forged).await;
+    let response = admin(&app, &session, "POST", "/api/v1/content/family", forged).await;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    let response = admin_request(
+    let response = admin(
         &app,
         &session,
         "POST",
@@ -207,14 +156,14 @@ async fn concurrent_family_creation_only_creates_one_home() {
     let (_directory, app, pool) = setup().await;
     let session = login(&app).await;
     let (first, second) = tokio::join!(
-        admin_request(
+        admin(
             &app,
             &session,
             "POST",
             "/api/v1/content/family",
             details(true)
         ),
-        admin_request(
+        admin(
             &app,
             &session,
             "POST",

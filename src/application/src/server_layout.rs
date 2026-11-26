@@ -33,10 +33,12 @@ pub enum Error {
 }
 
 impl Layout {
+    /// # Errors
+    /// The root is not a normalized absolute installation path distinct from the filesystem root.
     pub fn new(root: &Path) -> Result<Self, Error> {
-        if !root
+        if root
             .to_str()
-            .is_some_and(|name| !name.chars().any(char::is_control))
+            .is_none_or(|name| name.chars().any(char::is_control))
         {
             return Err(Error::InvalidText);
         }
@@ -57,15 +59,19 @@ impl Layout {
             root: root.to_path_buf(),
         })
     }
+    #[must_use]
     pub fn config(&self) -> PathBuf {
         self.root.join("config/config.json")
     }
+    #[must_use]
     pub fn state(&self) -> PathBuf {
         self.root.join("state")
     }
+    #[must_use]
     pub fn logs(&self) -> PathBuf {
         self.root.join("logs")
     }
+    #[must_use]
     pub fn run(&self) -> PathBuf {
         self.root.join("run")
     }

@@ -78,6 +78,8 @@ impl Serialize for AdministratorLoginRequest {
 }
 
 impl AdministratorLoginRequest {
+    /// # Errors
+    /// The username or password violates the login request's size or character constraints.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_administrator_username_candidate(&self.username)?;
         validate_credential_text("password", &self.password, 1_024)
@@ -150,6 +152,8 @@ impl Serialize for AdministratorSession {
 }
 
 impl AdministratorSession {
+    /// # Errors
+    /// The identity, canonical username, or CSRF token is invalid.
     pub fn new(
         user_id: impl Into<String>,
         username: impl Into<String>,
@@ -171,14 +175,17 @@ impl AdministratorSession {
         Ok(value)
     }
 
+    #[must_use]
     pub fn user_id(&self) -> &str {
         &self.user_id
     }
 
+    #[must_use]
     pub fn username(&self) -> &str {
         &self.username
     }
 
+    #[must_use]
     pub fn csrf_token(&self) -> &str {
         &self.csrf_token
     }
@@ -210,6 +217,8 @@ pub struct StateSchemaIdentity {
 }
 
 impl StateSchemaIdentity {
+    /// # Errors
+    /// The revision is outside the safe JSON integer range or the digest is not canonical.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_non_negative_safe_integer("schema.revision", self.revision)?;
         validate_sha256("schema.sha256", &self.sha256)
@@ -241,6 +250,8 @@ pub struct StateResource {
 }
 
 impl StateResource {
+    /// # Errors
+    /// The state resource name is not a valid identifier.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("resources[].name", &self.name)
     }
@@ -260,6 +271,8 @@ pub struct StateExternalRequirement {
 }
 
 impl StateExternalRequirement {
+    /// # Errors
+    /// A requirement identifier is invalid or its envelope version is not a positive safe integer.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("external_requirements[].kind", &self.kind)?;
         validate_identifier("external_requirements[].kid", &self.kid)?;
@@ -285,6 +298,8 @@ pub struct CompanionContract {
 }
 
 impl CompanionContract {
+    /// # Errors
+    /// A companion identifier or its digest is malformed.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("companion_contracts[].name", &self.name)?;
         validate_identifier("companion_contracts[].version", &self.version)?;
@@ -315,10 +330,14 @@ pub struct StateContract {
 
 impl StateContract {
     /// Parse and validate one current state-contract JSON document.
+    /// # Errors
+    /// The bytes do not encode a current state contract.
     pub fn from_slice(bytes: &[u8]) -> Result<Self, ParseError> {
         Ok(serde_json::from_slice(bytes)?)
     }
 
+    /// # Errors
+    /// The version, identity, schema, maintenance locks, resources, or requirements are invalid.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_exact_version(
             "contract_version",
@@ -362,10 +381,14 @@ pub struct ReleaseIdentity {
 
 impl ReleaseIdentity {
     /// Parse and validate one current release-identity JSON document.
+    /// # Errors
+    /// The bytes do not encode a current release identity.
     pub fn from_slice(bytes: &[u8]) -> Result<Self, ParseError> {
         Ok(serde_json::from_slice(bytes)?)
     }
 
+    /// # Errors
+    /// A release identifier, source revision, or state-contract digest is invalid.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("product", &self.product)?;
         validate_identifier("version", &self.version)?;
@@ -391,6 +414,8 @@ pub struct BackupExternalRequirement {
 }
 
 impl BackupExternalRequirement {
+    /// # Errors
+    /// A requirement identifier, digest, or envelope version is invalid.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("external_requirements[].kind", &self.kind)?;
         validate_identifier("external_requirements[].kid", &self.kid)?;
@@ -420,6 +445,8 @@ pub struct BackupResource {
 }
 
 impl BackupResource {
+    /// # Errors
+    /// A resource identifier, path, count, or digest is invalid.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_identifier("resources[].name", &self.name)?;
         validate_non_empty_path("resources[].path", &self.path)?;
@@ -451,10 +478,14 @@ pub struct BackupManifest {
 
 impl BackupManifest {
     /// Parse and validate one current backup-manifest JSON document.
+    /// # Errors
+    /// The bytes do not encode a current backup manifest.
     pub fn from_slice(bytes: &[u8]) -> Result<Self, ParseError> {
         Ok(serde_json::from_slice(bytes)?)
     }
 
+    /// # Errors
+    /// The manifest identity, schema, timestamp, requirements, or nonempty resource list are invalid.
     pub fn validate(&self) -> Result<(), ValidationError> {
         validate_exact_version(
             "manifest_version",
@@ -489,6 +520,8 @@ impl BackupManifest {
 }
 
 /// Parse the shared error envelope through the canonical `blog_application::error` type.
+/// # Errors
+/// The bytes do not encode a valid public error envelope.
 pub fn error_envelope_from_slice(bytes: &[u8]) -> Result<ErrorEnvelope, ParseError> {
     Ok(serde_json::from_slice(bytes)?)
 }
@@ -744,7 +777,7 @@ impl SafeIntegerVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for SafeIntegerVisitor {
+impl Visitor<'_> for SafeIntegerVisitor {
     type Value = u64;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -770,14 +803,10 @@ impl<'de> Visitor<'de> for SafeIntegerVisitor {
     where
         E: serde::de::Error,
     {
-        if !value.is_finite()
-            || value.fract() != 0.0
-            || value < self.minimum as f64
-            || value > MAX_SAFE_JSON_INTEGER as f64
-        {
-            return Err(E::custom(self.expectation()));
-        }
-        Ok(value as u64)
+        let integer = num_traits::ToPrimitive::to_u64(&value)
+            .filter(|_| value.fract() == 0.0)
+            .ok_or_else(|| E::custom(self.expectation()))?;
+        self.accept(integer)
     }
 }
 

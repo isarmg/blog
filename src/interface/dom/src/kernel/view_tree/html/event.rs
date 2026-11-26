@@ -365,7 +365,7 @@ macro_rules! generate_event_types {
   {$(
     $( $event:ident )+ : $web_event:ident
   ),* $(,)?} => {
-    blog_component_macros::paste! {
+    token_concat::paste! {
       $(
         #[doc = "The `" [< $($event)+ >] "` event, which receives [`web_sys::" $web_event "`] as its argument."]
         #[derive(Copy, Clone, Debug)]

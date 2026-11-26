@@ -15,7 +15,7 @@ pub(super) struct UploadedMedia {
     id: i64,
     path: String,
     mime_type: &'static str,
-    size: usize,
+    size: i64,
 }
 
 pub(super) async fn save(
@@ -35,7 +35,8 @@ pub(super) async fn save(
     let mime_type = format.mime_type();
     let path = filename.path();
     let directory = state.media.clone();
-    let size = body.len();
+    let size =
+        i64::try_from(body.len()).expect("invariant: validated uploads fit the SQLite size column");
     tokio::task::spawn_blocking(move || -> Result<(), blog_application::fs_safety::Error> {
         let directory = blog_application::fs_safety::PrivateDirectory::open_existing(directory)?;
         let name = filename.entry_name();
@@ -60,7 +61,7 @@ pub(super) async fn save(
     })??;
     sqlx::query("INSERT INTO resource(user_id,type,path,size,original_name,mime_type,status,store_type) VALUES(?,?,?,?,?,?,1,'local') ON CONFLICT(path) DO NOTHING")
         .bind(owner).bind(kind.resource_type())
-        .bind(&path).bind(size as i64).bind(original_name.as_deref()).bind(mime_type)
+        .bind(&path).bind(size).bind(original_name.as_deref()).bind(mime_type)
         .execute(&mut *connection).await?;
     let id: i64 = sqlx::query_scalar("SELECT id FROM resource WHERE path=?")
         .bind(&path)

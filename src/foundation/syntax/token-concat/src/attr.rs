@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::segment::{self, Segment};
 use proc_macro::{Delimiter, Group, Spacing, Span, TokenStream, TokenTree};
 use std::iter;
@@ -109,18 +109,21 @@ fn do_paste_name_value_attr(attr: TokenStream, span: Span, leading: usize) -> Re
     let mut segments = segment::parse(&mut tokens)?;
 
     for segment in &mut segments {
-        if let Segment::String(string) = segment {
-            if let Some(open_quote) = string.value.find('"') {
-                if open_quote == 0 {
-                    string.value.truncate(string.value.len() - 1);
-                    string.value.remove(0);
-                } else {
-                    let begin = open_quote + 1;
-                    let end = string.value.rfind('"').unwrap();
-                    let raw_string = mem::take(&mut string.value);
-                    for ch in raw_string[begin..end].chars() {
-                        string.value.extend(ch.escape_default());
-                    }
+        if let Segment::String(string) = segment
+            && let Some(open_quote) = string.value.find('"')
+        {
+            if open_quote == 0 {
+                string.value.truncate(string.value.len() - 1);
+                string.value.remove(0);
+            } else {
+                let begin = open_quote + 1;
+                let end = string
+                    .value
+                    .rfind('"')
+                    .expect("invariant: find saw a quote");
+                let raw_string = mem::take(&mut string.value);
+                for ch in raw_string[begin..end].chars() {
+                    string.value.extend(ch.escape_default());
                 }
             }
         }
@@ -138,10 +141,10 @@ fn do_paste_name_value_attr(attr: TokenStream, span: Span, leading: usize) -> Re
     lit.push('"');
 
     let mut lit = TokenStream::from_str(&lit)
-        .unwrap()
+        .map_err(|_| Error::new(span, "invalid pasted attribute literal"))?
         .into_iter()
         .next()
-        .unwrap();
+        .expect("invariant: quoted literal produces a token");
     lit.set_span(span);
     expanded.extend(iter::once(lit));
     Ok(expanded)

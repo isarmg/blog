@@ -13,7 +13,7 @@ class CandidateWorkflow(unittest.TestCase):
     def test_lane_is_independent_and_preserves_checks(self):
         self.assertNotIn('    needs:', INSTALLED)
         for command in ('cargo fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check',
-                        'cargo clippy --locked --offline --all-targets -- -D warnings',
+                        'cargo clippy --locked --offline --all-targets --all-features -- -D clippy::pedantic -D warnings',
                         'cargo test --locked --offline', 'cargo build --locked --offline',
                         'npx playwright install --with-deps chromium firefox',
                         'bash test/operations/smoke.sh', 'npm run test:unit',

@@ -64,8 +64,10 @@ fn shared_error_fixtures_match_the_rust_wire_contract() {
     ))
     .unwrap();
     for (index, value) in fixtures.valid.into_iter().enumerate() {
-        serde_json::from_value::<ErrorEnvelope>(value)
-            .unwrap_or_else(|error| panic!("rejected valid shared fixture {index}: {error}"));
+        assert!(
+            serde_json::from_value::<ErrorEnvelope>(value).is_ok(),
+            "rejected valid shared fixture {index}"
+        );
     }
     for (index, value) in fixtures.invalid.into_iter().enumerate() {
         assert!(

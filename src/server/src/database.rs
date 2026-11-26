@@ -4,12 +4,13 @@ use crate::now_micros;
 use crate::schema;
 #[cfg(any(test, feature = "maintenance"))]
 use blog_application::admin_core::AdministratorService;
+use blog_application::admin_core::AdministratorStore as _;
 use blog_application::admin_sqlite::SqliteAdministratorStore;
 use sqlx::{
     SqlitePool,
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions},
 };
-use std::{fs, path::Path, time::Duration};
+use std::{fs, os::unix::fs::MetadataExt, path::Path, time::Duration};
 
 // Articles permit 2,000,000 bytes of content. Leave room for the rest of the
 // encoded row while bounding each native SQLite value and statement.
@@ -57,7 +58,6 @@ pub(crate) async fn open_database_with_limit(
         })
         .connect_with(options)
         .await?;
-    use std::os::unix::fs::MetadataExt;
     let verified = (|| {
         let after = fs::symlink_metadata(path).map_err(Error::ReadDatabasePath)?;
         if (before.device(), before.inode()) != (after.dev(), after.ino()) {
@@ -184,7 +184,6 @@ pub(crate) async fn validate_existing_database(
     let result = async {
         validate_database(snapshot.pool()).await?;
         let store = SqliteAdministratorStore::new(snapshot.pool().clone());
-        use blog_application::admin_core::AdministratorStore as _;
         if store.administrator_count().await? == 0 {
             return Err(Error::NotInitialized);
         }

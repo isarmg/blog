@@ -17,7 +17,7 @@ async fn article_page_optimization_preserves_filters_rank_and_summaries() {
         sqlx::query("INSERT INTO article(id,user_id,sort_id,label_id,article_title,article_content,view_status,password,recommend_status,deleted,create_time) VALUES(?,1,?,?,?,?,?,?,?,?,?)")
                 .bind(id).bind(1 + id % 2).bind(1 + id % 2)
                 .bind(if id % 3 == 0 { "needle title" } else { "other title" })
-                .bind(if id % 2 == 0 { "needle body %" } else { "plain body" })
+                .bind(if id % 2 == 0 { "needle body % 铸造工艺" } else { "plain body" })
                 .bind(if id == 24 { 2_i64 } else if id == 20 { -1_i64 } else { i64::from(id % 4 >= 2) })
                 .bind(if id % 4 == 0 { Some("protected") } else { None })
                 .bind(id % 2).bind(i64::from(id % 7 == 0))
@@ -27,7 +27,7 @@ async fn article_page_optimization_preserves_filters_rank_and_summaries() {
     sqlx::query("INSERT INTO comment(source,type,comment_content) VALUES(6,'article','reply'),(6,'article','reply two')").execute(&pool).await.unwrap();
     for audience in [ArticleAudience::Administrator, ArticleAudience::Public] {
         let public = matches!(audience, ArticleAudience::Public);
-        for search in ["", "needle", "n", "%"] {
+        for search in ["", "needle", "n", "%", "铸造", "铸造工"] {
             for (sort_id, label_id, recommended) in [
                 (None, None, None),
                 (Some(1), None, None),
@@ -96,37 +96,46 @@ async fn article_page_optimization_preserves_filters_rank_and_summaries() {
             }
         }
     }
-    let filters = "?1 IS NULL AND ?6 IS NULL AND ?4 IS NULL";
-    let (_, list) = article_page_sql("", filters, ArticleAudience::Public, SearchMode::Browse);
-    let plans = sqlx::query(sqlx::AssertSqlSafe(format!("EXPLAIN QUERY PLAN {list}")))
-        .bind(None::<i64>)
-        .bind("")
-        .bind("%%")
-        .bind(None::<i64>)
-        .bind("\"\"")
-        .bind(None::<i64>)
-        .bind(5)
-        .bind(0)
-        .fetch_all(&pool)
-        .await
-        .unwrap();
-    let details: Vec<String> = plans.iter().map(|row| row.get(3)).collect();
-    assert!(
-        details
-            .iter()
-            .any(|detail| detail.contains("MATERIALIZE article_page")),
-        "{details:?}"
-    );
-    assert!(
-        details
-            .iter()
-            .any(|detail| detail.contains("article_public_latest (deleted=? AND view_status=?)")),
-        "{details:?}"
-    );
-    assert!(
-        details
-            .iter()
-            .any(|detail| detail.contains("article USING INTEGER PRIMARY KEY (rowid=?)")),
-        "{details:?}"
-    );
+    assert_page_plans(&pool).await;
+}
+
+async fn assert_page_plans(pool: &SqlitePool) {
+    let query = serde_json::from_str("{}").unwrap();
+    for (term, lookup) in [
+        ("", "article_public_latest (deleted=? AND view_status=?)"),
+        ("铸造工", "article_search VIRTUAL TABLE"),
+    ] {
+        let (_, list) = article_page_sql(&query, ArticleAudience::Public, term);
+        let plans = sqlx::query(sqlx::AssertSqlSafe(format!("EXPLAIN QUERY PLAN {list}")))
+            .bind(None::<i64>)
+            .bind(term)
+            .bind(format!("%{term}%"))
+            .bind(None::<i64>)
+            .bind(format!("\"{term}\""))
+            .bind(None::<i64>)
+            .bind(5)
+            .bind(0)
+            .fetch_all(pool)
+            .await
+            .unwrap();
+        let details: Vec<String> = plans.iter().map(|row| row.get(3)).collect();
+        for step in [
+            lookup,
+            "MATERIALIZE article_page",
+            "article USING INTEGER PRIMARY KEY (rowid=?)",
+        ] {
+            assert!(
+                details.iter().any(|detail| detail.contains(step)),
+                "{details:?}"
+            );
+        }
+        if !term.is_empty() {
+            assert!(
+                !details
+                    .iter()
+                    .any(|detail| detail.contains("article_public_latest")),
+                "{details:?}"
+            );
+        }
+    }
 }

@@ -12609,6 +12609,39 @@
           "reason": "All retained system-calls sources now derive from rustix 1.1.6; preserve the old archive and licenses as history."
         }
       ]
+    },
+    {
+      "id": "share-token-concat-between-dom-and-style-compiler",
+      "reason": "Use the existing pastey-derived token-concat host macro for DOM and CSS expansion. Component macros continue to own only component and typed props generation.",
+      "from": [
+        {
+          "directory": "src/interface/macros",
+          "name": "blog-component-macros",
+          "version": "0.0.0",
+          "origins": [
+            "leptos_hot_reload@0.8.7",
+            "paste@1.0.15",
+            "typed-builder-macro@0.23.2"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/interface/macros",
+          "name": "blog-component-macros",
+          "version": "0.0.0",
+          "origins": [
+            "leptos_hot_reload@0.8.7",
+            "typed-builder-macro@0.23.2"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "paste@1.0.15",
+          "reason": "The separate paste-derived parser and entry point in component macros were removed. DOM uses the existing pastey-origin implementation; historical archives, notices and integration receipts are retained."
+        }
+      ]
     }
   ]
 }

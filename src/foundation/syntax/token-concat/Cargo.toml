@@ -10,8 +10,8 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2018"
-rust-version = "1.54"
+edition = "2024"
+rust-version = "1.100.0"
 name = "blog-syntax-token-concat"
 build = false
 autolib = false

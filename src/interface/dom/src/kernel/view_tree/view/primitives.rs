@@ -12,7 +12,7 @@ use std::{
 macro_rules! render_primitive {
   ($escape:literal; $($child_type:ty),* $(,)?) => {
     $(
-		blog_component_macros::paste! {
+		token_concat::paste! {
 			pub struct [<$child_type:camel State>](crate::view_tree::renderer::types::Text, $child_type);
 
 			impl Mountable for [<$child_type:camel State>] {

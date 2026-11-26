@@ -26,10 +26,12 @@ pub struct FileIdentity {
 }
 
 impl FileIdentity {
+    #[must_use]
     pub const fn device(self) -> u64 {
         self.device
     }
 
+    #[must_use]
     pub const fn inode(self) -> u64 {
         self.inode
     }
@@ -54,6 +56,8 @@ pub struct PrivateStateDirectory {
 impl PrivateStateDirectory {
     /// Create the directory when missing, then require an absolute, private,
     /// non-symlink directory owned by the effective process user.
+    /// # Errors
+    /// The directory cannot be created or does not satisfy path, ownership, and mode requirements.
     pub fn create(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
         require_absolute(path)?;
@@ -79,6 +83,8 @@ impl PrivateStateDirectory {
         Self::open(path)
     }
 
+    /// # Errors
+    /// The existing directory cannot be opened with the required identity and permissions.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
         require_absolute(path)?;
@@ -99,6 +105,8 @@ impl PrivateStateDirectory {
     /// opened without following links; newly created files retain the directory
     /// owner's uid/gid. This never creates, chmods, or chowns an existing object.
     /// Normal runtime access must continue to use [`Self::open`].
+    /// # Errors
+    /// The path cannot be opened safely, has incorrect permissions, or the effective user is not authorized.
     pub fn open_for_administration(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path.as_ref();
         require_absolute(path)?;
@@ -127,22 +135,28 @@ impl PrivateStateDirectory {
         Ok(result)
     }
 
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
+    #[must_use]
     pub const fn identity(&self) -> FileIdentity {
         self.identity
     }
 
+    #[must_use]
     pub const fn owner_uid(&self) -> u32 {
         self.owner_uid
     }
 
+    #[must_use]
     pub const fn owner_gid(&self) -> u32 {
         self.owner_gid
     }
 
+    /// # Errors
+    /// The directory cannot be inspected or its path, ownership, or permissions no longer match.
     pub fn verify_identity(&self) -> Result<(), Error> {
         if self.administrative_handle.is_some() {
             let caller = rustix::process::geteuid().as_raw();
@@ -188,14 +202,20 @@ impl PrivateStateDirectory {
         )
     }
 
+    /// # Errors
+    /// The child name or file is unsafe, the file is absent, or opening fails.
     pub fn open_existing(&self, name: impl AsRef<OsStr>) -> Result<SecureStateFile, Error> {
         self.open_file(name.as_ref(), false)
     }
 
+    /// # Errors
+    /// The name or existing entry is unsafe, or file creation or inspection fails.
     pub fn create_file(&self, name: impl AsRef<OsStr>) -> Result<SecureStateFile, Error> {
         self.open_file(name.as_ref(), true)
     }
 
+    /// # Errors
+    /// The lock file is unsafe or an exclusive instance lock cannot be obtained.
     pub fn try_instance_lock(&self) -> Result<InstanceLock, Error> {
         let instance = self.create_file(INSTANCE_LOCK_FILE)?;
         let instance = StateLock::acquire(
@@ -207,7 +227,7 @@ impl PrivateStateDirectory {
         self.verify_identity()?;
         Ok(InstanceLock {
             directory: self.clone(),
-            _instance: instance,
+            instance,
         })
     }
 
@@ -229,7 +249,7 @@ impl PrivateStateDirectory {
                 .write(true)
                 .create(create)
                 .mode(PRIVATE_FILE_MODE)
-                .custom_flags(OFlags::NOFOLLOW.bits() as i32)
+                .custom_flags(OFlags::NOFOLLOW.bits().cast_signed())
                 .open(&path)
                 .map_err(|source| Error::OpenFile {
                     path: path.clone(),
@@ -264,20 +284,25 @@ pub struct SecureStateFile {
 }
 
 impl SecureStateFile {
+    #[must_use]
     pub fn file(&self) -> &File {
         &self.file
     }
 
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
 
+    #[must_use]
     pub const fn identity(&self) -> FileIdentity {
         self.identity
     }
 
     /// Re-check both the open descriptor and its path. This detects replacement
     /// between the initial check and a database driver's independent open.
+    /// # Errors
+    /// The file or path cannot be inspected or no longer has the verified identity and permissions.
     pub fn verify_identity(&self) -> Result<(), Error> {
         let descriptor = self.file.metadata().map_err(|source| Error::InspectPath {
             path: self.path.clone(),
@@ -357,21 +382,25 @@ impl Drop for StateLock {
 #[derive(Debug)]
 pub struct InstanceLock {
     directory: PrivateStateDirectory,
-    _instance: StateLock,
+    instance: StateLock,
 }
 
 impl InstanceLock {
     /// Call before handing a separately opened database to a storage driver.
+    /// # Errors
+    /// The held state directory or instance lock file has changed or cannot be inspected.
     pub fn verify_identity(&self) -> Result<(), Error> {
         self.directory.verify_identity()?;
-        self._instance.verify_identity()
+        self.instance.verify_identity()
     }
 
     /// Explicitly hand off write ownership after all business resources close.
     /// Unlocking the open file description also covers descriptors inherited
     /// briefly by concurrently spawned processes before their exec boundary.
+    /// # Errors
+    /// The operating system cannot unlock the held file description.
     pub fn release(mut self) -> Result<(), Error> {
-        self._instance.unlock()
+        self.instance.unlock()
     }
 }
 
@@ -399,7 +428,7 @@ fn open_physical_directory(path: &Path) -> Result<File, Error> {
         match component {
             Component::RootDir => (),
             Component::Normal(name) => {
-                directory = openat(&directory, name, flags, Mode::empty()).map_err(fail)?
+                directory = openat(&directory, name, flags, Mode::empty()).map_err(fail)?;
             }
             Component::Prefix(_) | Component::CurDir | Component::ParentDir => {
                 return Err(Error::InvalidChildName {

@@ -151,8 +151,8 @@ async fn named_tuple_borrowed_and_generic_records_decode_actual_sqlite_rows() ->
     let defaults = sqlx::query_as::<_, shadowed_prelude::Record>("SELECT 1")
         .fetch_one(&mut database)
         .await?;
-    assert!(defaults.missing.is_empty());
-    assert!(defaults.skipped.is_empty());
+    assert_eq!(defaults.missing, "");
+    assert_eq!(defaults.skipped, [0_u8; 0]);
     let row = sqlx::query("SELECT 'borrowed' AS name")
         .fetch_one(&mut database)
         .await?;

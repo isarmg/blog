@@ -1,5 +1,5 @@
 //! Serde's field definitions remain authoritative. Rejecting ignored values
-//! makes unknown fields strict even when a product omits deny_unknown_fields.
+//! makes unknown fields strict even when a product omits `deny_unknown_fields`.
 
 use crate::config::{ConfigCause, ConfigError, ConfigSource, MAX_CONFIG_BYTES, Reason, child_path};
 use serde::{

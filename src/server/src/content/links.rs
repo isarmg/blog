@@ -26,7 +26,7 @@ impl LinkKind {
 }
 
 #[derive(Serialize, sqlx::FromRow)]
-pub(super) struct Link {
+pub(super) struct PublicLink {
     id: i64,
     title: Option<String>,
     classify: Option<String>,
@@ -52,7 +52,7 @@ pub(super) struct LinkPageQuery {
 pub(super) async fn link_page(
     State(state): State<AppState>,
     Query(query): Query<LinkPageQuery>,
-) -> ApiResult<PageResult<Link>> {
+) -> ApiResult<PageResult<PublicLink>> {
     if query.classify.as_ref().is_some_and(|s| s.len() > 100) {
         return Err(invalid("资源筛选无效"));
     }
@@ -65,7 +65,7 @@ pub(super) async fn link_page(
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM resource_path WHERE type=? AND status=1 AND (? IS NULL OR classify=?)")
         .bind(query.kind.as_str()).bind(&query.classify).bind(&query.classify)
         .fetch_one(&mut *transaction).await?;
-    let items=sqlx::query_as::<_,Link>("SELECT id,title,classify,cover,url,introduction,type AS link_type,create_time FROM resource_path WHERE type=? AND status=1 AND (? IS NULL OR classify=?) ORDER BY id DESC LIMIT ? OFFSET ?")
+    let items=sqlx::query_as::<_,PublicLink>("SELECT id,title,classify,cover,url,introduction,type AS link_type,create_time FROM resource_path WHERE type=? AND status=1 AND (? IS NULL OR classify=?) ORDER BY id DESC LIMIT ? OFFSET ?")
         .bind(query.kind.as_str()).bind(&query.classify).bind(&query.classify).bind(pagination.size).bind(pagination.offset())
         .fetch_all(&mut *transaction).await?;
     transaction.commit().await?;

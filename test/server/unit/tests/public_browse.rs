@@ -52,11 +52,9 @@ async fn public_browse_filters_count_and_page_in_the_same_stable_order() {
     assert_eq!(articles(&app, "sort_id=1&label_id=2").await["total"], 1);
     assert_eq!(articles(&app, "sort_id=2&label_id=1").await["total"], 0);
     assert_eq!(articles(&app, "sort_id=2").await["items"][0]["id"], 29);
-    assert!(
-        articles(&app, &format!("{filter}&page=3")).await["items"]
-            .as_array()
-            .unwrap()
-            .is_empty()
+    assert_eq!(
+        articles(&app, &format!("{filter}&page=3")).await["items"],
+        serde_json::json!([])
     );
 }
 

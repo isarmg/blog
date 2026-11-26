@@ -104,7 +104,7 @@ macro_rules! impl_unsync_callable_from_fn {
             $($arg: 'static,)*
         {
             fn from(f: F) -> Self {
-                blog_component_macros::paste!(
+                token_concat::paste!(
                     Self::new(move |($([<$arg:lower>],)*)| f($([<$arg:lower>]),*).into())
                 )
             }
@@ -180,7 +180,7 @@ macro_rules! impl_callable_from_fn {
             $($arg: Send + Sync + 'static,)*
         {
             fn from(f: F) -> Self {
-                blog_component_macros::paste!(
+                token_concat::paste!(
                     Self::new(move |($([<$arg:lower>],)*)| f($([<$arg:lower>]),*).into())
                 )
             }

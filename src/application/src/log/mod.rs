@@ -43,6 +43,8 @@ static PROCESS_SINK: std::sync::OnceLock<std::sync::Mutex<RotatingLogFile>> =
 
 /// Install one typed persistent sink after the application's state preflight.
 /// A second installation is rejected, rather than silently replacing a writer.
+/// # Errors
+/// A process-wide log sink has already been installed.
 #[cfg(any(unix, windows))]
 pub fn install_rotating_file(sink: RotatingLogFile) -> Result<(), LogError> {
     PROCESS_SINK
@@ -207,7 +209,7 @@ pub struct LogRecord {
 }
 
 impl LogRecord {
-    pub fn common_instance(
+    pub(crate) fn common_instance(
         service: &str,
         event: CommonEvent,
         instance_id: &str,
@@ -229,10 +231,14 @@ impl LogRecord {
             Some(instance_id.into()),
         )
     }
+    /// # Errors
+    /// The service name or resulting common event record is invalid.
     pub fn common(service: &str, event: CommonEvent) -> Result<Self, LogError> {
         let (component, event, level, message) = event.definition();
         Self::build(service, component, event, message, level, None)
     }
+    /// # Errors
+    /// The service, event, or message violates the log record limits.
     pub fn server(
         service: &str,
         component: &str,
@@ -243,6 +249,8 @@ impl LogRecord {
         product_event(service, event)?;
         Self::build(service, component, event, message, level, None)
     }
+    /// # Errors
+    /// The service, instance, event, or message violates the log record limits.
     pub fn instance(
         service: &str,
         component: &str,
@@ -296,7 +304,7 @@ impl LogRecord {
             attributes: Map::new(),
         })
     }
-    pub fn with_instance_type(mut self, instance_type: &str) -> Result<Self, LogError> {
+    pub(crate) fn with_instance_type(mut self, instance_type: &str) -> Result<Self, LogError> {
         if self.scope != Scope::Instance {
             return Err(LogError::InvalidRecord);
         }
@@ -304,21 +312,27 @@ impl LogRecord {
         self.instance_type = Some(instance_type.into());
         Ok(self)
     }
+    /// # Errors
+    /// The request identifier violates its correlation-id constraints.
     pub fn with_request_id(mut self, request_id: &str) -> Result<Self, LogError> {
         self.request_id =
             Some(crate::error::RequestId::new(request_id).map_err(LogError::RequestId)?);
         Ok(self)
     }
-    pub fn with_task_id(mut self, task_id: &str) -> Result<Self, LogError> {
+    pub(crate) fn with_task_id(mut self, task_id: &str) -> Result<Self, LogError> {
         identifier(task_id)?;
         self.task_id = Some(task_id.into());
         Ok(self)
     }
-    pub fn with_error_code(mut self, code: &str) -> Result<Self, LogError> {
+    pub(crate) fn with_error_code(mut self, code: &str) -> Result<Self, LogError> {
         self.error_code = Some(crate::error::ErrorCode::new(code).map_err(LogError::ErrorCode)?);
         Ok(self)
     }
-    pub fn with_attribute(mut self, key: &str, value: impl Into<Value>) -> Result<Self, LogError> {
+    pub(crate) fn with_attribute(
+        mut self,
+        key: &str,
+        value: impl Into<Value>,
+    ) -> Result<Self, LogError> {
         identifier(key)?;
         let mut attribute = json!({key: value.into()});
         redact(&mut attribute);
@@ -329,22 +343,27 @@ impl LogRecord {
         self.json_line()?;
         Ok(self)
     }
+    #[must_use]
     pub fn timestamp(&self) -> &str {
         &self.timestamp
     }
+    #[must_use]
     pub fn level(&self) -> Level {
         self.level
     }
+    #[must_use]
     pub fn scope(&self) -> Scope {
         self.scope
     }
+    #[must_use]
     pub fn instance_id(&self) -> Option<&str> {
         self.instance_id.as_deref()
     }
+    #[must_use]
     pub fn event(&self) -> &str {
         &self.event
     }
-    pub fn json_line(&self) -> Result<Vec<u8>, LogError> {
+    pub(crate) fn json_line(&self) -> Result<Vec<u8>, LogError> {
         self.encode().map(|line| line.0)
     }
 
@@ -363,17 +382,21 @@ impl LogRecord {
         limited.bytes.push(b'\n');
         Ok(LogLine(limited.bytes))
     }
+    /// # Errors
+    /// The record cannot be encoded or written to the supplied writer.
     pub fn write_to(&self, output: &mut impl Write) -> Result<(), LogError> {
         write_line_to(&self.encode()?, output)
     }
     /// Stderr is a stream sink. The service manager owns stream capture,
     /// retention and rotation; no application-owned file grows behind it.
-    pub fn emit_stderr(&self) -> Result<(), LogError> {
+    pub(crate) fn emit_stderr(&self) -> Result<(), LogError> {
         let line = self.encode()?;
         write_line_to(&line, &mut io::stderr().lock())
     }
     /// Emit to the explicitly installed process sink, or to stderr when absent.
     /// Native background services install their persistent sink before work.
+    /// # Errors
+    /// The record cannot be encoded or written to the selected sink.
     pub fn emit(&self) -> Result<(), LogError> {
         emit_line(&self.encode()?)
     }
@@ -542,6 +565,8 @@ impl Default for QueryLimits {
 
 /// Query exact structured fields with byte and result-count bounds. An
 /// incomplete or malformed line is an error, never an empty success result.
+/// # Errors
+/// The limits, query input, or log data are invalid, a budget is exceeded, or reading fails.
 pub fn query(
     mut reader: impl BufRead,
     filter: LogFilter<'_>,

@@ -15,13 +15,13 @@ pub const SCHEMA_FINGERPRINT_GOLDEN_VECTORS_JSON: &str =
 
 /// The canonical metadata DDL. Comparison ignores ASCII whitespace and ASCII
 /// letter case, but does not otherwise rewrite SQL.
-pub const PRODUCT_METADATA_DDL: &str = r#"CREATE TABLE product_metadata (
+pub const PRODUCT_METADATA_DDL: &str = r"CREATE TABLE product_metadata (
     singleton INTEGER PRIMARY KEY NOT NULL CHECK(singleton=1),
     application TEXT NOT NULL,
     application_version TEXT NOT NULL,
     schema_revision INTEGER NOT NULL,
     schema_sha256 TEXT NOT NULL
-)"#;
+)";
 
 /// Current fresh-install identity stamp. Bind values in the documented order;
 /// this never updates an existing stamp or converts another structure.
@@ -70,6 +70,8 @@ impl<'de> Deserialize<'de> for SchemaIdentity {
 }
 
 impl SchemaIdentity {
+    /// # Errors
+    /// An application identifier, version, or schema digest is invalid.
     pub fn new(
         application: impl Into<String>,
         application_version: impl Into<String>,
@@ -86,6 +88,8 @@ impl SchemaIdentity {
         Ok(identity)
     }
 
+    /// # Errors
+    /// An identifier or the schema digest is malformed.
     pub fn validate(&self) -> Result<(), Error> {
         validate_identifier(IdentityField::Application, &self.application)?;
         validate_identifier(IdentityField::ApplicationVersion, &self.application_version)?;
@@ -93,7 +97,7 @@ impl SchemaIdentity {
     }
 
     /// Require every identity component to equal the compiled current value.
-    pub fn require_exact(&self, expected: &Self) -> Result<(), Error> {
+    pub(crate) fn require_exact(&self, expected: &Self) -> Result<(), Error> {
         self.validate()?;
         expected.validate()?;
         require_equal(
@@ -119,7 +123,7 @@ impl SchemaIdentity {
     }
 
     /// Verify that the schema bytes agree with the hash declared by metadata.
-    pub fn verify_fingerprint(&self, actual_schema_sha256: &str) -> Result<(), Error> {
+    pub(crate) fn verify_fingerprint(&self, actual_schema_sha256: &str) -> Result<(), Error> {
         self.validate()?;
         validate_schema_sha256(actual_schema_sha256)?;
         if self.schema_sha256 != actual_schema_sha256 {
@@ -142,7 +146,7 @@ pub struct ProductMetadataRow {
 }
 
 impl ProductMetadataRow {
-    pub fn to_schema_identity(&self) -> Result<SchemaIdentity, Error> {
+    pub(crate) fn to_schema_identity(&self) -> Result<SchemaIdentity, Error> {
         if self.singleton != 1 {
             return Err(Error::InvalidMetadataSingleton {
                 actual: self.singleton,
@@ -161,7 +165,7 @@ impl ProductMetadataRow {
     }
 }
 
-pub fn schema_identity_from_metadata_rows(
+pub(crate) fn schema_identity_from_metadata_rows(
     rows: &[ProductMetadataRow],
 ) -> Result<SchemaIdentity, Error> {
     if rows.len() != 1 {
@@ -217,6 +221,8 @@ pub struct SchemaObjectKey {
 /// 64-bit big-endian integer. SQL is hashed byte-for-byte. The function
 /// deliberately rejects internal/metadata rows and non-strict ordering so
 /// different database adapters cannot silently produce different inputs.
+/// # Errors
+/// The rows are out of order, duplicated, excluded, or cannot be framed for hashing.
 pub fn schema_fingerprint(rows: &[SchemaRow]) -> Result<String, Error> {
     let mut digest = Sha256::new();
     let mut previous: Option<SchemaObjectKey> = None;
@@ -272,6 +278,8 @@ pub fn schema_fingerprint(rows: &[SchemaRow]) -> Result<String, Error> {
 
 /// Validate metadata, its exact-current expectation and the actual schema in
 /// one driver-independent operation.
+/// # Errors
+/// The metadata row, expected identity, or fingerprint of the actual schema does not match.
 pub fn verify_current_schema(
     metadata_rows: &[ProductMetadataRow],
     schema_rows: &[SchemaRow],
@@ -295,7 +303,9 @@ pub struct ProductMetadataColumn {
 }
 
 /// Verify the five-column table shape independently of a database driver.
-pub fn validate_product_metadata_columns(columns: &[ProductMetadataColumn]) -> Result<(), Error> {
+pub(crate) fn validate_product_metadata_columns(
+    columns: &[ProductMetadataColumn],
+) -> Result<(), Error> {
     const EXPECTED: [(i64, &str, &str, i64, i64); 5] = [
         (0, "singleton", "INTEGER", 1, 1),
         (1, "application", "TEXT", 1, 0),
@@ -326,14 +336,14 @@ pub fn validate_product_metadata_columns(columns: &[ProductMetadataColumn]) -> R
     Ok(())
 }
 
-pub fn validate_product_metadata_ddl(actual: &str) -> Result<(), Error> {
+pub(crate) fn validate_product_metadata_ddl(actual: &str) -> Result<(), Error> {
     if normalize_contract_sql(actual) != normalize_contract_sql(PRODUCT_METADATA_DDL) {
         return Err(Error::ProductMetadataDdlMismatch);
     }
     Ok(())
 }
 
-pub fn validate_schema_sha256(value: &str) -> Result<(), Error> {
+pub(crate) fn validate_schema_sha256(value: &str) -> Result<(), Error> {
     if value.len() != 64
         || !value
             .bytes()

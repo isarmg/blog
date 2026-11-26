@@ -79,10 +79,7 @@ pub(crate) fn verify_identity() -> Result<(), AssetError> {
 
 fn verify_identity_bytes(bytes: &[u8], expected_sha256: &str) -> Result<(), AssetError> {
     use sha2::{Digest, Sha256};
-    let digest: String = Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
+    let digest: String = hex::encode(Sha256::digest(bytes));
     if digest != expected_sha256 {
         return Err(AssetError::DigestMismatch);
     }
@@ -97,8 +94,7 @@ fn verify_identity_bytes(bytes: &[u8], expected_sha256: &str) -> Result<(), Asse
         && identity.source_revision == env!("BLOG_SOURCE_REVISION")
         && identity
             .source_dirty
-            .map(|dirty| if dirty { "true" } else { "false" })
-            .unwrap_or("unknown")
+            .map_or("unknown", |dirty| if dirty { "true" } else { "false" })
             == env!("BLOG_COMPILED_SOURCE_DIRTY")
         && identity.source_tree_sha256.as_deref().unwrap_or("unbound")
             == env!("BLOG_COMPILED_SOURCE_TREE_SHA256")

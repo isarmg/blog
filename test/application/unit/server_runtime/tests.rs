@@ -74,7 +74,6 @@ async fn readiness_requires_checks_and_critical_exit_stops_runtime() {
             Err(std::io::Error::other("stopped"))
         })
         .build()
-        .await
         .unwrap();
     runtime.refresh_health().await;
     assert!(runtime.handle().health().await.ready);
@@ -226,68 +225,7 @@ async fn invalid_and_duplicate_ids_use_strict_error_envelopes() {
 
 #[tokio::test(start_paused = true)]
 async fn product_error_correlation_is_consistent_and_bounded() {
-    let app = request_service(
-        Router::new()
-            .route(
-                "/error",
-                get(|request: Request| async move {
-                    assert_eq!(
-                        request
-                            .extensions()
-                            .get::<crate::contracts::RequestId>()
-                            .unwrap()
-                            .as_str(),
-                        "trace-123"
-                    );
-                    (
-                        StatusCode::CONFLICT,
-                        Json(serde_json::json!({
-                            "code": "conflict", "message": "The operation conflicts.",
-                            "retryable": false, "request_id": "stale-id", "details": {}
-                        })),
-                    )
-                        .into_response()
-                }),
-            )
-            .route(
-                "/large",
-                get(|| async {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        [("content-type", "application/json")],
-                        "x".repeat(16 * 1024 + 1),
-                    )
-                        .into_response()
-                }),
-            )
-            .route(
-                "/stalled",
-                get(|| async {
-                    let body = axum::body::Body::from_stream(futures::stream::pending::<
-                        Result<Vec<u8>, std::convert::Infallible>,
-                    >());
-                    (
-                        StatusCode::BAD_REQUEST,
-                        [("content-type", "application/json")],
-                        body,
-                    )
-                        .into_response()
-                }),
-            )
-            .route(
-                "/other",
-                get(|| async {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"business": "value"})),
-                    )
-                        .into_response()
-                }),
-            )
-            .layer(axum::middleware::from_fn(
-                crate::server_cli::request_context_middleware,
-            )),
-    );
+    let app = request_service(error_correlation_router());
     for path in ["/error", "/large", "/stalled", "/other"] {
         let response = app
             .clone()
@@ -349,7 +287,7 @@ fn core_identity_requires_a_full_source_sha256() {
 
 #[tokio::test]
 async fn shutdown_before_subscribing_is_retained() {
-    let runtime = ServerRuntime::builder(descriptor()).build().await.unwrap();
+    let runtime = ServerRuntime::builder(descriptor()).build().unwrap();
     let handle = runtime.handle();
     handle.shutdown();
     let mut signal = handle.shutdown_signal();
@@ -369,7 +307,6 @@ async fn uncooperative_worker_is_reported_without_aborting_at_the_deadline() {
             std::future::pending()
         })
         .build()
-        .await
         .unwrap();
     let handle = runtime.handle();
     handle.shutdown();
@@ -391,7 +328,7 @@ async fn uncooperative_worker_is_reported_without_aborting_at_the_deadline() {
 #[tokio::test]
 async fn http_lifecycle_observes_shutdown_requested_before_start() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let runtime = ServerRuntime::builder(descriptor()).build().await.unwrap();
+    let runtime = ServerRuntime::builder(descriptor()).build().unwrap();
     runtime.handle().shutdown();
     tokio::time::timeout(
         Duration::from_secs(2),
@@ -416,7 +353,6 @@ async fn http_lifecycle_propagates_critical_worker_failure() {
             Err(std::io::Error::other("failure"))
         })
         .build()
-        .await
         .unwrap();
     let result = tokio::time::timeout(
         Duration::from_secs(2),
@@ -442,7 +378,6 @@ async fn panicking_task_factory_is_recorded_and_stops_critical_runtime() {
             std::future::ready(Ok(()))
         })
         .build()
-        .await
         .unwrap();
     let handle = runtime.handle();
     tokio::time::timeout(Duration::from_secs(1), runtime.run_until_shutdown())
@@ -465,7 +400,6 @@ async fn degrading_and_best_effort_exits_do_not_stop_the_service() {
             Err(std::io::Error::other("failure"))
         })
         .build()
-        .await
         .unwrap();
     let handle = runtime.handle();
     let task = tokio::spawn(runtime.run_until_shutdown());
@@ -498,7 +432,6 @@ async fn slow_or_panicking_checks_fail_closed_without_locking_diagnostics() {
         .register_health_check("stalled", health_check(std::future::pending))
         .register_health_check("panic", health_check(|| async { panic!("check panic") }))
         .build()
-        .await
         .unwrap();
     let handle = runtime.handle();
     let refresh = runtime.refresh_health();
@@ -533,7 +466,6 @@ async fn patch_release_reports_its_version_while_retaining_the_data_format_ident
     let runtime = ServerRuntime::builder(product)
         .with_schema_identity(schema.clone())
         .build()
-        .await
         .unwrap();
     let diagnostics = runtime.handle().diagnostics().await;
     assert_eq!(diagnostics.product.version, "1.0.1");
@@ -547,8 +479,7 @@ async fn schema_must_match_product_and_health_checks_are_unique() {
             crate::schema_identity::SchemaIdentity::new("different", "1.0.0", 1, "a".repeat(64))
                 .unwrap(),
         )
-        .build()
-        .await;
+        .build();
     assert!(matches!(
         invalid,
         Err(Error::InvalidDescriptor("schema_identity"))
@@ -556,8 +487,7 @@ async fn schema_must_match_product_and_health_checks_are_unique() {
     let duplicate = ServerRuntime::builder(descriptor())
         .register_health_check("database", Arc::new(Ready))
         .register_health_check("database", Arc::new(Ready))
-        .build()
-        .await;
+        .build();
     assert!(matches!(duplicate, Err(Error::DuplicateName(_))));
 }
 
@@ -573,7 +503,6 @@ async fn diagnostics_are_absent_for_both_anonymous_and_authenticated_requests() 
         )
         .register_health_check("database", health_check(|| async { true }))
         .build()
-        .await
         .unwrap();
     runtime.refresh_health().await;
     let app = platform_router(
@@ -651,4 +580,67 @@ async fn diagnostics_are_absent_for_both_anonymous_and_authenticated_requests() 
         .await
         .unwrap();
     assert_eq!(diagnostic.status(), StatusCode::NOT_FOUND);
+}
+
+fn error_correlation_router() -> Router {
+    Router::new()
+        .route(
+            "/error",
+            get(|request: Request| async move {
+                assert_eq!(
+                    request
+                        .extensions()
+                        .get::<crate::contracts::RequestId>()
+                        .unwrap()
+                        .as_str(),
+                    "trace-123"
+                );
+                (
+                    StatusCode::CONFLICT,
+                    Json(serde_json::json!({
+                        "code": "conflict", "message": "The operation conflicts.",
+                        "retryable": false, "request_id": "stale-id", "details": {}
+                    })),
+                )
+                    .into_response()
+            }),
+        )
+        .route(
+            "/large",
+            get(|| async {
+                (
+                    StatusCode::BAD_REQUEST,
+                    [("content-type", "application/json")],
+                    "x".repeat(16 * 1024 + 1),
+                )
+                    .into_response()
+            }),
+        )
+        .route(
+            "/stalled",
+            get(|| async {
+                let body = axum::body::Body::from_stream(futures::stream::pending::<
+                    Result<Vec<u8>, std::convert::Infallible>,
+                >());
+                (
+                    StatusCode::BAD_REQUEST,
+                    [("content-type", "application/json")],
+                    body,
+                )
+                    .into_response()
+            }),
+        )
+        .route(
+            "/other",
+            get(|| async {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"business": "value"})),
+                )
+                    .into_response()
+            }),
+        )
+        .layer(axum::middleware::from_fn(
+            crate::server_cli::request_context_middleware,
+        ))
 }

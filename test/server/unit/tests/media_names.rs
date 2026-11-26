@@ -3,39 +3,14 @@ use super::*;
 #[tokio::test]
 async fn uploaded_unicode_names_roundtrip_through_resources_and_media() {
     let (_directory, app, pool) = setup().await;
-    let response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/v1/auth/login")
-                .header(header::HOST, "127.0.0.1:18881")
-                .header(header::ORIGIN, "http://127.0.0.1:18881")
-                .header("sec-fetch-site", "same-origin")
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"username":"admin","password":"TemporaryPassphrase123"}"#,
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    let cookie = response
-        .headers()
-        .get_all(header::SET_COOKIE)
-        .iter()
-        .map(|value| value.to_str().unwrap().split(';').next().unwrap())
-        .collect::<Vec<_>>()
-        .join("; ");
-    let session = body_json(response).await;
+    let (cookie, csrf) = login(&app).await;
     let fixtures: serde_json::Value =
         serde_json::from_str(include_str!("../../integration/fixtures/upload-names.json")).unwrap();
     for (index, fixture) in fixtures.as_array().unwrap().iter().enumerate() {
         let name = fixture["name"].as_str().unwrap();
         // Distinct valid GIFs avoid content-addressed deduplication between names.
         let mut image = hex::decode("47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b").unwrap();
-        image[13] = index as u8;
+        image[13] = u8::try_from(index).unwrap();
         let response = app
             .clone()
             .oneshot(
@@ -46,7 +21,7 @@ async fn uploaded_unicode_names_roundtrip_through_resources_and_media() {
                     .header(header::ORIGIN, "http://127.0.0.1:18881")
                     .header("sec-fetch-site", "same-origin")
                     .header(header::COOKIE, &cookie)
-                    .header("x-csrf-token", session["csrf_token"].as_str().unwrap())
+                    .header("x-csrf-token", &csrf)
                     .header(header::CONTENT_TYPE, "image/gif")
                     .header("x-file-name", fixture["header"].as_str().unwrap())
                     .body(Body::from(image.clone()))

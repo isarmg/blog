@@ -11,7 +11,7 @@ fn idempotency_keys_preserve_valid_headers_and_reject_malformed_values() {
         let parsed = IdempotencyKey::from_headers(&headers).unwrap().unwrap();
         assert_eq!(parsed.as_str(), key);
     }
-    for key in ["".to_owned(), "has space".to_owned(), "x".repeat(129)] {
+    for key in [String::new(), "has space".to_owned(), "x".repeat(129)] {
         headers.insert("Idempotency-Key", HeaderValue::from_str(&key).unwrap());
         assert!(matches!(
             IdempotencyKey::from_headers(&headers),

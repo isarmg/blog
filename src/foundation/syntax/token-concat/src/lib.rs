@@ -1,12 +1,4 @@
-#![doc = include_str!("../../../../../docs/dependencies/origins/pastey-0.1.1/README.md")]
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::doc_markdown,
-    clippy::match_same_arms,
-    clippy::module_name_repetitions,
-    clippy::needless_doctest_main,
-    clippy::too_many_lines
-)]
+//! Compile-time identifier concatenation shared by DOM and stylesheet macros.
 
 extern crate proc_macro;
 
@@ -116,7 +108,7 @@ fn expand(
                         *contains_paste = true;
                         group
                     } else {
-                        group.clone()
+                        group
                     };
                     if delimiter != Delimiter::None {
                         expanded.extend(iter::once(TokenTree::Group(group)));
@@ -173,7 +165,7 @@ fn is_single_interpolation_group(input: &TokenStream) -> bool {
     let mut state = State::Init;
     for tt in input.clone() {
         state = match (state, &tt) {
-            (State::Init, TokenTree::Ident(_)) => State::Ident,
+            (State::Init | State::Colon2, TokenTree::Ident(_)) => State::Ident,
             (State::Init, TokenTree::Literal(_)) => State::Literal,
             (State::Init, TokenTree::Punct(punct)) if punct.as_char() == '\'' => State::Apostrophe,
             (State::Apostrophe, TokenTree::Ident(_)) => State::Lifetime,
@@ -187,7 +179,6 @@ fn is_single_interpolation_group(input: &TokenStream) -> bool {
             {
                 State::Colon2
             }
-            (State::Colon2, TokenTree::Ident(_)) => State::Ident,
             _ => return false,
         };
     }
@@ -243,12 +234,12 @@ fn parse_bracket_as_segments(input: TokenStream, scope: Span) -> Result<Vec<Segm
         if let Segment::String(string) = segment {
             if string.value.starts_with("'\\u{") {
                 let hex = &string.value[4..string.value.len() - 2];
-                if let Ok(unsigned) = u32::from_str_radix(hex, 16) {
-                    if let Some(ch) = char::from_u32(unsigned) {
-                        string.value.clear();
-                        string.value.push(ch);
-                        continue;
-                    }
+                if let Ok(unsigned) = u32::from_str_radix(hex, 16)
+                    && let Some(ch) = char::from_u32(unsigned)
+                {
+                    string.value.clear();
+                    string.value.push(ch);
+                    continue;
                 }
             }
             if string.value.contains(&['\\', '.', '+'][..])
@@ -274,7 +265,6 @@ fn parse_bracket_as_segments(input: TokenStream, scope: Span) -> Result<Vec<Segm
 }
 
 fn pasted_to_tokens(mut pasted: String, span: Span) -> Result<TokenStream> {
-    let mut raw_mode = false;
     let mut tokens = TokenStream::new();
 
     if pasted.starts_with(|ch: char| ch.is_ascii_digit()) {
@@ -283,7 +273,7 @@ fn pasted_to_tokens(mut pasted: String, span: Span) -> Result<TokenStream> {
             Ok(Err(LexError { .. })) | Err(_) => {
                 return Err(Error::new(
                     span,
-                    &format!("`{:?}` is not a valid literal", pasted),
+                    &format!("`{pasted:?}` is not a valid literal"),
                 ));
             }
         };
@@ -298,25 +288,15 @@ fn pasted_to_tokens(mut pasted: String, span: Span) -> Result<TokenStream> {
         pasted.remove(0);
     }
 
-    if pasted.starts_with("r#") {
-        raw_mode = true;
-    }
-
-    let ident = match panic::catch_unwind(|| {
-        if raw_mode {
-            let mut spasted = pasted.clone();
-            spasted.remove(0);
-            spasted.remove(0);
-            Ident::new_raw(&spasted, span)
-        } else {
-            Ident::new(&pasted, span)
-        }
+    let ident = match panic::catch_unwind(|| match pasted.strip_prefix("r#") {
+        Some(raw) => Ident::new_raw(raw, span),
+        None => Ident::new(&pasted, span),
     }) {
         Ok(ident) => TokenTree::Ident(ident),
         Err(_) => {
             return Err(Error::new(
                 span,
-                &format!("`{:?}` is not a valid identifier", pasted),
+                &format!("`{pasted:?}` is not a valid identifier"),
             ));
         }
     };

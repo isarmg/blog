@@ -254,7 +254,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
     };
     Ok(web_routes
         .route("/readyz", get(readiness).with_state(state.pool.clone()))
-        .route("/api/v1/health", get(health).with_state(state.pool.clone()))
+        .route("/api/v1/health", get(health).with_state(state.pool))
         .merge(public_routes)
         .nest(
             "/media",
@@ -268,7 +268,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
         .merge(blog_application::admin_axum::administrator_router(
             PRODUCT_ID,
             state.origin,
-            Arc::clone(&state.admin),
+            state.admin,
         )?)
         .route(
             "/api/{*path}",
@@ -301,7 +301,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
                             event = "blog.http.completed",
                             component = "http",
                             status = u64::from(response.status().as_u16()),
-                            duration_ms = duration.as_millis().min(u128::from(u64::MAX)) as u64
+                            duration_ms = u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
                         );
                     },
                 )
@@ -309,7 +309,7 @@ pub(crate) fn router(state: AppState, web: Option<PathBuf>) -> Result<Router, cr
                 .on_eos(())
                 .on_failure(()),
         )
-        .layer(from_fn_with_state(state.scope.clone(), admit_request))
+        .layer(from_fn_with_state(state.scope, admit_request))
         .layer(from_fn_with_state(
             blog_application::server_cli::ServiceIdentity::new(PRODUCT_ID)
                 .expect("invariant: static service identity is a valid HTTP header"),

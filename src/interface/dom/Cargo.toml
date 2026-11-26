@@ -17,6 +17,10 @@ name = "dom-contracts"
 path = "../../../test/interface/dom/browser/fixture.rs"
 crate-type = ["cdylib"]
 
+[[test]]
+name = "token-expansion"
+path = "../../../test/interface/dom/integration/token_expansion.rs"
+
 [features]
 default = ["csr"]
 csr = ["blog_component_macros/csr"]
@@ -75,6 +79,10 @@ default-features = true
 package = "blog-format-data-model"
 path = "../../foundation/format/data-model"
 default-features = true
+
+[dependencies.token-concat]
+package = "blog-syntax-token-concat"
+path = "../../foundation/syntax/token-concat"
 
 [dependencies.thiserror]
 package = "blog-diagnostics-typed-error"

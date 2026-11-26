@@ -6,6 +6,7 @@ use crate::web_assets::{
     MAX_TOTAL_BYTES, Result, content_type, safe_relative, sha256, valid_digest,
 };
 use std::{env, fs, path::Path};
+use std::{fmt::Write as _, io::Write as _};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -16,6 +17,7 @@ pub enum BuildMode {
 }
 
 impl BuildMode {
+    #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Development => "development",
@@ -56,6 +58,8 @@ struct BuildIdentity<'a> {
 /// Generate the exact Web inventory and a canonical compiled product identity.
 /// The product passes its already computed current schema and local core hashes.
 /// Runtime and offline setup both validate this identity before opening state.
+/// # Errors
+/// The product identity, source binding, or asset inventory is invalid, or files cannot be read or written.
 pub fn generate(
     root: impl AsRef<Path>,
     schema_sha256: &str,
@@ -123,8 +127,7 @@ pub fn generate(
         "cargo:rustc-env=BLOG_COMPILED_SOURCE_DIRTY={}",
         identity
             .source_dirty
-            .map(|dirty| if dirty { "true" } else { "false" })
-            .unwrap_or("unknown")
+            .map_or("unknown", |dirty| if dirty { "true" } else { "false" })
     );
     println!(
         "cargo:rustc-env=BLOG_COMPILED_SOURCE_TREE_SHA256={}",
@@ -137,7 +140,6 @@ pub fn generate(
     let identity = serde_json::to_vec(&identity)?;
     let identity_sha256 = sha256(&identity);
     let generated = output.join(FILENAME);
-    use std::io::Write;
     let mut declarations = fs::OpenOptions::new().append(true).open(generated)?;
     writeln!(
         declarations,
@@ -215,7 +217,7 @@ fn validate_build_identity(identity: &BuildIdentity<'_>, debug: bool) -> Result<
 }
 
 /// Explicit output location for build tools and acceptance tests; no environment mutation.
-pub fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<()> {
+pub(crate) fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<()> {
     if !safe_relative(filename) || filename.contains('/') {
         return Err(Error::UnsafeFilename);
     }
@@ -252,7 +254,7 @@ pub fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<()> {
             .to_str()
             .ok_or_else(|| Error::NonUnicodePath(snapshot.clone()))?;
         let mime = content_type(path);
-        declarations.push_str(&format!("    blog_application::web_assets::EmbeddedAsset {{ path: {path:?}, content_type: {mime:?}, bytes: include_bytes!({snapshot:?}), sha256: {digest:?} }},\n"));
+        writeln!(declarations, "    blog_application::web_assets::EmbeddedAsset {{ path: {path:?}, content_type: {mime:?}, bytes: include_bytes!({snapshot:?}), sha256: {digest:?} }},").expect("writing to a String is infallible");
         files.push(AssetRecord {
             path: path.clone(),
             content_type: mime.to_owned(),
@@ -266,9 +268,11 @@ pub fn generate_at(root: &Path, output: &Path, filename: &str) -> Result<()> {
         files,
     })?;
     let digest = sha256(manifest.as_bytes());
-    declarations.push_str(&format!(
-        "pub const MANIFEST: &str = {manifest:?};\npub const DIGEST: &str = {digest:?};\n"
-    ));
+    writeln!(
+        declarations,
+        "pub const MANIFEST: &str = {manifest:?};\npub const DIGEST: &str = {digest:?};"
+    )
+    .expect("writing to a String is infallible");
     fs::write(output.join(filename), declarations)?;
     fs::write(output.join(format!("{filename}.manifest.json")), manifest)?;
     Ok(())
