@@ -1,5 +1,4 @@
-use crate::common::{Action, Check, Field, flag, load, num, t, text};
-use blog_interface::component::component_props_builder;
+use crate::common::{Action, Field, flag, form_check, load, num, t, text};
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
 use serde_json::{Value, json};
@@ -67,95 +66,62 @@ pub(super) fn FamilySettings() -> impl IntoView {
                                 }),
                                 blog_interface::html::div()
                                     .child((
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("男生昵称", "His name"))
-                                                .key("man_name")
-                                                .form(form)
-                                                .required(true)
-                                                .max(32)
-                                                .build(),
+                                        Field::RequiredLine(32).bind(
+                                            form,
+                                            "man_name",
+                                            t("男生昵称", "His name"),
                                         ),
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("女生昵称", "Her name"))
-                                                .key("woman_name")
-                                                .form(form)
-                                                .required(true)
-                                                .max(32)
-                                                .build(),
+                                        Field::RequiredLine(32).bind(
+                                            form,
+                                            "woman_name",
+                                            t("女生昵称", "Her name"),
                                         ),
                                     ))
                                     .class("form-grid"),
                                 blog_interface::html::div()
                                     .child((
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("起始时间", "Start date"))
-                                                .key("timing")
-                                                .form(form)
-                                                .max(32)
-                                                .build(),
+                                        Field::Line(32).bind(
+                                            form,
+                                            "timing",
+                                            t("起始时间", "Start date"),
                                         ),
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("倒计时标题", "Countdown title"))
-                                                .key("countdown_title")
-                                                .form(form)
-                                                .max(32)
-                                                .build(),
+                                        Field::Line(32).bind(
+                                            form,
+                                            "countdown_title",
+                                            t("倒计时标题", "Countdown title"),
                                         ),
                                     ))
                                     .class("form-grid"),
-                                Field(
-                                    component_props_builder(&Field)
-                                        .label(t("倒计时时间", "Countdown date"))
-                                        .key("countdown_time")
-                                        .form(form)
-                                        .max(32)
-                                        .build(),
+                                Field::Line(32).bind(
+                                    form,
+                                    "countdown_time",
+                                    t("倒计时时间", "Countdown date"),
                                 ),
-                                Field(
-                                    component_props_builder(&Field)
-                                        .label(t("背景图片", "Background image"))
-                                        .key("bg_cover")
-                                        .form(form)
-                                        .build(),
+                                Field::Line(Field::DEFAULT_LIMIT).bind(
+                                    form,
+                                    "bg_cover",
+                                    t("背景图片", "Background image"),
                                 ),
                                 blog_interface::html::div()
                                     .child((
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("男生头像", "His avatar"))
-                                                .key("man_cover")
-                                                .form(form)
-                                                .build(),
+                                        Field::Line(Field::DEFAULT_LIMIT).bind(
+                                            form,
+                                            "man_cover",
+                                            t("男生头像", "His avatar"),
                                         ),
-                                        Field(
-                                            component_props_builder(&Field)
-                                                .label(t("女生头像", "Her avatar"))
-                                                .key("woman_cover")
-                                                .form(form)
-                                                .build(),
+                                        Field::Line(Field::DEFAULT_LIMIT).bind(
+                                            form,
+                                            "woman_cover",
+                                            t("女生头像", "Her avatar"),
                                         ),
                                     ))
                                     .class("form-grid"),
-                                Field(
-                                    component_props_builder(&Field)
-                                        .label(t("简介", "Introduction"))
-                                        .key("family_info")
-                                        .form(form)
-                                        .textarea(true)
-                                        .max(1024)
-                                        .build(),
+                                Field::Paragraph(1024).bind(
+                                    form,
+                                    "family_info",
+                                    t("简介", "Introduction"),
                                 ),
-                                Check(
-                                    component_props_builder(&Check)
-                                        .label(t(" 公开显示", " Show publicly"))
-                                        .key("status")
-                                        .form(form)
-                                        .build(),
-                                ),
+                                form_check(form, "status", t(" 公开显示", " Show publicly")),
                                 blog_interface::html::div()
                                     .child((
                                         blog_interface::html::button()

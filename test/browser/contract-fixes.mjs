@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {chromium,firefox,expect} from './dependencies.mjs';
 import {preview} from '../tools/assets/test-preview.mjs';
 import {mockApi,article} from './browser-fixtures.mjs';
-const server=await preview({preview:{host:'127.0.0.1',port:0,strictPort:true}});
-const base=`http://127.0.0.1:${server.httpServer.address().port}`;
+const server=await preview();
+const base=server.url.origin;
 // A real, short PCM WAV lets Firefox finish media metadata loading. An empty
 // audio/mpeg body leaves its media request pending even after the UI is ready.
 const audio=Buffer.alloc(44+8820);audio.write('RIFF');audio.writeUInt32LE(audio.length-8,4);audio.write('WAVEfmt ',8);audio.writeUInt32LE(16,16);audio.writeUInt16LE(1,20);audio.writeUInt16LE(1,22);audio.writeUInt32LE(44100,24);audio.writeUInt32LE(88200,28);audio.writeUInt16LE(2,32);audio.writeUInt16LE(16,34);audio.write('data',36);audio.writeUInt32LE(audio.length-44,40);
@@ -35,4 +35,4 @@ try{for(const engine of [chromium,firefox]){
   await page.setViewportSize({width:390,height:844});await page.goto(base+'/favorite?lang=en');await expect(page.getByText('favorites-201',{exact:true})).toBeVisible();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.getByRole('button',{name:'Open navigation',exact:true}).click();await expect(page.getByRole('navigation',{name:'Main navigation',exact:true}).getByRole('link',{name:/About/})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Main navigation',exact:true}).getByRole('link',{name:/Journal/})).toBeVisible();
   assert.deepEqual(errors,[]);console.log(`${engine.name()}: Toolbox 3x201 records, native UTF-8 password form, UTC article update and current desktop/mobile menus passed`);
  }finally{await browser.close();}
-}}finally{await new Promise(resolve=>server.httpServer.close(resolve));}
+}}finally{await server.close();}

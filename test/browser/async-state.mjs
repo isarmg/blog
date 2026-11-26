@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { mockApi, pageOf, summary } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = server.resolvedUrls.local[0];
+const server = await preview();
+const base = server.url.href;
 const settle = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const failed = route => route.fulfill({ status: 503, json: { code: 'unavailable', retryable: true } });
 const cases = [

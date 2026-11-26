@@ -76,8 +76,8 @@ async function mediaMarkup(scope, nativeCount, sources) {
   }
 }
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 try {
   for (const [engine, language, width] of [[chromium, 'en', 1280], [firefox, 'zh-CN', 390]]) {
     const browser = await engine.launch();

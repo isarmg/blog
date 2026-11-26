@@ -13,7 +13,9 @@ pub(crate) use action::Action;
 pub(crate) use blog_interface::i18n::t;
 pub(crate) use decoration::{Petals, Sliding};
 pub(crate) use feedback::{Feedback, ListState, public_error};
-pub(crate) use forms::{Check, ControlledCheck, ControlledField, Field, FilePicker};
+pub(crate) use forms::{
+    ControlledCheck, ControlledField, Field, FilePicker, form_check, validation_message,
+};
 pub(crate) use lightbox::Lightbox;
 pub(crate) use navigation::{
     browse, enc, hash_signal, href, navigate, page_number, param, pathname, query, safe_url,

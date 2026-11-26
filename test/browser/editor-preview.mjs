@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { article, fixtureImageBytes, mockApi, waitForApplication } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = server.resolvedUrls.local[0];
+const server = await preview();
+const base = server.url.href;
 try {
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();

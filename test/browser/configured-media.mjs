@@ -44,8 +44,8 @@ async function background(page, selector, path) {
     .toEqual({ status: 200, mime: 'image/png' });
 }
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 try {
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();

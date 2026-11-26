@@ -16,30 +16,48 @@ fn scalar_error(value: &str, max: u32) -> String {
     }
 }
 
-#[component]
-pub(crate) fn Field(
-    label: String,
-    key: &'static str,
-    form: RwSignal<Value>,
-    #[prop(default = false)] textarea: bool,
-    #[prop(default = false)] required: bool,
-    /// Maximum Unicode scalar count; native maxlength uses a UTF-16 budget.
-    #[prop(default = 32768)]
-    max: u32,
-) -> impl IntoView {
-    ControlledField(
-        ControlledFieldProps::builder()
-            .label(label)
-            .value(Signal::derive(move || form.with(|f| text(f, key))))
-            .change(Callback::new(move |value| {
-                form.update(|f| f[key] = Value::String(value));
-            }))
-            .name(key)
-            .textarea(textarea)
-            .required(required)
-            .max(max)
-            .build(),
-    )
+#[derive(Clone, Copy)]
+pub(crate) enum Field {
+    Line(u32),
+    RequiredLine(u32),
+    Paragraph(u32),
+    RequiredParagraph(u32),
+}
+
+impl Field {
+    pub(crate) const DEFAULT_LIMIT: u32 = 32_768;
+
+    pub(crate) const fn limit(self) -> u32 {
+        match self {
+            Self::Line(n)
+            | Self::RequiredLine(n)
+            | Self::Paragraph(n)
+            | Self::RequiredParagraph(n) => n,
+        }
+    }
+
+    pub(crate) fn bind(
+        self,
+        form: RwSignal<Value>,
+        key: &'static str,
+        label: String,
+    ) -> impl IntoView {
+        let textarea = matches!(self, Self::Paragraph(_) | Self::RequiredParagraph(_));
+        let required = matches!(self, Self::RequiredLine(_) | Self::RequiredParagraph(_));
+        ControlledField(
+            ControlledFieldProps::builder()
+                .label(label)
+                .value(Signal::derive(move || form.with(|f| text(f, key))))
+                .change(Callback::new(move |value| {
+                    form.update(|f| f[key] = Value::String(value));
+                }))
+                .name(key)
+                .textarea(textarea)
+                .required(required)
+                .max(self.limit())
+                .build(),
+        )
+    }
 }
 
 #[component]
@@ -51,7 +69,7 @@ pub(crate) fn ControlledField(
     #[prop(default = false)] textarea: bool,
     #[prop(default = false)] required: bool,
     /// Maximum Unicode scalar count; native maxlength uses a UTF-16 budget.
-    #[prop(default = 32768)]
+    #[prop(default = Field::DEFAULT_LIMIT)]
     max: u32,
 ) -> impl IntoView {
     let input = NodeRef::<blog_interface::html::Input>::new();
@@ -154,8 +172,7 @@ pub(crate) fn ControlledCheck(
     )
 }
 
-#[component]
-pub(crate) fn Check(label: String, key: &'static str, form: RwSignal<Value>) -> impl IntoView {
+pub(crate) fn form_check(form: RwSignal<Value>, key: &'static str, label: String) -> impl IntoView {
     ControlledCheck(
         ControlledCheckProps::builder()
             .label(label)
@@ -237,4 +254,16 @@ pub(crate) fn FilePicker(
             ))
             .class("blog-form-field blog-stack"),
     )
+}
+
+pub(crate) fn validation_message(validation: RwSignal<String>) -> impl IntoView {
+    move || {
+        let message = validation.get();
+        (!message.is_empty()).then(|| {
+            blog_interface::html::p()
+                .class("blog-row blog-danger")
+                .role("alert")
+                .child(message)
+        })
+    }
 }

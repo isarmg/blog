@@ -4,8 +4,8 @@ import { preview } from '../tools/assets/test-preview.mjs';
 import { adminSite, fixtureImage, mockApi, pageOf, summary, waitForApplication } from './browser-fixtures.mjs';
 import { paintedSurfaceColor } from './painted-surface.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 const near = (actual, expected, label, tolerance = .1) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${label}: expected ${expected}, got ${actual}`);
 };
@@ -644,4 +644,4 @@ try {
   }));
   const failures = results.filter(result => result.status === 'rejected');
   if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Administration component matrix failed');
-} finally { await new Promise(resolve => server.httpServer.close(resolve)); }
+} finally { await server.close(); }

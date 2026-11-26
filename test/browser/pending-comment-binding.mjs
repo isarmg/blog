@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { mockApi } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 const submission = { request_id: '12345678-1234-4123-8123-123456789abc', content: 'The original pending comment', parent_comment_id: null };
 const cases = [
   { name: 'article target differs', page: '/article/1', endpoint: '/api/v1/comments', article: 1, payload: { ...submission, article_id: 2 } },
@@ -71,5 +71,5 @@ try {
   }
   console.log(JSON.stringify(results));
 } finally {
-  await new Promise(resolve => server.httpServer.close(resolve));
+  await server.close();
 }

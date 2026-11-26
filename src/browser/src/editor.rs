@@ -1,8 +1,8 @@
 use crate::common::Action;
 use crate::common::{
-    ApiErrorCode, Check, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
-    ListState, LocalErrorCode, Pager, RequestOptions, flag, invalid, load, load_typed, navigate,
-    num, safe_url, t, table_time, text,
+    ApiErrorCode, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
+    ListState, LocalErrorCode, Pager, RequestOptions, flag, form_check, invalid, load, load_typed,
+    navigate, num, safe_url, t, table_time, text, validation_message,
 };
 use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
@@ -795,14 +795,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                     "Article creation is not yet confirmed. Confirm the original submission; your newer edits will be kept.")).build()),
                     pending_creation(creation),
                     upload.feedback(),
-                    move | | (! validation.get().is_empty()).then(| | View::new(
-    blog_interface::html::p().class("blog-row blog-danger")
-        .child(
-
-            validation.get(),
-        )
-        .role("alert"),
-)),
+                    validation_message(validation),
                     Show(component_props_builder(& Show)
                     .when( move | | ready.get())
                     .fallback( move | | View::new(
@@ -927,25 +920,13 @@ fn NewsEditor(id: i64) -> impl IntoView {
                     "Unable to load article updates"))),
                     save.feedback(),
                     pending_creation(receipt),
-                    move | | (! validation.get().is_empty()).then(| | View::new(
-    blog_interface::html::p().class("blog-row blog-danger")
-        .child(
-
-            validation.get(),
-        )
-        .role("alert"),
-)),
+                    validation_message(validation),
                     blog_interface::html::form()
                     .child( blog_interface::html::fieldset()
                     .child((blog_interface::html::h3().class("blog-row")
                     .child( move | | if editing.get().is_some() { t("编辑进展",
-                    "Edit update") } else { t("新增进展", "Add update") }), Field(component_props_builder(& Field)
-                    .label( t("进展内容",
-                    "Update content")).key( "content")
-                    .form( form)
-                    .textarea( true)
-                    .required( true)
-                    .max( 1024).build()),
+                    "Edit update") } else { t("新增进展", "Add update") }), Field::RequiredParagraph(1024).bind(form, "content", t("进展内容",
+                    "Update content")),
                     blog_interface::html::label()
                     .child((blog_interface::html::span().class("blog-field-label blog-row").child(t("进展时间（UTC）", "Update time (UTC)")),
                     blog_interface::html::input()
@@ -1263,26 +1244,14 @@ pub fn Notes() -> impl IntoView {
                     "Manage notes shown in the journal and everyday moments.")), data.admin_feedback(Some(t("随笔加载失败",
                     "Unable to load notes"))), save.feedback(), upload.feedback(),
                     pending_creation(receipt),
-                    move | | (! validation.get().is_empty()).then(| | View::new(
-    blog_interface::html::p().class("blog-row blog-danger")
-        .child(
-
-            validation.get(),
-        )
-        .role("alert"),
-)),
+                    validation_message(validation),
                     blog_interface::html::form()
                     .child( blog_interface::html::fieldset()
                     .child((blog_interface::html::h2().class("blog-row")
                     .child( move | | if editing.get().is_some() { t("编辑随笔",
                     "Edit note") } else { t("新增随笔", "Add note") }),
-                    Field(component_props_builder(& Field)
-                    .label( t("随笔正文",
-                    "Note content")).key( "content")
-                    .form( form)
-                    .textarea( true)
-                    .required( true)
-                    .max( 1024).build()),
+                    Field::RequiredParagraph(1024).bind(form, "content", t("随笔正文",
+                    "Note content")),
                     FilePicker(component_props_builder(& FilePicker)
                     .label( t("随笔图片", "Note image")).filename( Signal::derive(move | |
                     filename.get())).disabled( Signal::derive(move | | upload.busy.get() || save.busy.get()))
@@ -1315,9 +1284,8 @@ pub fn Notes() -> impl IntoView {
                 ,),
         ),
 ) }),
-                    Check(component_props_builder(& Check)
-                    .label( t(" 公开可见",
-                    " Publicly visible")).key( "is_public").form( form).build()),
+                    form_check(form, "is_public", t(" 公开可见",
+                    " Publicly visible")),
                     blog_interface::html::div()
                     .child((blog_interface::html::button()
                     .child( move | | if upload.busy.get() { t("图片上传中…",

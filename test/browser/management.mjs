@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { article, mockApi, pageOf, site, session } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 const image = { name: 'note.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64') };
 try {
   for (const engine of [chromium, firefox]) {
@@ -113,4 +113,4 @@ try {
       assert.deepEqual(errors, []); console.log(`${engine.name()}: site author, notes edit/image/visibility, bound file delete, article tips, 101 updates/edit/UTC/draft retry and managed escaped letter passed`);
     } finally { await browser.close(); }
   }
-} finally { await new Promise(resolve => server.httpServer.close(resolve)); }
+} finally { await server.close(); }

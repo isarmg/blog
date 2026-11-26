@@ -121,9 +121,9 @@ function curveDistance(before, after, label) {
 }
 
 try {
-  servers.push(await preview({ build: { outDir: baselineDist }, preview: { host: '127.0.0.1', port: 0 } }));
-  servers.push(await preview({ preview: { host: '127.0.0.1', port: 0 } }));
-  const bases = servers.map(server => `http://127.0.0.1:${server.httpServer.address().port}`);
+  servers.push(await preview(baselineDist));
+  servers.push(await preview());
+  const bases = servers.map(server => server.url.origin);
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();
     try {

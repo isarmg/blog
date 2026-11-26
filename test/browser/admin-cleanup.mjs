@@ -8,8 +8,8 @@ import { mockApi, session } from './browser-fixtures.mjs';
 
 const output = process.env.BLOG_UI_ARTIFACT_DIR;
 if (output) await mkdir(output, { recursive: true });
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 const image = { name: '旅行图片.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64') };
 
 async function assertProjectCurve(button) {
@@ -175,4 +175,4 @@ try {
       }
     } finally { await browser.close(); }
   }
-} finally { await new Promise(resolve => server.httpServer.close(resolve)); }
+} finally { await server.close(); }

@@ -1,22 +1,13 @@
 // Test-only Node adapter. Browser resources are served by the Rust production tool.
 import { spawn } from "node:child_process";
-import { isIP } from "node:net";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const productRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
-export async function preview(options = {}) {
-  const host = options.preview?.host || "127.0.0.1";
-  const port = options.preview?.port ?? 0;
-  if (typeof host !== "string" || !Number.isInteger(port) || port < 0 || port > 65535) {
-    throw new Error("Invalid Rust preview bind address");
-  }
-  const bind = `${host.includes(":") ? `[${host}]` : host}:${port}`;
-  const args = ["preview", "--product-root", productRoot, "--bind", bind];
-  if (options.build?.outDir) {
-    args.push("--dist", resolve(options.root || process.cwd(), options.build.outDir));
-  }
+export async function preview(dist) {
+  const args = ["preview", "--product-root", productRoot, "--bind", "127.0.0.1:0"];
+  if (dist) args.push("--dist", resolve(dist));
   const executable = process.env.BLOG_ASSETS_BIN;
   const command = executable || "cargo";
   const commandArgs = executable ? args : [
@@ -77,12 +68,9 @@ export async function preview(options = {}) {
   } catch (error) {
     stop(); process.removeListener("exit", stop); throw error;
   }
-  const address = { address: endpoint.hostname, port: Number(endpoint.port), family: isIP(endpoint.hostname) === 6 ? "IPv6" : "IPv4" };
   let closing;
-  function close(callback) {
-    closing ??= (async () => { stop(); await exitedPromise; process.removeListener("exit", stop); })();
-    if (callback) closing.then(() => callback(), callback);
-    return closing;
+  function close() {
+    return closing ??= (async () => { stop(); await exitedPromise; process.removeListener("exit", stop); })();
   }
-  return { httpServer: { address: () => address, close }, resolvedUrls: { local: [endpoint.href] }, close };
+  return { url: endpoint, close };
 }

@@ -6,8 +6,8 @@ import { mockApi, waitForApplication } from './browser-fixtures.mjs';
 
 const surfaces = await readFile(new URL('../../src/browser/src/corner_surfaces.txt', import.meta.url), 'utf8');
 const results = [];
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 
 async function coverage(page) {
   const missing = await page.evaluate(selector => [...document.querySelectorAll('*')].filter(node => {

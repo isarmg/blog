@@ -5,7 +5,7 @@ import { preview } from '../../../tools/assets/test-preview.mjs';
 
 // Faults are injected at the browser's public DOM boundary; the WASM renderer
 // and startup controller run unchanged. Observe the original exception object.
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
+const server = await preview();
 try {
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();
@@ -78,7 +78,7 @@ try {
               };
             }
           }, operation);
-          await page.goto(new URL('/admin?lang=en#labels', server.resolvedUrls.local[0]).href);
+          await page.goto(new URL('/admin?lang=en#labels', server.url.href).href);
           await expect.poll(() => page.evaluate(() => window.domBoundaryFailure.message)).not.toBeNull();
           const failure = await page.evaluate(() => window.domBoundaryFailure);
           assert.equal(failure.injected, true, 'The real WASM renderer reached the failing DOM operation');

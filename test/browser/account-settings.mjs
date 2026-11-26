@@ -5,8 +5,8 @@ import {preview} from '../tools/assets/test-preview.mjs';
 import {mockApi, session} from './browser-fixtures.mjs';
 import {paintedSurfaceColor} from './painted-surface.mjs';
 
-const server = await preview({build: {outDir: process.env.BLOG_WEB_DIST || 'dist'}, preview: {host: '127.0.0.1', port: 0, strictPort: true}});
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview(process.env.BLOG_WEB_DIST || 'dist');
+const base = server.url.origin;
 const appearance = element => {
   const style = getComputedStyle(element), form = getComputedStyle(element.querySelector('form'));
   return {radius: style.borderRadius, background: style.backgroundColor, font: form.fontFamily};
@@ -93,4 +93,4 @@ try {
       }
     } finally { await browser.close(); }
   }
-} finally { await new Promise(resolve => server.httpServer.close(resolve)); }
+} finally { await server.close(); }

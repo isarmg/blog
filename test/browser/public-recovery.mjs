@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { article, mockApi, pageOf, site, summary, waitForApplication } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 const unavailable = route => route.fulfill({ status: 503, json: { code: 'service_unavailable', retryable: true } });
 const absent = route => route.fulfill({ status: 404, json: { code: 'not_found', retryable: false } });
 

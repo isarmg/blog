@@ -1,4 +1,4 @@
-use crate::common::{Action, Check, Field, ListState, Pager, enc, flag, load, num, t, text};
+use crate::common::{Action, Field, ListState, Pager, enc, flag, form_check, load, num, t, text};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -298,52 +298,37 @@ pub(super) fn Links() -> impl IntoView {
                                                                 ),
                                                             ))
                                                             .class("blog-form-field blog-stack"),
-                                                        Field(
-                                                            component_props_builder(&Field)
-                                                                .label(t("分类", "Category"))
-                                                                .key("classify")
-                                                                .form(form)
-                                                                .max(32)
-                                                                .build(),
+                                                        Field::Line(32).bind(
+                                                            form,
+                                                            "classify",
+                                                            t("分类", "Category"),
                                                         ),
                                                     ))
                                                     .class("form-grid"),
-                                                Field(
-                                                    component_props_builder(&Field)
-                                                        .label(t("标题", "Title"))
-                                                        .key("title")
-                                                        .form(form)
-                                                        .required(true)
-                                                        .max(64)
-                                                        .build(),
+                                                Field::RequiredLine(64).bind(
+                                                    form,
+                                                    "title",
+                                                    t("标题", "Title"),
                                                 ),
-                                                Field(
-                                                    component_props_builder(&Field)
-                                                        .label(t("图片地址", "Image URL"))
-                                                        .key("cover")
-                                                        .form(form)
-                                                        .build(),
+                                                Field::Line(Field::DEFAULT_LIMIT).bind(
+                                                    form,
+                                                    "cover",
+                                                    t("图片地址", "Image URL"),
                                                 ),
-                                                Field(
-                                                    component_props_builder(&Field)
-                                                        .label(t("目标地址", "Target URL"))
-                                                        .key("url")
-                                                        .form(form)
-                                                        .build(),
+                                                Field::Line(Field::DEFAULT_LIMIT).bind(
+                                                    form,
+                                                    "url",
+                                                    t("目标地址", "Target URL"),
                                                 ),
-                                                Field(
-                                                    component_props_builder(&Field)
-                                                        .label(t("简介", "Introduction"))
-                                                        .key("introduction")
-                                                        .form(form)
-                                                        .build(),
+                                                Field::Line(Field::DEFAULT_LIMIT).bind(
+                                                    form,
+                                                    "introduction",
+                                                    t("简介", "Introduction"),
                                                 ),
-                                                Check(
-                                                    component_props_builder(&Check)
-                                                        .label(t(" 公开显示", " Show publicly"))
-                                                        .key("status")
-                                                        .form(form)
-                                                        .build(),
+                                                form_check(
+                                                    form,
+                                                    "status",
+                                                    t(" 公开显示", " Show publicly"),
                                                 ),
                                                 blog_interface::html::div()
                                                     .child((

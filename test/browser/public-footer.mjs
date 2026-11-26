@@ -3,8 +3,8 @@ import { chromium, firefox, expect } from './dependencies.mjs';
 import { preview } from '../tools/assets/test-preview.mjs';
 import { mockApi } from './browser-fixtures.mjs';
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 // Covers every surviving public page and both additional Toolbox tabs.
 const pages = ['/', '/search', '/sort', '/jotting', '/menory', '/favorite', '/favorite?tab=friends', '/favorite?tab=music', '/travel', '/love', '/message', '/letter', '/article/1'];
 try {
@@ -48,4 +48,4 @@ try {
       }
     } finally { await browser.close(); }
   }
-} finally { await new Promise(resolve => server.httpServer.close(resolve)); }
+} finally { await server.close(); }

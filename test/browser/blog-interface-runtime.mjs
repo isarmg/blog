@@ -6,8 +6,8 @@ import {mockApi,article,summary,pageOf} from './browser-fixtures.mjs';
 
 // These assertions exercise Rust/WASM state, including contracts formerly covered
 // only by the React HookHost reference tests. Every browser must execute WASM.
-const server=await preview({preview:{host:'127.0.0.1',port:0,strictPort:true}});
-const base=`http://127.0.0.1:${server.httpServer.address().port}`;
+const server=await preview();
+const base=server.url.origin;
 
 const categories=['Alpha','Beta','Gamma'].map((sort_name,i)=>({id:i+1,sort_name,sort_description:null,priority:i,article_count:0}));
 const comment=id=>({id,user_id:null,username:null,avatar:null,comment_content:`Comment ${id}`,create_time:null,parent_username:null,reply_count:0});
@@ -154,4 +154,4 @@ for(const engine of [chromium,firefox]){
   const blocked=await browser.newContext({locale:'en'});await blocked.addInitScript(()=>Object.defineProperty(window,'sessionStorage',{get(){throw Error('blocked');}}));const blockedPage=await blocked.newPage();await mockApi(blockedPage,{authenticated:false});await blockedPage.goto(base+'/message?lang=en');await runtime(blockedPage);await expect(blockedPage.getByRole('alert')).toContainText('pending submission could not be read or saved');await expect(blockedPage.getByRole('textbox',{name:'Write your thoughts',exact:true})).toBeDisabled();await blocked.close();
   console.log(`${engine.name()}: real blog-browser WASM, system/manual theme synchronization, selector keyboard/reset/disabled, creation receipt/double-submit, home isolated retry, taxonomy concurrent deletion/draft retention/read recovery, family load gate, moderation fallback/source links, comment stale-page cancellation and durable submission recovery passed`);
  }finally{await browser.close();}
-}}finally{await new Promise(resolve=>server.httpServer.close(resolve));}
+}}finally{await server.close();}

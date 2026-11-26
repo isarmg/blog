@@ -14,8 +14,8 @@ if (external) {
   assert.equal(url.protocol, 'http:');
   assert.ok(['127.0.0.1','[::1]'].includes(url.hostname), 'Test assets require an explicit loopback listener');
 }
-const server = external ? null : await preview({preview:{host:'127.0.0.1',port:0,strictPort:true}});
-const base = external || `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = external ? null : await preview();
+const base = external || server.url.origin;
 // Give pointer activation a stable target in both browsers, including linked images.
 const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAmElEQVR4nO3QMREAIBDAsJeDMCTiD2RkoEP2Xmftc382OkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAK0BOkBrgA7QGqADtAboAO0BQEXyDk1jVl8AAAAASUVORK5CYII=', 'base64');
 const code = `const literal = '<img src=x onerror=alert(1)>';`;

@@ -31,8 +31,8 @@ async function assertEnglish(page) {
   assert.ok(layout.scrollWidth <= layout.width, `${page.url()}: ${JSON.stringify(layout)}`);
 }
 
-const server = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
+const server = await preview();
+const base = server.url.origin;
 try {
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();
@@ -119,4 +119,4 @@ try {
       console.log(`${engine.name()}: bilingual public/admin routes, error text, authored content, and restricted storage passed`);
     } finally { await browser.close(); }
   }
-} finally { await new Promise((resolve, reject) => server.httpServer.close(error => error ? reject(error) : resolve())); }
+} finally { await server.close(); }

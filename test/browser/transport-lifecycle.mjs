@@ -7,8 +7,8 @@ import { mockApi } from './browser-fixtures.mjs';
 // Keep the real HTTP body open after sending headers the Rust API must reject.
 // A UI error alone is insufficient: the server must observe request cancellation
 // while the page remains open, without waiting for its request timeout.
-const assets = await preview({ preview: { host: '127.0.0.1', port: 0, strictPort: true } });
-const assetBase = `http://127.0.0.1:${assets.httpServer.address().port}`;
+const assets = await preview();
+const assetBase = assets.url.origin;
 const pending = new Set();
 let opened = 0;
 let canceled = 0;
@@ -64,5 +64,5 @@ try {
 } finally {
   for (const response of pending) response.destroy();
   await new Promise(resolve => server.close(resolve));
-  await new Promise(resolve => assets.httpServer.close(resolve));
+  await assets.close();
 }

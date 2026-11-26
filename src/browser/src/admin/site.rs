@@ -312,52 +312,24 @@ pub(super) fn SiteSettings() -> impl IntoView {
                                                         .child(t("基本信息", "Basic information")),
                                                     blog_interface::html::div()
                                                         .child((
-                                                            Field(
-                                                                component_props_builder(&Field)
-                                                                    .label(t(
+                                                            Field::RequiredLine(Field::DEFAULT_LIMIT).bind(form, "web_name", t(
                                                                         "网站名称",
                                                                         "Site name",
-                                                                    ))
-                                                                    .key("web_name")
-                                                                    .form(form)
-                                                                    .required(true)
-                                                                    .build(),
-                                                            ),
-                                                            Field(
-                                                                component_props_builder(&Field)
-                                                                    .label(t(
+                                                                    )),
+                                                            Field::Line(Field::DEFAULT_LIMIT).bind(form, "web_title", t(
                                                                         "网站标题",
                                                                         "Site title",
-                                                                    ))
-                                                                    .key("web_title")
-                                                                    .form(form)
-                                                                    .build(),
-                                                            ),
-                                                            Field(
-                                                                component_props_builder(&Field)
-                                                                    .label(t(
+                                                                    )),
+                                                            Field::RequiredLine(100).bind(form, "author_name", t(
                                                                         "站长显示名",
                                                                         "Site owner display name",
-                                                                    ))
-                                                                    .key("author_name")
-                                                                    .form(form)
-                                                                    .required(true)
-                                                                    .max(100)
-                                                                    .build(),
-                                                            ),
+                                                                    )),
                                                         ))
                                                         .class("form-grid"),
                                                     blog_interface::html::p()
                                                         .child(t("用于文章和随笔署名；管理员登录名与密码在右上角头像的账号设置中修改。", "Used as the author of articles and notes. Change administrator sign-in credentials through the account settings avatar."))
                                                         .class("blog-field-help blog-row"),
-                                                    Field(
-                                                        component_props_builder(&Field)
-                                                            .label(t("公告", "Notices"))
-                                                            .key("notices")
-                                                            .form(form)
-                                                            .textarea(true)
-                                                            .build(),
-                                                    ),
+                                                    Field::Paragraph(Field::DEFAULT_LIMIT).bind(form, "notices", t("公告", "Notices")),
                                                     blog_interface::html::p()
                                                         .child(t("使用 JSON 字符串数组或每行一条公告。", "Use a JSON string array or one notice per line."))
                                                         .class("blog-field-help blog-row"),
@@ -393,14 +365,7 @@ pub(super) fn SiteSettings() -> impl IntoView {
                                                     blog_interface::html::p()
                                                         .child(t("使用 JSON 图片地址数组或每行一个图片地址。", "Use a JSON array of image URLs or one image URL per line."))
                                                         .class("blog-field-help blog-row"),
-                                                    Field(
-                                                        component_props_builder(&Field)
-                                                            .label(t("随机封面", "Random covers"))
-                                                            .key("random_cover")
-                                                            .form(form)
-                                                            .textarea(true)
-                                                            .build(),
-                                                    ),
+                                                    Field::Paragraph(Field::DEFAULT_LIMIT).bind(form, "random_cover", t("随机封面", "Random covers")),
                                                 ))
                                                 .class("blog-content-panel blog-frame blog-frame--padded blog-stack"),
                                         ))

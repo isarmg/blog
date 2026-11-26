@@ -5,24 +5,21 @@ use blog_application::error::HttpStatus;
 use serde::{Deserialize, Serialize};
 
 const MAX_STORED_LETTER_BYTES: i64 = 128 * 1024;
+const INVALID_LETTER: &str = "信笺收件人与署名应为 1 至 100 字，正文应为 1 至 16384 字";
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct LetterContentDto {
+struct LetterFields {
     recipient: String,
     sender: String,
     content: String,
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(try_from = "LetterContentDto")]
-pub(super) struct LetterContent {
-    recipient: String,
-    sender: String,
-    content: String,
-}
+#[serde(try_from = "LetterFields")]
+pub(super) struct LetterContent(LetterFields);
 
-#[derive(Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ManagedLetter {
     recipient: String,
@@ -41,32 +38,34 @@ struct StoredLetter {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("信笺收件人与署名应为 1 至 100 字，正文应为 1 至 16384 字")]
+#[error("{INVALID_LETTER}")]
 struct LetterContentError;
 
-impl TryFrom<LetterContentDto> for LetterContent {
+impl TryFrom<LetterFields> for LetterContent {
     type Error = LetterContentError;
 
-    fn try_from(input: LetterContentDto) -> Result<Self, Self::Error> {
-        let LetterContentDto {
-            recipient,
-            sender,
-            content,
-        } = input;
-        if recipient.trim().is_empty()
-            || recipient.chars().count() > 100
-            || sender.trim().is_empty()
-            || sender.chars().count() > 100
-            || content.trim().is_empty()
-            || content.chars().count() > 16_384
+    fn try_from(fields: LetterFields) -> Result<Self, Self::Error> {
+        if fields.recipient.trim().is_empty()
+            || fields.recipient.chars().count() > 100
+            || fields.sender.trim().is_empty()
+            || fields.sender.chars().count() > 100
+            || fields.content.trim().is_empty()
+            || fields.content.chars().count() > 16_384
         {
             return Err(LetterContentError);
         }
-        Ok(Self {
-            recipient,
-            sender,
-            content,
-        })
+        Ok(Self(fields))
+    }
+}
+
+impl LetterContent {
+    fn into_managed(self, is_public: bool) -> ManagedLetter {
+        ManagedLetter {
+            recipient: self.0.recipient,
+            sender: self.0.sender,
+            content: self.0.content,
+            is_public,
+        }
     }
 }
 
@@ -121,20 +120,10 @@ pub(super) async fn admin_letter(State(state): State<AppState>) -> ApiResult<Man
     let mut connection = state.pool.acquire().await?;
     let Some(stored) = load_stored_letter(&mut connection, author).await? else {
         // A read has no side effects. An empty private draft is only a UI model.
-        return Ok(Json(ManagedLetter {
-            recipient: String::new(),
-            sender: String::new(),
-            content: String::new(),
-            is_public: false,
-        }));
+        return Ok(Json(ManagedLetter::default()));
     };
     let content = stored_content(&stored)?;
-    Ok(Json(ManagedLetter {
-        recipient: content.recipient,
-        sender: content.sender,
-        content: content.content,
-        is_public: stored.is_public == Some(1),
-    }))
+    Ok(Json(content.into_managed(stored.is_public == Some(1))))
 }
 
 pub(super) async fn save_letter(
@@ -142,14 +131,12 @@ pub(super) async fn save_letter(
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     crate::ContractJson(input): crate::ContractJson<ManagedLetter>,
 ) -> ApiResult<ManagedLetter> {
-    let content = LetterContent::try_from(LetterContentDto {
+    let content = LetterContent::try_from(LetterFields {
         recipient: input.recipient.trim().to_owned(),
         sender: input.sender.trim().to_owned(),
         content: input.content.trim().to_owned(),
     })
-    .map_err(|LetterContentError| {
-        invalid("信笺收件人与署名应为 1 至 100 字，正文应为 1 至 16384 字")
-    })?;
+    .map_err(|LetterContentError| invalid(INVALID_LETTER))?;
     // At most six JSON bytes per character keeps the validated fields below 128 KiB.
     let encoded =
         serde_json::to_string(&content).expect("invariant: letter strings serialize to JSON");
@@ -177,10 +164,5 @@ pub(super) async fn save_letter(
             .await?;
     }
     transaction.commit().await?;
-    Ok(Json(ManagedLetter {
-        recipient: content.recipient,
-        sender: content.sender,
-        content: content.content,
-        is_public: input.is_public,
-    }))
+    Ok(Json(content.into_managed(input.is_public)))
 }

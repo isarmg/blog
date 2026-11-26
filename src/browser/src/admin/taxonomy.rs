@@ -1,4 +1,4 @@
-use crate::common::{Action, Field, list, load, nullable_num, num, t, text};
+use crate::common::{Action, Field, list, load, nullable_num, num, t, text, validation_message};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -235,43 +235,21 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                 categories.admin_feedback(Some(t("分类加载失败", "Unable to load categories"))),
                 save.feedback(),
                 deletion.feedback(),
-                move || {
-                    (!validation.get().is_empty()).then(|| {
-                        blog_interface::html::p()
-                            .class("blog-row blog-danger")
-                            .role("alert")
-                            .child(validation.get())
-                    })
-                },
+                validation_message(validation),
                 blog_interface::html::fieldset()
                     .child((
                         blog_interface::html::form()
                             .child((
-                                Field(
-                                    component_props_builder(&Field)
-                                        .label(if labels {
+                                Field::RequiredLine(if labels { 32 } else { 64 }).bind(form, "name", if labels {
                                             t("标签名称", "Tag name")
                                         } else {
                                             t("分类名称", "Category name")
-                                        })
-                                        .key("name")
-                                        .form(form)
-                                        .required(true)
-                                        .max(if labels { 32 } else { 64 })
-                                        .build(),
-                                ),
-                                Field(
-                                    component_props_builder(&Field)
-                                        .label(if labels {
+                                        }),
+                                Field::Line(200).bind(form, "description", if labels {
                                             t("标签描述", "Tag description")
                                         } else {
                                             t("分类描述", "Category description")
-                                        })
-                                        .key("description")
-                                        .form(form)
-                                        .max(200)
-                                        .build(),
-                                ),
+                                        }),
                                 if labels {
                                     View::new(
                                         blog_interface::html::label()

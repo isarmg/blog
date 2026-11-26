@@ -2,12 +2,12 @@ import { chromium, firefox } from './dependencies.mjs';
 import { preview } from "../tools/assets/test-preview.mjs";
 import { verifyStartupFailures, verifyStartupTimeout, verifyDecorativeFonts } from "./startup-failures.mjs";
 
-const server = await preview({ preview: { host: "127.0.0.1", port: 0, strictPort: true } });
+const server = await preview();
 try {
   for (const engine of [chromium, firefox]) {
     const browser = await engine.launch();
     try {
-      const url = new URL("?lang=en", server.resolvedUrls.local[0]).href;
+      const url = new URL("?lang=en", server.url.href).href;
       const prepare = page => page.route("**/api/**", route => route.fulfill({
         status: 401, contentType: "application/problem+json",
         body: JSON.stringify({ status: 401, code: "auth.required" }),
