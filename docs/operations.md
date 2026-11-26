@@ -34,27 +34,35 @@ sudo systemctl stop blog.service &&
   sudo systemctl start blog.service
 ```
 
-`check` 在 `ROOT/run` 建立临时数据库快照，核验结构、完整性、业务数据和管理员凭据；它不替代备份，也不逐个检查媒体内容。服务与工具共用实例锁，不要删除锁文件绕过占用。源码开发可停服后，以实例账号执行 `./target/debug/blog-setup --root "$BLOG_ROOT" check`。
+`check` 把 `site.sqlite` 及已有的 `-wal`、`-journal` 复制到 `ROOT/run`，须预留足够空间；快照输入合计上限为 4 GiB。工具在快照上核验数据库结构、完整性、业务数据和管理员凭据；它不替代备份，也不逐个检查媒体内容。密码重置也需要这份临时快照。
+
+服务与工具共用实例锁，不要删除锁文件绕过占用。源码开发可停服后，以实例账号执行 `./target/debug/blog-setup --root "$BLOG_ROOT" check`。
 
 离线工具只读取 `ROOT/config/config.json`。若服务使用 `BLOG_DATA_DIR` 或 `BLOG_MEDIA` 指向外置目录，先把正确的路径写入 JSON，否则维护的可能不是正在使用的数据。见[配置参考](configuration.md)。
 
 ## 恢复管理员访问
 
-仍能登录时使用[账号设置](usage.md#修改管理员账号)。忘记密码时，将以下 `admin` 替换为**当前**管理员用户名，新密码从提示框输入：
+仍能登录时使用[账号设置](usage.md#修改管理员账号)。忘记密码时，将以下 `admin` 替换为**当前**管理员用户名。先输入新密码再停服，取消提示或留空不会中断站点：
 
 ```sh
 ROOT=/opt/isarmg/blog
-sudo systemctl stop blog.service &&
-  systemd-ask-password '新管理员密码：' |
-    sudo "$ROOT/maintenance.sh" --root "$ROOT" admin-reset --username admin &&
-  sudo systemctl start blog.service
+(
+  set +a +x
+  unset blog_password
+  blog_password=$(systemd-ask-password '新管理员密码：') || exit 1
+  [ -n "$blog_password" ] || exit 1
+  sudo systemctl stop blog.service &&
+    printf '%s\n' "$blog_password" |
+      sudo "$ROOT/maintenance.sh" --root "$ROOT" admin-reset --username admin &&
+    sudo systemctl start blog.service
+)
 ```
 
 重置会原子更新密码并撤销原有管理员会话，不会创建新账号或更改用户名。成功后重新登录。
 
 ## 备份与替换程序
 
-1. 停止服务；备份 `ROOT/config/config.json`、完整的 `data_dir`（含 `site.sqlite` 及存在的 WAL 等伴随文件）和实际 `media` 目录。备份中含账号凭据和会话，只保存在受限位置。
-2. 在独立目录或主机还原副本，恢复配置与运行账号的属主、权限，并准备服务账号所有的 `0700` 目录 `ROOT/logs` 和 `ROOT/run`。如果配置存有绝对数据或媒体路径，将**副本的配置**改为指向副本，避免接触生产数据。
-3. 测试升级时，以实例账号运行**目标版本**已校验包中的 `libexec/blog-setup --root 副本绝对路径 check`。`maintenance.sh --root 旧实例` 只会调用旧实例的工具，不能验证目标版本是否兼容。
+1. 停服后，将 `ROOT/config/config.json`、完整的 `data_dir`（含 `site.sqlite` 及存在的 WAL 等伴随文件）和实际 `media` 复制到实例外的受限位置。备份含凭据和会话；放在 `ROOT` 顶层的备份归档会导致维护校验失败。需保留历史日志时一并复制 `ROOT/logs`。若只是例行备份，复制成功后即可重启原服务。
+2. 在独立目录或主机还原副本，不要用硬链接与原库共享文件。恢复配置与运行账号的属主、权限，并准备服务账号所有的 `0700` 目录 `ROOT/logs` 和 `ROOT/run`。将配置中的绝对数据或媒体路径改为指向**副本**；同机演练请为副本设置未占用的回环端口。
+3. 测试升级时，将**目标版本**的已校验包放在实例账号能进入但不能写入的位置，以该账号运行包中的 `libexec/blog-setup --root 副本绝对路径 check`。`maintenance.sh --root 旧实例` 只会调用旧实例的工具，不能验证目标版本是否兼容。
 4. 检查通过后，在隔离的恢复实例启动匹配的服务，核对首页、管理员登录、已有文章及上传文件。`install.sh` 不提供原地升级，服务也不会自动迁移不匹配的数据库；检查失败时保留原版本与备份，不要重新初始化旧数据。

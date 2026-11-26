@@ -18,15 +18,23 @@ cd -P -- "${archive%.tar.gz}"
 
 ## 首次安装
 
-默认实例目录是 `/opt/isarmg/blog`。只创建它的**父目录**，不要提前创建实例目录或其中的配置。安装器会从 `--config` 读取配置、写入实例、初始化唯一管理员并检查数据库。下面直接使用包内未改动的生产示例。需要改端口时，先把示例复制到**解压目录外**，编辑副本，并把副本的绝对路径传给 `--config`。
+默认实例目录是 `/opt/isarmg/blog`。只创建它的**父目录**，不要提前创建实例目录或其中的配置。下面使用包内的生产示例。需要改端口时，先把示例复制到**解压目录外**，编辑副本，并把副本的绝对路径传给 `--config`。
+
+先输入管理员密码（12–1024 个 UTF-8 字节，不含 ASCII 控制字符），再运行安装器。取消提示或留空不会创建实例。
 
 ```bash
-[ -d /opt/isarmg ] || install -d -o root -g root -m 0755 /opt/isarmg
-systemd-ask-password '初始管理员密码：' | ./install.sh \
-  --root /opt/isarmg/blog --config "$PWD/share/config/config.json.example" --username admin
+(
+  set +a +x
+  unset blog_password
+  blog_password=$(systemd-ask-password '初始管理员密码：') || exit 1
+  [ -n "$blog_password" ] || exit 1
+  [ -d /opt/isarmg ] || install -d -o root -g root -m 0755 /opt/isarmg || exit 1
+  printf '%s\n' "$blog_password" | ./install.sh \
+    --root /opt/isarmg/blog --config "$PWD/share/config/config.json.example" --username admin
+)
 ```
 
-密码为 12–1024 个 UTF-8 字节，不含 ASCII 控制字符，只通过标准输入传递。安装器创建或验证非登录服务账号 `isarmg-blog`，写入 `blog.service` 并重新加载 systemd，但不启动或启用服务。安装成功后执行：
+安装器创建或验证非登录服务账号 `isarmg-blog`，初始化站点管理员、检查数据库，再写入 `blog.service` 并重新加载 systemd，但不启动或启用服务。安装成功后执行：
 
 ```bash
 systemctl enable --now blog.service
@@ -43,7 +51,7 @@ curl -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8081/r
 
 ## 安装边界与维护
 
-- 安装器只用于首次部署。实例目录必须是包外的新绝对路径；祖先须由 root 管理，不得让其他账号替换路径。已存在的 `blog.service` 或其 drop-in 目录不会被覆盖。失败后保留部分安装供检查，不要对原目录强行重装。
+- 安装器只用于首次部署。实例目录必须是包外的新绝对路径，各段只用英文字母、数字、点、下划线或短横线。父级路径不能经过符号链接，须由 root 管理，并允许服务账号逐级进入。已存在的 `blog.service` 或其 drop-in 目录不会被覆盖。失败后保留部分安装供检查，不要对原目录强行重装。
 - 程序归 root 所有。配置为 `root:isarmg-blog`、权限 `0640`；配置目录权限 `0750`。`state/`、`media/`、`logs/`、`run/` 由服务账号所有，权限 `0700`。生产单元启用 `PrivateTmp` 和 `ProtectHome`，不接受 `/tmp`、`/var/tmp`、`/home`、`/root` 或 `/run/user` 下的实例目录。
 - 安装器只接受默认的 `ROOT/state`、`ROOT/media` 布局。手工部署外置状态或媒体目录时，须在 JSON 中指定真实路径，同时为服务账号和 systemd 单元配置相应的写入权限，见[配置参考](../../docs/configuration.md)。
 - 已安装实例由 `ROOT/maintenance.sh` 校验程序并以服务账号执行离线维护，不需要保留解压目录。停机检查、重置密码和备份步骤见[运行与排障](../../docs/operations.md)，数据库版本限制见[数据与请求约定](../../docs/contracts.md)。
