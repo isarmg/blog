@@ -342,7 +342,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                                     c.sort_id == category_id
                                                                 })
                                                                 .map(|c| {
-                                                                    (c.id.to_string(), c.label_name)
+                                                                    (c.id.to_string(), c.name)
                                                                 }),
                                                         )
                                                         .collect()

@@ -154,7 +154,7 @@ dependencies = [
 name = "blog-assets-style-token-macros"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-record-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-templates",
 ]
 
@@ -739,7 +739,7 @@ version = "0.0.0"
 dependencies = [
  "blog-lookup-script-table-generator",
  "blog-lookup-script-table-hashing",
- "blog-syntax-record-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
 ]
@@ -1601,7 +1601,7 @@ dependencies = [
 name = "blog-wasm-module-transform-derive"
 version = "0.0.0"
 dependencies = [
- "blog-syntax-record-derive-parser",
+ "blog-syntax-rust-parser",
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
  "blog-text-macro-identifier-case",

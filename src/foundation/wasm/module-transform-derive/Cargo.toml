@@ -41,5 +41,5 @@ package = "blog-syntax-token-templates"
 
 [dependencies.syn]
 features = ["extra-traits"]
-path = "../../syntax/record-derive-parser"
-package = "blog-syntax-record-derive-parser"
+path = "../../syntax/rust-parser"
+package = "blog-syntax-rust-parser"

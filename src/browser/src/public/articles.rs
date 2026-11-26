@@ -2,8 +2,8 @@
 use super::shell::Chrome;
 use crate::comments::Comments;
 use crate::common::{
-    Action, BrowsePager, Feedback, Lightbox, Sliding, browse, enc, href, load_typed, page_number,
-    param, safe_url, search_signal, t,
+    Action, ApiError, BrowsePager, Feedback, Lightbox, Sliding, browse, enc, href, load_typed,
+    page_number, param, safe_url, search_signal, t,
 };
 use crate::models::{
     Article as ArticleModel, ArticleAccess, ArticleSummary, Category, Label, News as NewsModel,
@@ -155,11 +155,68 @@ pub(super) fn Card(item: ArticleSummary, #[prop(default = false)] compact: bool)
     )
 }
 
+fn response_status(error: RwSignal<Option<ApiError>>) -> Option<u16> {
+    error.with(|error| error.as_ref().map(|error| error.status))
+}
+
+fn password_form(
+    id: i64,
+    info: ArticleAccess,
+    password: RwSignal<String>,
+    action: Action,
+    unlocked: RwSignal<Option<ArticleModel>>,
+) -> impl IntoView {
+    html::form()
+        .class("reading-card password-form")
+        .child((
+            html::h2().child(t(
+                "这篇文章需要访问密码",
+                "This article requires an access password",
+            )),
+            html::p().child(info.tips.unwrap_or_default()),
+            Feedback(
+                component_props_builder(&Feedback)
+                    .error(action.error)
+                    .public(true)
+                    .fallback(t(
+                        "访问密码错误或文章不可用",
+                        "Incorrect password or article unavailable",
+                    ))
+                    .build(),
+            ),
+            html::label().child((
+                t("访问密码", "Access password"),
+                html::input()
+                    .r#type("password")
+                    .required(true)
+                    .prop("value", move || password.get())
+                    .on(ev::input, move |ev| password.set(event_target_value(&ev))),
+            )),
+            html::button()
+                .r#type("submit")
+                .child(t("阅读文章", "Read article"))
+                .disabled(move || action.busy.get()),
+        ))
+        .on(ev::submit, move |ev| {
+            ev.prevent_default();
+            action.run_typed(
+                format!("/api/v1/articles/{id}/unlock"),
+                "POST",
+                Some(json!({ "password": password.get_untracked() })),
+                move |value| {
+                    unlocked.set(Some(value));
+                    password.set(String::new());
+                },
+            );
+        })
+}
+
 #[component]
 pub(super) fn Article(id: i64) -> impl IntoView {
     let data = load_typed::<ArticleModel>(Signal::derive(move || format!("/api/v1/articles/{id}")));
+    let detail_status = move || response_status(data.error);
     let access = load_typed::<ArticleAccess>(Signal::derive(move || {
-        if data.error.get().is_some_and(|error| error.status == 404) {
+        if detail_status() == Some(404) {
             format!("/api/v1/articles/{id}/access")
         } else {
             String::new()
@@ -169,8 +226,63 @@ pub(super) fn Article(id: i64) -> impl IntoView {
     let current = Signal::derive(move || unlocked.get().or_else(|| data.current()));
     let password = RwSignal::new(String::new());
     let action = Action::new();
-    let retry = Callback::new(move |()| data.reload());
-    View::new(Chrome(
+    let unavailable = move || {
+        if unlocked.with(Option::is_some) || data.with_current(|value| value.is_some()) {
+            return ().into_any();
+        }
+        let loading = || {
+            html::p()
+                .child(t("正在加载文章…", "Loading article…"))
+                .role("status")
+                .into_any()
+        };
+        if data.busy.get() || access.busy.get() {
+            return loading();
+        }
+        let Some(status) = detail_status() else {
+            return loading();
+        };
+        if status != 404 {
+            return data
+                .public_feedback(Some(t("文章加载失败", "Unable to load the article")))
+                .into_any();
+        }
+        let message = match response_status(access.error) {
+            Some(404) => t("文章不存在", "Article not found"),
+            Some(_) => {
+                return access
+                    .public_feedback(Some(t(
+                        "文章访问状态加载失败",
+                        "Unable to check article access",
+                    )))
+                    .into_any();
+            }
+            None => {
+                let Some(info) = access.current() else {
+                    return loading();
+                };
+                if info.password_required {
+                    return password_form(id, info, password, action, unlocked).into_any();
+                }
+                // The visibility changed between the two responses. Retry the detail.
+                t(
+                    "文章加载失败，请重试。",
+                    "Unable to load the article. Please try again.",
+                )
+            }
+        };
+        html::section()
+            .role("alert")
+            .child((
+                html::p().child(message),
+                html::button()
+                    .r#type("button")
+                    .child(t("重试", "Try again"))
+                    .on(ev::click, move |_| data.reload()),
+            ))
+            .into_any()
+    };
+    Chrome(
         component_props_builder(&Chrome)
             .title(Signal::derive(move || {
                 current
@@ -188,133 +300,16 @@ pub(super) fn Article(id: i64) -> impl IntoView {
                 (
                     For(component_props_builder(&For)
                         .each(move || current.get().into_iter().collect::<Vec<_>>())
-                        .key(|a| (a.id, a.article_content.clone()))
+                        .key(|a| (a.id, a.content.clone()))
                         .children(move |article| {
                             Reading(component_props_builder(&Reading).article(article).build())
                         })
                         .build()),
-                    move || {
-                        if current.get().is_some() {
-                            return ().into_any();
-                        }
-                        if data.busy.get() || access.busy.get() || data.error.get().is_none() {
-                            return View::new(
-                                html::p()
-                                    .child(t("正在加载文章…", "Loading article…"))
-                                    .role("status"),
-                            )
-                            .into_any();
-                        }
-                        if data.error.get().is_some_and(|error| error.status != 404) {
-                            return Feedback(
-                                component_props_builder(&Feedback)
-                                    .error(data.error)
-                                    .public(true)
-                                    .retry(Some(retry))
-                                    .fallback(t("文章加载失败", "Unable to load the article"))
-                                    .build(),
-                            )
-                            .into_any();
-                        }
-                        if let Some(error) = access.error.get() {
-                            return if error.status == 404 {
-                                View::new(
-                                    html::section().role("alert").child((
-                                        html::p().child(t("文章不存在", "Article not found")),
-                                        html::button()
-                                            .r#type("button")
-                                            .child(t("重试", "Try again"))
-                                            .on(ev::click, move |_| retry.run(())),
-                                    )),
-                                )
-                                .into_any()
-                            } else {
-                                access
-                                    .public_feedback(Some(t(
-                                        "文章访问状态加载失败",
-                                        "Unable to check article access",
-                                    )))
-                                    .into_any()
-                            };
-                        }
-                        let Some(info) = access.current() else {
-                            return View::new(
-                                html::p()
-                                    .child(t("正在加载文章…", "Loading article…"))
-                                    .role("status"),
-                            )
-                            .into_any();
-                        };
-                        if !info.password_required {
-                            // Visibility may have changed between the detail and access
-                            // requests. Retry the detail; a completed probe is never loading.
-                            return View::new(
-                                html::section().role("alert").child((
-                                    html::p().child(t(
-                                        "文章加载失败，请重试。",
-                                        "Unable to load the article. Please try again.",
-                                    )),
-                                    html::button()
-                                        .r#type("button")
-                                        .child(t("重试", "Try again"))
-                                        .on(ev::click, move |_| retry.run(())),
-                                )),
-                            )
-                            .into_any();
-                        }
-                        View::new(
-                            html::form()
-                                .class("reading-card password-form")
-                                .child((
-                                    html::h2().child(t(
-                                        "这篇文章需要访问密码",
-                                        "This article requires an access password",
-                                    )),
-                                    html::p().child(info.tips.unwrap_or_default()),
-                                    Feedback(
-                                        component_props_builder(&Feedback)
-                                            .error(action.error)
-                                            .public(true)
-                                            .fallback(t(
-                                                "访问密码错误或文章不可用",
-                                                "Incorrect password or article unavailable",
-                                            ))
-                                            .build(),
-                                    ),
-                                    html::label().child((
-                                        t("访问密码", "Access password"),
-                                        html::input()
-                                            .r#type("password")
-                                            .required(true)
-                                            .prop("value", move || password.get())
-                                            .on(ev::input, move |ev| {
-                                                password.set(event_target_value(&ev));
-                                            }),
-                                    )),
-                                    html::button()
-                                        .r#type("submit")
-                                        .child(t("阅读文章", "Read article"))
-                                        .disabled(move || action.busy.get()),
-                                ))
-                                .on(ev::submit, move |ev| {
-                                    ev.prevent_default();
-                                    action.run_typed(
-                                        format!("/api/v1/articles/{id}/unlock"),
-                                        "POST",
-                                        Some(json!({ "password": password.get_untracked() })),
-                                        move |value| {
-                                            unlocked.set(Some(value));
-                                            password.set(String::new());
-                                        },
-                                    );
-                                }),
-                        )
-                        .into_any()
-                    },
+                    unavailable,
                 )
             }))
             .build(),
-    ))
+    )
 }
 
 fn reading_action(
@@ -377,7 +372,7 @@ fn reading_action(
 #[component]
 fn Reading(article: ArticleModel) -> impl IntoView {
     let rendered = crate::browser::reading_markup(
-        &article.article_content,
+        &article.content,
         &t("复制代码", "Copy code"),
         &t("查看图片：", "View image: "),
         &t("文章插图", "Article illustration"),
@@ -643,38 +638,30 @@ fn News(id: i64) -> impl IntoView {
     let data = load_typed::<Vec<NewsModel>>(Signal::derive(move || {
         format!("/api/v1/articles/{id}/news")
     }));
-    View::new((
-        IntoMaybeErased::into_maybe_erased(Feedback(
-            component_props_builder(&Feedback)
-                .error(data.error)
-                .public(true)
-                .fallback(t("最新进展加载失败", "Unable to load recent updates"))
-                .build(),
-        )),
-        IntoMaybeErased::into_maybe_erased(move || {
-            data.current().filter(|v| !v.is_empty()).map(|v| {
-                View::new(
-                    html::section()
-                        .child((
-                            html::h2().child(t("最新进展", "Recent updates")),
-                            html::ol().child(
-                                v.into_iter()
-                                    .map(|n| {
-                                        View::new(html::li().child((
-                                            html::time().child(crate::dates::format(
-                                                &n.create_time.clone().unwrap_or_default(),
-                                            )),
-                                            html::p().child(n.content),
-                                        )))
-                                    })
-                                    .collect_view(),
-                            ),
-                        ))
-                        .class("article-news"),
-                )
-            })
-        }),
-    ))
+    let feedback = Feedback(
+        component_props_builder(&Feedback)
+            .error(data.error)
+            .public(true)
+            .fallback(t("最新进展加载失败", "Unable to load recent updates"))
+            .build(),
+    );
+    let recent = move || {
+        data.with_current(|news| {
+            let news = news.filter(|items| !items.is_empty())?;
+            let entries = news.iter().map(|n| {
+                let time = n.create_time.as_deref().unwrap_or_default();
+                html::li().child((
+                    html::time().child(crate::dates::format(time)),
+                    html::p().child(n.content.clone()),
+                ))
+            });
+            Some(html::section().class("article-news").child((
+                html::h2().child(t("最新进展", "Recent updates")),
+                html::ol().child(entries.collect_view()),
+            )))
+        })
+    };
+    (feedback, recent)
 }
 
 #[component]
@@ -892,7 +879,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
     html::button()
         .child(
             (
-                    l.label_name.clone(),
+                    l.name.clone(),
                     " ",
                     html::small()
                     .child( l.article_count

@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "b62e658af673bfad53200f8ecca4ea330a0e0869587480a438c1788a7a4fc7ef"
+    "Cargo.lock": "96ac62a7989efeb749b747148a6eab74f48d25155940be0ef53406ffd064cde8"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6049,7 +6049,7 @@
     "src/foundation/assets/compiler/Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
     "src/foundation/assets/style-compiler/Cargo.toml": "2d179aae66c30769c32ed86a5cb1b0c7558bf7c8b78b9b27bdc86390d37d14d1",
-    "src/foundation/assets/style-token-macros/Cargo.toml": "aeb403e29a2fafdc4a09e2c96caf0a064322c89d7e18dc538f59bed979e2bd08",
+    "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
     "src/foundation/assets/style-value-derive/Cargo.toml": "8dfcd2aceeb204452d0e3b407e0e82963da5d4199ad6680a4cbfab08390f51dc",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
     "src/foundation/cli/argument-derive/Cargo.toml": "b17592d40cf40200895fcb14887be2799f045873a7efb0e95777a5ae23ccbc61",
@@ -6125,7 +6125,7 @@
     "src/foundation/javascript/syntax-derive/Cargo.toml": "e48a21594e1613013c28ee65724de14c46cd2219268b79eb3e813d907a732c51",
     "src/foundation/lookup/script-table-generator/Cargo.toml": "43a3ecbe1b76bad82f2f71eec61ca8f53a6c8c4a3f5dbd37f9195e9c3da5810c",
     "src/foundation/lookup/script-table-hashing/Cargo.toml": "4fa33ed4c8190e3baf011ae365f20171b17bd245645e81fc70b92b8708e31203",
-    "src/foundation/lookup/script-table-macros/Cargo.toml": "b6ed7ad91f6a1251ca93e8a4c66f585c6fb7bf8d58737572a81dfa3eb02c7425",
+    "src/foundation/lookup/script-table-macros/Cargo.toml": "6479497c1169ed32719a00ab684b4cbad2392b2488c6aa6f0109bd9cd2361c4b",
     "src/foundation/lookup/script-table/Cargo.toml": "80e79b5b0de8fad3cbc81bb3febcd73464aa5358086ace273d858fcfefa1fd9c",
     "src/foundation/math/constant-array/Cargo.toml": "ceb05fcdbcc1c58f2e593ce06989d28c299008f34ced164f273c04865b42d34a",
     "src/foundation/math/fast-random/Cargo.toml": "1d4fd12293dfe972daa5e7a334fa7bda86866d41611af6be14679b4aff8917a8",
@@ -6241,7 +6241,7 @@
     "src/foundation/wasm/browser-module/Cargo.toml": "7819b9099e8c645316ecb8e6abc8da2cf8731ab56ce4bd4224d5f8b3c18a45a0",
     "src/foundation/wasm/module-decoder/Cargo.toml": "f8988378a795f559bed556dd6eef6237567de1d616ec6f0ee00609168c451c37",
     "src/foundation/wasm/module-encoder/Cargo.toml": "17b2e606c906842b46fd587da82ad286f8c84faaab56b91b1f39a4876d23490b",
-    "src/foundation/wasm/module-transform-derive/Cargo.toml": "5cebc674cc2e9932d2f10ddd2bf6ad9aa5208af60c33b34c49f34b74b447592f",
+    "src/foundation/wasm/module-transform-derive/Cargo.toml": "4f045834af7215e6e5fc5ce31e0f9d978311b45f40d188be556126b88f17515f",
     "src/foundation/wasm/module-transform/Cargo.toml": "1e56bd76e3091e74abad0f1f0e63b16b90a1f6c6757da33b8fe00d2dc5e3300a",
     "src/interface/Cargo.toml": "ad57df9faff3a0b96abe7987206a7c50f3b55b8c464861059c331957048978c2",
     "src/interface/dom/Cargo.toml": "713d669f33ccff2be4d4610e24a2f5896ae4c677115db9468bef0a222e238661",
@@ -34401,7 +34401,7 @@
       "files_sha256": {
         "Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
         "src/admin.rs": "64b58d0fe06354b3f940959d27ed87b7c6b8d488222e1dee1f8f0a87b1467498",
-        "src/admin/articles.rs": "023087e9f97a25d299b125cd76e89e252a7efc1a5a8fb7fc12e32b7f11e7c9bb",
+        "src/admin/articles.rs": "e0c5190dd90aec37c618b789ad8c14c808b5963aff2de4960e00d93ee3bf8b96",
         "src/admin/dashboard.rs": "1043d01b24b0fb9f23586ff07715baafe4edf8a5ee84467e4a0ee6a531a1e4ea",
         "src/admin/family.rs": "ec96c6f4559f77685e70181362a258c3407e354dc35577ab833c8a3fd3b341c5",
         "src/admin/home.rs": "f23a0c29b66d75c16a97f53420ed81cd5c33c3c66dcbb04ce436c32c65f95818",
@@ -34425,16 +34425,16 @@
         "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
         "src/dates.rs": "e74422fb4ada91d800f3d4a3b0ca3ddc46776fd6cf99a88f4a77081b677a5f1e",
-        "src/editor.rs": "b5949937d978da3dd720070f46a347735c606fa9f6f0694586ceb795b619c9e2",
+        "src/editor.rs": "1f753d94a2a086b1443e9fd1a9f8b8cf2d187c29b93ae9d128c6474f2b708032",
         "src/editor/insertion.rs": "f83fb8295c9753d863728da53ef265bcac4a2541571ededaf567573ebfc22fb5",
         "src/lib.rs": "a0c8349911140a65c7eea34d44e5a8dee103f56fb256d889386494e7dd514762",
         "src/markdown.rs": "a4573f58260a81123c21ec5fc460616842b7bcca5399c35c05782ff20b3bc602",
         "src/markdown/video.rs": "476e7ef6b537f254d65c2f135771b89446bd4cc27812fc1df856041b789213e2",
-        "src/models.rs": "d8e1954cebf92fcfc05e3d820f01dfb2a9fb6406884bd9863996d08904b55d64",
+        "src/models.rs": "37fd414225d63d93bde5e28ada95406926ff096ae1a0b68ddad4ad06f03098af",
         "src/public/appearance.rs": "b677e5d8b65916c5bf362e6a1eb4b74000e9f7d7fc5f5907a4237bb57fda6b98",
-        "src/public/articles.rs": "dceece475202ce9cce46a5919cac77efd615ea45de23392225b3f87377ed0eb6",
+        "src/public/articles.rs": "74ea404fac7b565aa94af2bd68e0d785aa87ab14c66b2e2dbeece86f92730bfa",
         "src/public/guestbook.rs": "3ac530d0a6c382216538edeaf162ca15f8d3458021a131fcad5a9a7fb759e88a",
-        "src/public/home.rs": "7e95b5d17c46593776f1c2d8766458501c6072029a302ca7f459fdb5c4222008",
+        "src/public/home.rs": "0a685eb8d4b83b46b9e5f2e2a73fd99daeba9e7e2d9849ff762bcbb2b6850c63",
         "src/public/journal.rs": "2cc52a31d2faed93765d73b239cca52f8c5282af8cb43eb192388b8416f34185",
         "src/public/love.rs": "c573ec5ae71938a9684cf837b0ee8d59a1d2a495c2ae33e0fd905aaf359cd8c9",
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
@@ -34492,7 +34492,7 @@
         "test/browser/unit/markdown/tests.rs": "10329d5d99d37c4fc89859c963a6eacd5a48715a3378d8b4b2aaadee5cafad23",
         "test/browser/unit/models/decode.rs": "f5edd8abd4df1e8911d5ec388f43153095ccafc26372e6ed3d7decec26a1dbeb",
         "test/browser/unit/models/site.json": "1c5974df1ea01716111f7377150bbd23137e4127ed6e5487dc5c851e4281d620",
-        "test/browser/unit/models/tests.rs": "012b595eb70bfbe56b07f484308f8c2b0ba0c7a0f2c476d71144118131c771ef"
+        "test/browser/unit/models/tests.rs": "e53e73e4fbb5d3fd02982b3916779ae94bf087b885123dad922bc3159a79e4c5"
       },
       "version": "0.0.0"
     },
@@ -35426,14 +35426,14 @@
     },
     "src/foundation/assets/style-token-macros": {
       "dependencies": [
-        "src/foundation/syntax/record-derive-parser",
+        "src/foundation/syntax/rust-parser",
         "src/foundation/syntax/token-templates"
       ],
       "directory": "src/foundation/assets/style-token-macros",
       "files_sha256": {
         ".cargo_vcs_info.json": "705364eb932e3234e7257532d9c3a92812353a3c7352932bc881334763c23ff0",
-        "Cargo.toml": "aeb403e29a2fafdc4a09e2c96caf0a064322c89d7e18dc538f59bed979e2bd08",
-        "lib.rs": "10e68d5a92a053ff498cb1caa8290e508f691e32b73222a5a4737ee9a4097ce2"
+        "Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
+        "lib.rs": "a795d31c4f41013b7906032ad911be60c66070832269fd8e506b76fd89651dea"
       },
       "layer": "assets",
       "name": "blog-assets-style-token-macros",
@@ -39532,7 +39532,7 @@
       "dependencies": [
         "src/foundation/lookup/script-table-generator",
         "src/foundation/lookup/script-table-hashing",
-        "src/foundation/syntax/record-derive-parser",
+        "src/foundation/syntax/rust-parser",
         "src/foundation/syntax/token-stream",
         "src/foundation/syntax/token-templates",
         "src/foundation/text/case-insensitive-text"
@@ -39540,7 +39540,7 @@
       "directory": "src/foundation/lookup/script-table-macros",
       "files_sha256": {
         ".cargo_vcs_info.json": "b8eb2f0bf4cc3eb88270b6d2eb6eb52d30f606264e916441046222cc605ab9ec",
-        "Cargo.toml": "b6ed7ad91f6a1251ca93e8a4c66f585c6fb7bf8d58737572a81dfa3eb02c7425",
+        "Cargo.toml": "6479497c1169ed32719a00ab684b4cbad2392b2488c6aa6f0109bd9cd2361c4b",
         "src/lib.rs": "e549985fdf05718b004f05d29cc434c636743a08ae8ac5ed3dab3349d37d445b",
         "src/parse.rs": "fa577648db4d84454822d257d89806685f63c28d1e76bd06a57c8d3f86b30e28"
       },
@@ -47416,7 +47416,7 @@
     },
     "src/foundation/wasm/module-transform-derive": {
       "dependencies": [
-        "src/foundation/syntax/record-derive-parser",
+        "src/foundation/syntax/rust-parser",
         "src/foundation/syntax/token-stream",
         "src/foundation/syntax/token-templates",
         "src/foundation/text/macro-identifier-case"
@@ -47424,7 +47424,7 @@
       "directory": "src/foundation/wasm/module-transform-derive",
       "files_sha256": {
         ".cargo_vcs_info.json": "cbfe83c188adf24a63c6c0c9699b4fcbaa454f29853c4020f02236c36e6b56bb",
-        "Cargo.toml": "5cebc674cc2e9932d2f10ddd2bf6ad9aa5208af60c33b34c49f34b74b447592f",
+        "Cargo.toml": "4f045834af7215e6e5fc5ce31e0f9d978311b45f40d188be556126b88f17515f",
         "src/lib.rs": "936271b8019e2d65a8964b83a9ad61c85ff168c64fd1974502fc9be8f195e11f"
       },
       "layer": "wasm",
@@ -49339,7 +49339,6 @@
         "src/foundation/syntax/record-derive-parser": {
           "features": [
             "clone-impls",
-            "default",
             "derive",
             "extra-traits",
             "full",
@@ -51341,7 +51340,6 @@
         "src/foundation/syntax/record-derive-parser": {
           "features": [
             "clone-impls",
-            "default",
             "derive",
             "extra-traits",
             "full",
@@ -53910,7 +53908,6 @@
         "src/foundation/syntax/record-derive-parser": {
           "features": [
             "clone-impls",
-            "default",
             "derive",
             "extra-traits",
             "full",

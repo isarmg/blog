@@ -191,9 +191,11 @@ fn detail_decodes_without_summary_only_fields_and_hydrates_no_password() {
     )
     .unwrap();
     assert_eq!(article.id, 7);
+    assert_eq!(article.content, "## Body");
     assert!(article.excerpt.is_none());
     assert!(article.search_snippet.is_none());
     let draft = ArticleDraft::from(&article);
+    assert_eq!(draft.article_content, "## Body");
     assert!(draft.password.is_none());
     assert!(!draft.view_status);
     assert!(draft.comment_status);

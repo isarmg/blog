@@ -60,6 +60,24 @@ fn recommendation<V: IntoView>(article: &ArticleSummary, caption: V) -> impl Int
         .href(href(&format!("/article/{}", article.id)))
 }
 
+fn label_links(data: Data<Vec<Label>>) -> impl IntoView {
+    move || {
+        data.with_current(|labels| {
+            labels
+                .into_iter()
+                .flatten()
+                .take(28)
+                .map(|label| {
+                    html::a().child(label.name.clone()).href(href(&format!(
+                        "/sort?sort_id={}&label_id={}",
+                        label.sort_id, label.id
+                    )))
+                })
+                .collect_view()
+        })
+    }
+}
+
 #[component]
 pub(super) fn Home() -> impl IntoView {
     let site = site_data();
@@ -217,24 +235,7 @@ pub(super) fn Home() -> impl IntoView {
                                     html::section()
                                         .child((
                                             html::h2().child(t("🏷 标签", "🏷 Tags")),
-                                            html::div().child(move || {
-                                                labels
-                                                    .current()
-                                                    .unwrap_or_default()
-                                                    .into_iter()
-                                                    .take(28)
-                                                    .map(|l| {
-                                                        View::new(
-                                                            html::a()
-                                                                .child(l.label_name.clone())
-                                                                .href(href(&format!(
-                                                                    "/sort?sort_id={}&label_id={}",
-                                                                    l.sort_id, l.id
-                                                                ))),
-                                                        )
-                                                    })
-                                                    .collect_view()
-                                            }),
+                                            html::div().child(label_links(labels)),
                                         ))
                                         .class("aside-labels"),
                                     html::section()

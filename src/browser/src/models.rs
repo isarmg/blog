@@ -113,7 +113,8 @@ pub struct Category {
 pub struct Label {
     pub id: i64,
     pub sort_id: i64,
-    pub label_name: String,
+    #[serde(rename = "label_name")]
+    pub name: String,
     // The administrative endpoint intentionally omits this public-only field.
     pub article_count: Option<i64>,
 }
@@ -143,7 +144,8 @@ pub struct ArticleSummary {
 pub struct Article {
     #[serde(flatten)]
     pub summary: ArticleSummary,
-    pub article_content: String,
+    #[serde(rename = "article_content")]
+    pub content: String,
     #[serde(deserialize_with = "binary_flag")]
     pub comment_status: bool,
     #[serde(deserialize_with = "binary_flag")]
@@ -197,7 +199,7 @@ impl From<&Article> for ArticleDraft {
     fn from(article: &Article) -> Self {
         Self {
             article_title: article.article_title.clone(),
-            article_content: article.article_content.clone(),
+            article_content: article.content.clone(),
             article_cover: article.article_cover.clone(),
             video_url: article.video_url.clone(),
             sort_id: article.sort_id,

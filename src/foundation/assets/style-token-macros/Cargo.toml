@@ -33,5 +33,5 @@ features = [
     "full",
     "extra-traits",
 ]
-path = "../../syntax/record-derive-parser"
-package = "blog-syntax-record-derive-parser"
+path = "../../syntax/rust-parser"
+package = "blog-syntax-rust-parser"

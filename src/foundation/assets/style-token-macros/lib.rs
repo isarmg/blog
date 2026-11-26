@@ -48,9 +48,7 @@ fn get_byte_from_lit(lit: &syn::Lit) -> u8 {
 
 fn get_byte_from_expr_lit(expr: &syn::Expr) -> u8 {
     match *expr {
-        syn::Expr::Lit(syn::ExprLit { ref lit, .. }) => {
-            get_byte_from_lit(lit)
-        }
+        syn::Expr::Lit(syn::ExprLit { ref lit, .. }) => get_byte_from_lit(lit),
         _ => unreachable!(),
     }
 }
@@ -69,7 +67,9 @@ fn parse_pat_to_table<'a>(
                 table[value as usize] = case_id;
             }
         }
-        &syn::Pat::Range(syn::PatRange { ref start, ref end, .. }) => {
+        &syn::Pat::Range(syn::PatRange {
+            ref start, ref end, ..
+        }) => {
             let lo = get_byte_from_expr_lit(&start.as_ref().unwrap());
             let hi = get_byte_from_expr_lit(&end.as_ref().unwrap());
             for value in lo..hi {
@@ -131,26 +131,22 @@ pub fn match_byte(input: TokenStream) -> TokenStream {
 
     impl syn::parse::Parse for MatchByte {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-            Ok(MatchByte {
-                expr: {
-                    let expr = input.parse()?;
-                    input.parse::<syn::Token![,]>()?;
-                    expr
-                },
-                arms: {
-                    let mut arms = Vec::new();
-                    while !input.is_empty() {
-                        let arm = input.call(syn::Arm::parse)?;
-                        assert!(arm.guard.is_none(), "match_byte doesn't support guards");
-                        assert!(
-                            arm.attrs.is_empty(),
-                            "match_byte doesn't support attributes"
-                        );
-                        arms.push(arm);
-                    }
-                    arms
-                },
-            })
+            let expr = input.parse()?;
+            input.parse::<syn::Token![,]>()?;
+            let mut arms = Vec::new();
+            while !input.is_empty() {
+                let arm = input.call(syn::Arm::parse)?;
+                assert!(
+                    !matches!(arm.pat, syn::Pat::Guard(_)),
+                    "match_byte doesn't support guards"
+                );
+                assert!(
+                    arm.attrs.is_empty(),
+                    "match_byte doesn't support attributes"
+                );
+                arms.push(arm);
+            }
+            Ok(Self { expr, arms })
         }
     }
     let MatchByte { expr, arms } = syn::parse_macro_input!(input);
