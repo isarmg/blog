@@ -31,11 +31,11 @@ package = "blog-text-compile-time-text"
 path = "../../text/compile-time-text"
 default-features = false
 
-[dependencies.data_encoding]
-package = "blog-encoding-radix-codecs"
-path = "../../encoding/radix-codecs"
-features = []
-default-features = true
+[dependencies.base64]
+package = "blog-encoding-application-base-encoding"
+path = "../../encoding/application-base-encoding"
+features = ["alloc"]
+default-features = false
 
 [dependencies.indexmap]
 package = "blog-collections-ordered-map"
@@ -46,12 +46,6 @@ default-features = true
 [dependencies.itertools]
 package = "blog-syntax-style-iterators"
 path = "../../syntax/style-iterators"
-features = []
-default-features = true
-
-[dependencies.lazy_static]
-package = "blog-sync-lazy-global"
-path = "../../sync/lazy-global"
 features = []
 default-features = true
 

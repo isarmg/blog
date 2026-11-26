@@ -141,10 +141,9 @@ dependencies = [
  "blog-collections-keyed-hash",
  "blog-collections-ordered-map",
  "blog-diagnostics-event-facade",
+ "blog-encoding-application-base-encoding",
  "blog-encoding-integer-format",
- "blog-encoding-radix-codecs",
  "blog-lookup-script-table",
- "blog-sync-lazy-global",
  "blog-syntax-style-iterators",
  "blog-syntax-token-concat",
  "blog-text-compile-time-text",
@@ -528,10 +527,6 @@ version = "0.0.0"
 
 [[package]]
 name = "blog-encoding-integer-format"
-version = "0.0.0"
-
-[[package]]
-name = "blog-encoding-radix-codecs"
 version = "0.0.0"
 
 [[package]]

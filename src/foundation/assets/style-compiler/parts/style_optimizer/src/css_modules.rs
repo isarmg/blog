@@ -11,8 +11,9 @@
 use crate::style_optimizer::error::PrinterErrorKind;
 use crate::style_optimizer::properties::css_modules::{Composes, Specifier};
 use crate::style_optimizer::selector::SelectorList;
-use data_encoding::{Encoding, Specification};
-use lazy_static::lazy_static;
+use base64::alphabet::Alphabet;
+use base64::engine::general_purpose::{GeneralPurpose, NO_PAD};
+use base64::Engine as _;
 use crate::relative_path::diff_paths;
 #[cfg(any(any(), any()))]
 use serde::Serialize;
@@ -257,15 +258,11 @@ pub type CssModuleExports = HashMap<String, CssModuleExport>;
 /// A map of placeholders to references.
 pub type CssModuleReferences = HashMap<String, CssModuleReference>;
 
-lazy_static! {
-  static ref ENCODER: Encoding = {
-    let mut spec = Specification::new();
-    spec
-      .symbols
-      .push_str("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-");
-    spec.encoding().unwrap()
+static ENCODER: GeneralPurpose =
+  match Alphabet::new("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-") {
+    Ok(alphabet) => GeneralPurpose::new(&alphabet, NO_PAD),
+    Err(_) => panic!("invariant: CSS hash alphabet is a valid base64 alphabet"),
   };
-}
 
 pub(crate) struct CssModule<'a, 'b, 'c> {
   pub config: &'a Config<'b>,
@@ -539,7 +536,7 @@ pub(crate) fn hash(s: &str, at_start: bool) -> String {
   s.hash(&mut hasher);
   let hash = hasher.finish() as u32;
 
-  let hash = ENCODER.encode(&hash.to_le_bytes());
+  let hash = ENCODER.encode(hash.to_le_bytes());
   if at_start && matches!(hash.as_bytes()[0], b'0'..=b'9') {
     format!("_{}", hash)
   } else {

@@ -47,16 +47,12 @@ where
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
 enum RuleKind {
-    IntegerRange,
-    IntegerOrder,
     Enum,
     SocketAddress,
-    DistinctSockets,
     Path,
     RootStatePaths,
     PathRelation,
     ExternalWebOverride,
-    Url,
 }
 
 #[derive(Clone, Copy, Deserialize, PartialEq)]
@@ -167,12 +163,6 @@ fn text<'a>(arguments: &'a Map<String, Value>, name: &str) -> Result<&'a str> {
         .filter(|v| v.len() <= MAX_TEXT_BYTES)
         .ok_or(RuleFailure::from(Reason::InvalidMapping))
 }
-fn integer(arguments: &Map<String, Value>, name: &str) -> Result<u64> {
-    arguments
-        .get(name)
-        .and_then(Value::as_u64)
-        .ok_or(RuleFailure::from(Reason::InvalidMapping))
-}
 fn array<'a>(args: &'a Map<String, Value>, name: &str) -> Result<&'a [Value]> {
     args.get(name)
         .and_then(Value::as_array)
@@ -224,66 +214,13 @@ fn relative(path: &str) -> bool {
 
 fn apply(rule: &Rule, value: &Value, root: &Path) -> Result<()> {
     match rule.kind {
-        RuleKind::IntegerRange => apply_integer_range(rule, value),
-        RuleKind::IntegerOrder => apply_integer_order(rule, value),
         RuleKind::Enum => apply_enum(rule, value),
         RuleKind::SocketAddress => apply_socket_address(rule, value),
-        RuleKind::DistinctSockets => apply_distinct_sockets(rule, value),
         RuleKind::Path => apply_path(rule, value),
         RuleKind::RootStatePaths => apply_root_state_paths(rule, value, root),
         RuleKind::PathRelation => apply_path_relation(rule, value, root),
         RuleKind::ExternalWebOverride => apply_external_web_override(rule, value),
-        RuleKind::Url => apply_url(rule, value),
     }
-}
-
-fn apply_integer_range(rule: &Rule, value: &Value) -> Result<()> {
-    let args = &rule.arguments;
-    fields(rule, 1)?;
-    keys(args, &["minimum", "maximum"])?;
-    let min = integer(args, "minimum")?;
-    let max = integer(args, "maximum")?;
-    if min > max {
-        return mapping();
-    }
-    let actual = candidate(value, &rule.fields[0])?
-        .as_u64()
-        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-    if actual < min || actual > max {
-        return Err(Reason::InvalidValue.into());
-    }
-    Ok(())
-}
-
-fn apply_integer_order(rule: &Rule, value: &Value) -> Result<()> {
-    let args = &rule.arguments;
-    fields(rule, 2)?;
-    keys(args, &["relation", "left_scale", "right_scale"])?;
-    let relation = text(args, "relation")?;
-    if !matches!(relation, "less-or-equal" | "less-than") {
-        return mapping();
-    }
-    let scale = |name| match args.get(name) {
-        None => Ok(1),
-        Some(value) => value
-            .as_u64()
-            .filter(|n| *n != 0)
-            .ok_or(RuleFailure::from(Reason::InvalidMapping)),
-    };
-    let lhs = candidate(value, &rule.fields[0])?
-        .as_u64()
-        .ok_or(RuleFailure::from(Reason::TypeMismatch))?
-        .checked_mul(scale("left_scale")?)
-        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-    let rhs = candidate(value, &rule.fields[1])?
-        .as_u64()
-        .ok_or(RuleFailure::from(Reason::TypeMismatch))?
-        .checked_mul(scale("right_scale")?)
-        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-    if lhs > rhs || (relation == "less-than" && lhs == rhs) {
-        return Err(Reason::InvalidValue.into());
-    }
-    Ok(())
 }
 
 fn apply_enum(rule: &Rule, value: &Value) -> Result<()> {
@@ -324,28 +261,6 @@ fn apply_socket_address(rule: &Rule, value: &Value) -> Result<()> {
         || ((flag(args, "loopback", false)? || conditional) && !actual.ip().is_loopback())
     {
         return Err(Reason::InvalidValue.into());
-    }
-    Ok(())
-}
-
-fn apply_distinct_sockets(rule: &Rule, value: &Value) -> Result<()> {
-    let args = &rule.arguments;
-    keys(args, &[])?;
-    if rule.fields.len() < 2 {
-        return mapping();
-    }
-    let mut sockets = Vec::new();
-    for pointer in &rule.fields {
-        let address = socket(candidate(value, pointer)?)?;
-        if sockets.iter().any(|other: &SocketAddr| {
-            other.port() == address.port()
-                && (other.ip() == address.ip()
-                    || other.ip().is_unspecified()
-                    || address.ip().is_unspecified())
-        }) {
-            return Err(Reason::InvalidValue.into());
-        }
-        sockets.push(address);
     }
     Ok(())
 }
@@ -476,99 +391,6 @@ fn apply_external_web_override(rule: &Rule, value: &Value) -> Result<()> {
         .and_then(Value::as_bool)
         .ok_or(RuleFailure::from(Reason::InvalidMapping))?;
     if !candidate(value, &rule.fields[0])?.is_null() && (!development || bound) {
-        return Err(Reason::InvalidValue.into());
-    }
-    Ok(())
-}
-
-fn apply_url(rule: &Rule, value: &Value) -> Result<()> {
-    let args = &rule.arguments;
-    fields(rule, 1)?;
-    keys(
-        args,
-        &[
-            "allowed_schemes",
-            "no_credentials",
-            "no_query",
-            "no_fragment",
-            "loopback_host",
-            "origin_only",
-            "production_public_rtsps",
-            "development_pointer",
-            "relative_path",
-        ],
-    )?;
-    let schemes = array(args, "allowed_schemes")?;
-    if schemes.is_empty()
-        || schemes.len() > MAX_FIELDS
-        || schemes.iter().any(|s| s.as_str().is_none())
-    {
-        return mapping();
-    }
-    let relative_path = flag(args, "relative_path", false)?;
-    let no_credentials = flag(args, "no_credentials", false)?;
-    let no_query = flag(args, "no_query", false)?;
-    let no_fragment = flag(args, "no_fragment", false)?;
-    let loopback_host = flag(args, "loopback_host", false)?;
-    let origin_only = flag(args, "origin_only", false)?;
-    let production_development = if flag(args, "production_public_rtsps", false)? {
-        let pointer = text(args, "development_pointer")?;
-        if !valid_pointer(pointer) {
-            return mapping();
-        }
-        Some(
-            candidate(value, pointer)?
-                .as_bool()
-                .ok_or(RuleFailure::from(Reason::TypeMismatch))?,
-        )
-    } else {
-        None
-    };
-    let input = candidate(value, &rule.fields[0])?
-        .as_str()
-        .ok_or(RuleFailure::from(Reason::TypeMismatch))?;
-    if input.len() > MAX_TEXT_BYTES || input.chars().any(char::is_control) {
-        return Err(Reason::InvalidValue.into());
-    }
-    if relative_path && input.starts_with('/') && !input.starts_with("//") {
-        if input.contains(['?', '#']) {
-            return Err(Reason::InvalidValue.into());
-        }
-        return Ok(());
-    }
-    let parsed = url_encoding::address::Url::parse(input).map_err(|cause| {
-        RuleFailure::caused_by(Reason::InvalidValue, ConfigCause::ParseUrl(cause))
-    })?;
-    let host = parsed
-        .host()
-        .ok_or(RuleFailure::from(Reason::InvalidValue))?;
-    // Non-special schemes such as RTSP can expose a numeric host as
-    // Domain, including bracketed IPv6. Parse that representation too.
-    let address = match &host {
-        url_encoding::address::Host::Domain(s) => s
-            .strip_prefix('[')
-            .and_then(|s| s.strip_suffix(']'))
-            .unwrap_or(s)
-            .parse::<std::net::IpAddr>()
-            .ok(),
-        url_encoding::address::Host::Ipv4(ip) => Some(std::net::IpAddr::V4(*ip)),
-        url_encoding::address::Host::Ipv6(ip) => Some(std::net::IpAddr::V6(*ip)),
-    };
-    let loopback = matches!(&host, url_encoding::address::Host::Domain(s) if s.eq_ignore_ascii_case("localhost"))
-        || address.is_some_and(|ip| ip.is_loopback());
-    let unspecified = address.is_some_and(|ip| ip.is_unspecified());
-    if !schemes.iter().any(|s| s.as_str() == Some(parsed.scheme()))
-        || (no_credentials && (!parsed.username().is_empty() || parsed.password().is_some()))
-        || (no_query && parsed.query().is_some())
-        || (no_fragment && parsed.fragment().is_some())
-        || (loopback_host && !loopback)
-        || (origin_only && !matches!(parsed.path(), "" | "/"))
-    {
-        return Err(Reason::InvalidValue.into());
-    }
-    if production_development == Some(false)
-        && (parsed.scheme() != "rtsps" || loopback || unspecified)
-    {
         return Err(Reason::InvalidValue.into());
     }
     Ok(())

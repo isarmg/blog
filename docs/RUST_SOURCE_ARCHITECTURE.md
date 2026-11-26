@@ -19,7 +19,7 @@
 | 职责层 | 包数 | 构建入口 | 依赖的其他层 |
 | --- | --- | --- | --- |
 | application | 1 | native, workspace-tests | crypto, diagnostics, encoding, filesystem, format, math, network, platform, runtime, storage, syntax |
-| assets | 5 | domain-tests, host-tools, native, web-release, workspace-tests | collections, diagnostics, encoding, format, javascript, lookup, math, memory, network, sync, syntax, text |
+| assets | 5 | domain-tests, host-tools, native, web-release, workspace-tests | collections, diagnostics, encoding, format, javascript, lookup, math, memory, network, syntax, text |
 | build | 1 | host-tools, workspace-tests | assets, crypto, diagnostics, encoding, filesystem, format, network, platform, runtime, text, wasm |
 | checksum | 1 | host-tools, workspace-tests | native |
 | cli | 4 | native, workspace-tests | assets, collections, encoding, format, syntax, text |
@@ -140,7 +140,7 @@
 
 | 当前包与路径 | 具体职责 | 构建入口 | 直接消费者 | 原始来源 |
 | --- | --- | --- | --- | --- |
-| blog-encoding-application-base-encoding (`src/foundation/encoding/application-base-encoding`) | application base encoding | native, workspace-tests | src/application | base64@0.23.1 |
+| blog-encoding-application-base-encoding (`src/foundation/encoding/application-base-encoding`) | application base encoding | native, host-tools, workspace-tests | src/application, src/foundation/assets/style-compiler | base64@0.23.1 |
 | blog-encoding-borrowed-unicode (`src/foundation/encoding/borrowed-unicode`) | borrowed unicode | native, host-tools, domain-tests, workspace-tests | src/foundation/unicode/boundary-analysis, src/foundation/unicode/data-collections, src/foundation/unicode/locale-selection | potential_utf@0.1.6 |
 | blog-encoding-byte-buffer (`src/foundation/encoding/byte-buffer`) | byte buffer | native, host-tools, workspace-tests | src/application, src/foundation/collections/inline-string, src/foundation/format/json-schema, src/foundation/network/body-stream, src/foundation/network/http-message, src/foundation/network/http-middleware, src/foundation/network/http-transport, src/foundation/network/request-router, src/foundation/runtime/scheduled-io, src/foundation/runtime/task-scheduler, src/foundation/storage/sqlite-access | bytes@1.12.1 |
 | blog-encoding-byte-search (`src/foundation/encoding/byte-search`) | byte search | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/assets/compiler, src/foundation/assets/markdown-parser, src/foundation/format/json, src/foundation/format/parser-combinators, src/foundation/network/request-router, src/foundation/runtime/async-toolkit, src/foundation/text/pattern-search, src/tools/assets | memchr@2.8.3 |
@@ -149,7 +149,7 @@
 | blog-encoding-decimal-float-format (`src/foundation/encoding/decimal-float-format`) | decimal float format | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/collections/inline-string, src/foundation/format/json | zmij@1.0.23 |
 | blog-encoding-hex-codec (`src/foundation/encoding/hex-codec`) | hex codec | native, workspace-tests | src/server | hex@0.4.3 |
 | blog-encoding-integer-format (`src/foundation/encoding/integer-format`) | integer format | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/assets/compiler, src/foundation/assets/style-compiler, src/foundation/collections/inline-string, src/foundation/format/data-model, src/foundation/format/json, src/foundation/network/form-data, src/foundation/network/http-message, src/foundation/network/http-transport, src/foundation/network/request-router | itoa@1.0.18 |
-| blog-encoding-radix-codecs (`src/foundation/encoding/radix-codecs`) | radix codecs | host-tools, workspace-tests | src/foundation/assets/style-compiler | data-encoding@2.11.1 |
+| blog-encoding-radix-codecs (`src/foundation/encoding/radix-codecs`) | radix codecs | 当前入口未选用 | 入口或保留实现 | data-encoding@2.11.1 |
 | blog-encoding-roundtrip-float-format (`src/foundation/encoding/roundtrip-float-format`) | roundtrip float format | native, host-tools, workspace-tests | src/foundation/network/form-data | ryu@1.0.23 |
 | blog-encoding-script-float-format (`src/foundation/encoding/script-float-format`) | script float format | host-tools, workspace-tests | src/foundation/assets/compiler | dragonbox_ecma@0.1.12 |
 | blog-encoding-signed-variable-integer (`src/foundation/encoding/signed-variable-integer`) | signed variable integer | host-tools, workspace-tests | src/foundation/wasm/browser-module | leb128@0.2.7 |
@@ -312,7 +312,7 @@
 | blog-sync-concurrent-collections (`src/foundation/sync/concurrent-collections`) | 并发工具、队列、epoch回收与工作窃取 | native, workspace-tests | src/foundation/runtime/worker-pool, src/foundation/storage/sqlite-access | crossbeam-deque@0.8.8, crossbeam-epoch@0.9.21, crossbeam-queue@0.3.14, crossbeam-utils@0.8.23 |
 | blog-sync-exclusive-value (`src/foundation/sync/exclusive-value`) | exclusive value | native, host-tools, workspace-tests | src/foundation/network/request-pipeline, src/foundation/network/request-router | sync_wrapper@1.0.2 |
 | blog-sync-initialization (`src/foundation/sync/initialization`) | initialization | native, web-release, host-tools, workspace-tests | src/foundation/collections/keyed-hash, src/foundation/diagnostics/structured-events, src/foundation/wasm/browser-bridge | once_cell@1.21.4 |
-| blog-sync-lazy-global (`src/foundation/sync/lazy-global`) | lazy global | native, host-tools, workspace-tests | src/foundation/assets/style-compiler, src/foundation/collections/concurrent-slab | lazy_static@1.5.1 |
+| blog-sync-lazy-global (`src/foundation/sync/lazy-global`) | lazy global | native, host-tools, workspace-tests | src/foundation/collections/concurrent-slab | lazy_static@1.5.1 |
 | blog-sync-message-channel (`src/foundation/sync/message-channel`) | message channel | native, workspace-tests | src/foundation/storage/sqlite-access | flume@0.12.0 |
 | blog-sync-mutex (`src/foundation/sync/mutex`) | mutex | 当前入口未选用 | src/foundation/diagnostics/structured-events, src/foundation/runtime/task-scheduler, src/foundation/sync/initialization, src/foundation/sync/spin-lock | lock_api@0.4.14, parking_lot@0.12.5, parking_lot_core@0.9.12 |
 | blog-sync-notification (`src/foundation/sync/notification`) | notification | native, workspace-tests | src/foundation/storage/sqlite-access | event-listener@5.4.2 |

@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "dd1f824464860685eda0f23ef7668780a1fdb5128f8eafed67cda2f6eb7282d8"
+    "Cargo.lock": "f0b32a43357509fba9c8824bef1f299981a2107e834d29bf3ff8de3df88c3c7c"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6048,7 +6048,7 @@
     "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
     "src/foundation/assets/compiler/Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
-    "src/foundation/assets/style-compiler/Cargo.toml": "42451e687d89f1ff299cb050feb0794b86eb5b91737e85e7e2025c114e9276f4",
+    "src/foundation/assets/style-compiler/Cargo.toml": "c2556622a5effcbd6c0dea94e33483251955cfd44a35253dd20b1cd3240a77ad",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
     "src/foundation/assets/style-value-derive/Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
@@ -34282,10 +34282,10 @@
         "src/admin_sqlite/management.rs": "d30acade08d9f79fc0ece5013ba84c3b8f565ab8f1e398236db711400df2dd8c",
         "src/admin_sqlite/mod.rs": "7f9a2020ca05f39e8714a1f65a2ec06944ae20d0059212e3a27427427a66a84e",
         "src/config/managed.rs": "0aba8a88c1c78ec5e8495e8747a3b31bef183e7e6176865862ac628654b8a565",
-        "src/config/mod.rs": "a95a0e6b0d47e7a3623980999eb895598d8a25ceef8642f91db9718d4409fa28",
+        "src/config/mod.rs": "c862c5489e9ee9c7485a41ed9852999a92fb9a3c828a5c8715f3777829582e6f",
         "src/config/strict.rs": "7e0e15673e76a7d4dcf9c31cad46bd9274487b316ba27245756c1a6f468ec65f",
         "src/configuration_contract.rs": "2b22e14e33038086c41226d93cdbeccb2898aa47bf275df9e4e728fd010c6368",
-        "src/configuration_contract/rules.rs": "bc163b5af2d4e0b468b7554342c39688cf373074bcd2e430f632eae8832b72f6",
+        "src/configuration_contract/rules.rs": "661427b59927b0822668c4a9854e0d6a3cd78dcf73c2393b76b6c429352972b6",
         "src/contracts/administrators.rs": "08f437169adf4e90644a14423940c6cbabf4d35ac8189653d4dda408801db501",
         "src/contracts/mod.rs": "9e17ded144fd3c145db01eeb0fe05fa9b0c03db4385f937337371155f7a6c427",
         "src/error/mod.rs": "b88983e22255adcfba3a7bb9eb05945e46762155a867c2d21c72cc86c0e7e9fc",
@@ -34348,7 +34348,7 @@
         "test/application/unit/admin_sqlite/management/tests.rs": "a0b7f2aee55d64f985039431953d9fe8493adc8836a44ba8ed248740e9c7d71f",
         "test/application/unit/admin_sqlite/tests.rs": "4ae26d15bc847544b25c40afb6e4902e89df4fb97441fdb7d89518ddee6537f2",
         "test/application/unit/config/tests.rs": "2f6fa6bd44911737c694b60c345d4fb0fab68e694040671bba7da76b91479821",
-        "test/application/unit/configuration_contract/rules/tests.rs": "6b40b774d1e71552edcd8c884fcefe377c66bbd9a686fcfff155faa2117e0723",
+        "test/application/unit/configuration_contract/rules/tests.rs": "f0b492af315524a71af15f065b9705a2d233d74e6f174e70d06409ed313f9882",
         "test/application/unit/configuration_contract/tests.rs": "497b1e5a50f8153e78f8d5fcd4765c826a0cb67c6cf2973254d10376a4eaa21c",
         "test/application/unit/contracts/administrators/tests.rs": "b2820623ff48e15d44caa9b9eeac81fcbf02838caad7fe4bc0a9d83c29cd6725",
         "test/application/unit/contracts/tests.rs": "7f70c1a04be744101a881c2e9becaa14c643b5de1cf7d0250529a5abbe65020c",
@@ -34419,7 +34419,7 @@
         "src/common/mod.rs": "cd29c97c41ad61e5baed724a65ddd8cbea9c04242e75fdea1c0092c53d06e508",
         "src/common/navigation.rs": "7173a26289f043b9b0a8a92b42efdcc87feb8221c411652ee999e0ff62178fab",
         "src/common/paged_list.rs": "b1925984f65c4866e2851807f35e111c97de77b35618a86f14357f04d7d6ae1b",
-        "src/common/pagination.rs": "65e096b1e1f35c4f761b3d57e53ee39db66b7a17cff310db4bf237bca89780cd",
+        "src/common/pagination.rs": "1e9c422fc1dcd3c40c0471f82c9ac1bb15179d7867108f9930a1d703cd28a83b",
         "src/common/request.rs": "d07d65e10117d433dcb8035627e1b7be0b80ecc2b568038ddafd3da6d0db835e",
         "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
@@ -35230,17 +35230,16 @@
         "src/foundation/collections/keyed-hash",
         "src/foundation/collections/ordered-map",
         "src/foundation/diagnostics/event-facade",
+        "src/foundation/encoding/application-base-encoding",
         "src/foundation/encoding/integer-format",
-        "src/foundation/encoding/radix-codecs",
         "src/foundation/lookup/script-table",
-        "src/foundation/sync/lazy-global",
         "src/foundation/syntax/style-iterators",
         "src/foundation/syntax/token-concat",
         "src/foundation/text/compile-time-text"
       ],
       "directory": "src/foundation/assets/style-compiler",
       "files_sha256": {
-        "Cargo.toml": "42451e687d89f1ff299cb050feb0794b86eb5b91737e85e7e2025c114e9276f4",
+        "Cargo.toml": "c2556622a5effcbd6c0dea94e33483251955cfd44a35253dd20b1cd3240a77ad",
         "parts/cached_hash/src/lib.rs": "079a5f369a82b4573cca488a8c52a8427546e9050c89964a7b554215dd4da5f1",
         "parts/float_format/.cargo_vcs_info.json": "c745454c84bcf2144e28b355f7e63c480768bbd013043293a35bca550ec73094",
         "parts/float_format/src/diyfp.rs": "0c5c1be29ffe1d2623226bbae145d9998abf6542d633a368c1536b8d197b3301",
@@ -35255,7 +35254,7 @@
         "parts/style_optimizer/.cargo_vcs_info.json": "3958659e06bf8533741624c6dda6dab604fbfdf161cc7cec4f66403861ccf0cf",
         "parts/style_optimizer/src/compat.rs": "c3c1a8d7be957f2019130942351cf068203741e3517a2b23fa072079b0ed7df8",
         "parts/style_optimizer/src/context.rs": "5534c856bb71c2fb953ce5fb2833bd7d93848b87b59f1ef58b23dd4ca062f7df",
-        "parts/style_optimizer/src/css_modules.rs": "0a007697f5550d7be72324f729d27034a6e9978721624929fb3892d5b97080ec",
+        "parts/style_optimizer/src/css_modules.rs": "92afcfbb6332e8b4d0ae7e922887a507890850cba16deeadc994f9a534a53e71",
         "parts/style_optimizer/src/declaration.rs": "54403a1da3c0577c94b63361755a59f8fe6baf1e20d1d4993d77e5775d90688f",
         "parts/style_optimizer/src/dependencies.rs": "16eb0dbbca2bfc13beb49f2ecd74557783efbb300de08feeddda11d520bf43ca",
         "parts/style_optimizer/src/error.rs": "d67450b293091448957f18b4826d064c67f810dd63f5f763bf07c466f3c5260d",
@@ -50478,6 +50477,19 @@
           ],
           "version": "0.0.0"
         },
+        "src/foundation/encoding/application-base-encoding": {
+          "features": [
+            "alloc",
+            "default",
+            "simd-unsafe",
+            "std"
+          ],
+          "name": "blog-encoding-application-base-encoding",
+          "roles": [
+            "compile"
+          ],
+          "version": "0.0.0"
+        },
         "src/foundation/encoding/borrowed-unicode": {
           "features": [
             "alloc",
@@ -50539,18 +50551,6 @@
         "src/foundation/encoding/integer-format": {
           "features": [],
           "name": "blog-encoding-integer-format",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/encoding/radix-codecs": {
-          "features": [
-            "alloc",
-            "default",
-            "std"
-          ],
-          "name": "blog-encoding-radix-codecs",
           "roles": [
             "compile"
           ],
@@ -52638,18 +52638,6 @@
         "src/foundation/encoding/integer-format": {
           "features": [],
           "name": "blog-encoding-integer-format",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/encoding/radix-codecs": {
-          "features": [
-            "alloc",
-            "default",
-            "std"
-          ],
-          "name": "blog-encoding-radix-codecs",
           "roles": [
             "compile"
           ],

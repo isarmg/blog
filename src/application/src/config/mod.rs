@@ -77,8 +77,6 @@ pub(crate) enum ConfigCause {
     ParseAddress(#[source] std::net::AddrParseError),
     #[error("failed to parse the configuration root layout")]
     RootLayout(#[source] crate::server_layout::Error),
-    #[error("failed to parse a configuration URL")]
-    ParseUrl(#[source] url_encoding::address::ParseError),
 }
 
 impl ConfigError {
