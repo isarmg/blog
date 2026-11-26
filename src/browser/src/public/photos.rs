@@ -1,6 +1,9 @@
 //! Photo browsing, category filters and paged collection state.
 use super::shell::Chrome;
-use crate::common::{Feedback, Lightbox, enc, list, load, num, page_items, safe_url, t, text};
+use crate::common::{
+    Feedback, Lightbox, enc, last_page, list, load, merge_page, num, page_items, safe_url, t, text,
+    unsigned_field,
+};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
 use blog_interface::ev;
@@ -147,8 +150,8 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
     let loaded = RwSignal::new(0u64);
     let has_more = RwSignal::new(false);
     let items = RwSignal::new(Vec::<Value>::new());
-    let total = RwSignal::new(None::<i64>);
-    let all_total = RwSignal::new(None::<i64>);
+    let total = RwSignal::new(None::<u64>);
+    let all_total = RwSignal::new(None::<u64>);
     let lightbox = RwSignal::new(None::<String>);
     Effect::new(move |_| {
         if !love && let Some(v) = classes.current() {
@@ -189,9 +192,9 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
             value.map(|value| {
                 (
                     page_items(value).to_vec(),
-                    num(value, "page") as u64,
-                    num(value, "size"),
-                    num(value, "total"),
+                    unsigned_field(value, "page"),
+                    unsigned_field(value, "size"),
+                    unsigned_field(value, "total"),
                 )
             })
         });
@@ -200,25 +203,13 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
             if selected.get_untracked().is_empty() {
                 all_total.set(Some(response_total));
             }
-            // Offset pages can overlap when photos are published while browsing.
-            // Display deduplication must not determine whether another page exists.
+            // Use the server page size, not the deduplicated display count.
             has_more.set(
-                response_page < crate::contracts::MAX_PAGE
-                    && next.len() as i64 == response_size
-                    && response_page as i64 * response_size < response_total,
+                usize::try_from(response_size) == Ok(next.len())
+                    && response_page < last_page(response_total, response_size),
             );
             loaded.set(response_page);
-            items.update(|items| {
-                if response_page == 1 {
-                    *items = next;
-                } else {
-                    for n in next {
-                        if !items.iter().any(|v| v["id"] == n["id"]) {
-                            items.push(n);
-                        }
-                    }
-                }
-            });
+            items.update(|items| merge_page(items, response_page, next));
         }
     });
     View::new(

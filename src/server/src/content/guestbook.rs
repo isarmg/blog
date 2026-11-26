@@ -1,5 +1,5 @@
 use super::{PageQuery, PageResult};
-use crate::{ApiResult, AppState, absent, invalid};
+use crate::{ApiResult, AppState, invalid};
 use axum::{Json, extract::State};
 use blog_application::admin_core::AuthenticatedIdentity;
 use blog_application::server_cli::{ContractPath as Path, ContractQuery as Query};
@@ -50,13 +50,13 @@ pub(super) async fn create_guest_tree_hole(
         return Err(invalid("留言不能为空、不能超过 60 个字，也不能包含图片"));
     }
     let mut transaction = state.pool.begin_with("BEGIN IMMEDIATE").await?;
-    let id = sqlx::query("INSERT INTO tree_hole(message) VALUES(?)")
-        .bind(message)
-        .execute(&mut *transaction)
-        .await?
-        .last_insert_rowid();
-    let entry = sqlx::query_as("SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id WHERE t.id=?")
-        .bind(id).fetch_one(&mut *transaction).await?;
+    let entry = sqlx::query_as(
+        "INSERT INTO tree_hole(message) VALUES(?)
+         RETURNING id,user_id,NULL AS username,avatar,message,image_path,create_time",
+    )
+    .bind(message)
+    .fetch_one(&mut *transaction)
+    .await?;
     transaction.commit().await?;
     Ok(Json(entry))
 }
@@ -90,9 +90,5 @@ pub(super) async fn delete_tree_hole(
         .bind(id)
         .execute(&mut *transaction)
         .await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    transaction.commit().await?;
-    Ok(Json(serde_json::json!({"deleted": true})))
+    super::finish_delete(transaction, changed).await
 }

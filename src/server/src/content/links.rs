@@ -250,9 +250,5 @@ pub(super) async fn delete_link(
         .bind(id)
         .execute(&mut *transaction)
         .await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    transaction.commit().await?;
-    Ok(Json(serde_json::json!({"deleted": true})))
+    super::finish_delete(transaction, changed).await
 }

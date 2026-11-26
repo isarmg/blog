@@ -6,8 +6,7 @@
 
 | 包 | 版本 | 依赖关系 | 本地说明 | 许可 |
 | --- | --- | --- | --- | --- |
-| `@playwright/test` | 1.63.0 | 直接开发依赖，依赖 `playwright` | [断言与测试入口](#playwrighttest) | Apache-2.0 |
-| `playwright` | 1.63.0 | 由 `@playwright/test` 引入，依赖 `playwright-core` | [浏览器驱动](#playwright) | Apache-2.0 |
+| `playwright` | 1.63.0 | 直接开发依赖，依赖 `playwright-core` | [浏览器驱动与断言](#playwright) | Apache-2.0 |
 | `playwright-core` | 1.63.0 | 由 `playwright` 引入，同时满足 axe 适配器的 peer 依赖 | [协议与浏览器文件](#playwright-core) | Apache-2.0 |
 | `@axe-core/playwright` | 4.12.1 | 直接开发依赖，依赖 `axe-core` | [无障碍适配器](#axe-coreplaywright) | MPL-2.0 |
 | `axe-core` | 4.12.1 | 由 `@axe-core/playwright` 引入 | [规则引擎与结果](#axe-core) | MPL-2.0 |
@@ -30,9 +29,9 @@ npm run test:public
 
 `npm ci` 安装锁定工具包；浏览器安装准备匹配的执行文件和 Linux 系统依赖，可能联网并需要安装系统包的权限。浏览器脚本通过 Rust 预览服务读取实际资源，API 可以由脚本 fixture 提供；测试边界见[浏览器验证](../browser-testing.md)。
 
-## @playwright/test
+## playwright
 
-本项目从 `@playwright/test` 导入 `chromium`、`firefox` 和 `expect`。页面脚本是由 Node 直接执行的 `.mjs`，命令由 npm scripts 和 [CI](../../.github/workflows/ci.yml) 组织。
+本项目从 `playwright/test` 导入 `chromium`、`firefox` 和 `expect`。页面脚本是由 Node 直接执行的 `.mjs`，命令由 npm scripts 和 [CI](../../.github/workflows/ci.yml) 组织。
 
 常用操作包括：
 
@@ -42,9 +41,7 @@ npm run test:public
 
 示例见[管理布局测试](../../test/browser/admin-layout.mjs)和[界面运行测试](../../test/browser/blog-interface-runtime.mjs)。交互前等待应用运行标记或实际可见状态，使用新的 browser context 隔离测试会话。
 
-## playwright
-
-`playwright` 提供浏览器自动化 API，并导出给测试包使用。典型生命周期为 `engine.launch()` → `browser.newContext()` → `context.newPage()`；在 `finally` 中关闭 context 和 browser，释放进程与页面资源。
+浏览器的典型生命周期为 `engine.launch()` → `browser.newContext()` → `context.newPage()`；在 `finally` 中关闭 context 和 browser，释放进程与页面资源。
 
 项目同时执行 Chromium 与 Firefox，按场景设置 `locale`、`viewport` 和 `colorScheme`。`page.route()` 拦截 API 并返回 fixture，`page.on('pageerror', ...)` 收集页面错误；监听响应可检查实际 WASM 的 MIME、内容和缓存行为。可复用的 fixture 入口见 [browser-fixtures.mjs](../../test/browser/browser-fixtures.mjs)。
 

@@ -5,6 +5,7 @@ mod feedback;
 mod forms;
 mod lightbox;
 mod navigation;
+mod paged_list;
 mod pagination;
 mod request;
 
@@ -18,6 +19,7 @@ pub(crate) use navigation::{
     browse, enc, hash_signal, href, navigate, page_number, param, pathname, query, safe_url,
     search_signal,
 };
+pub(crate) use paged_list::{last_page, merge_page, unsigned_field};
 pub(crate) use pagination::{BrowsePager, Pager};
 pub(crate) use request::{
     ApiError, ApiErrorCode, Data, LocalErrorCode, RequestOptions, invalid, load, load_typed,

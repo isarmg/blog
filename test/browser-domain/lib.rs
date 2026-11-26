@@ -11,3 +11,5 @@ mod editor_insertion;
 mod markdown;
 #[path = "../../src/browser/src/models.rs"]
 mod models;
+#[path = "../../src/browser/src/common/paged_list.rs"]
+mod paged_list;

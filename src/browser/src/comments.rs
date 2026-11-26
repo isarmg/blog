@@ -1,5 +1,6 @@
 use crate::common::{
-    Pager, RequestOptions, load, num, page_items, public_error, request, safe_url, t, text,
+    Pager, RequestOptions, load, merge_page, num, page_items, public_error, request, safe_url, t,
+    text, unsigned_field,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::prelude::*;
@@ -525,11 +526,11 @@ fn Replies(
     refresh: RwSignal<u64>,
 ) -> impl IntoView {
     let id = num(&root, "id");
-    let count = num(&root, "reply_count");
+    let reply_count = unsigned_field(&root, "reply_count");
     let page = RwSignal::new(1);
     let path = Signal::derive(move || {
         refresh.get();
-        if count == 0 {
+        if reply_count == 0 {
             String::new()
         } else {
             format!(
@@ -546,18 +547,15 @@ fn Replies(
     });
     Effect::new(move |_| {
         if let Some(next) = data.current_items() {
-            items.update(|current| {
-                if page.get_untracked() == 1 {
-                    *current = next;
-                } else {
-                    for n in next {
-                        if !current.iter().any(|v| v["id"] == n["id"]) {
-                            current.push(n);
-                        }
-                    }
-                }
-            });
+            items.update(|current| merge_page(current, page.get_untracked(), next));
         }
+    });
+    let remaining = move |response: &Value| {
+        let shown = items.with(|list| u64::try_from(list.len()).unwrap_or(u64::MAX));
+        unsigned_field(response, "total").saturating_sub(shown)
+    };
+    let can_load = Signal::derive(move || {
+        !data.busy.get() && data.with_current(|v| v.is_some_and(|v| remaining(v) > 0))
     });
     View::new(
         blog_interface::html::div()
@@ -582,9 +580,7 @@ fn Replies(
                         View::new(
                             blog_interface::html::button()
                                 .child(move || {
-                                    let total =
-                                        data.with_latest(|v| v.map_or(0, |v| num(v, "total")));
-                                    let remaining = (total - items.with(Vec::len) as i64).max(0);
+                                    let remaining = data.with_latest(|v| v.map_or(0, remaining));
                                     if remaining == 0 {
                                         t("已展开全部回复", "All replies shown")
                                     } else {
@@ -598,24 +594,9 @@ fn Replies(
                                 })
                                 .class("comment-more")
                                 .r#type("button")
-                                .aria_disabled(move || {
-                                    (data.busy.get()
-                                        || data.with_current(|v| {
-                                            v.is_none_or(|v| {
-                                                items.with(Vec::len) as i64 >= num(v, "total")
-                                            })
-                                        }))
-                                    .to_string()
-                                })
+                                .aria_disabled(move || (!can_load.get()).to_string())
                                 .on(blog_interface::ev::click, move |_| {
-                                    if !data.busy.get_untracked()
-                                        && data.with_current_untracked(|v| {
-                                            v.is_some_and(|v| {
-                                                (items.with_untracked(Vec::len) as i64)
-                                                    < num(v, "total")
-                                            })
-                                        })
-                                    {
+                                    if can_load.get_untracked() {
                                         page.update(|p| *p += 1);
                                     }
                                 }),

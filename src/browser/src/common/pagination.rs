@@ -1,43 +1,12 @@
 //! Pagination controls preserve the caller's page and read-state policy.
-use super::navigation::{MAX_PAGE, replace_browse};
+use super::navigation::replace_browse;
+use super::paged_list::{PageMetadata, last_page};
 use super::{Data, browse, page_number, t, tr};
 use blog_interface::prelude::*;
 use blog_interface::{ev, html};
-use serde_json::Value;
 
-pub(crate) trait PageMetadata {
-    fn total(&self) -> i64;
-    fn size(&self) -> i64;
-}
-
-impl PageMetadata for Value {
-    fn total(&self) -> i64 {
-        self["total"]
-            .as_i64()
-            .expect("invariant: page total passed the response contract")
-    }
-    fn size(&self) -> i64 {
-        self["size"]
-            .as_i64()
-            .expect("invariant: page size passed the response contract")
-    }
-}
-
-impl<T> PageMetadata for crate::models::Page<T> {
-    fn total(&self) -> i64 {
-        self.total
-    }
-    fn size(&self) -> i64 {
-        self.size
-    }
-}
-
-fn last_page(total: i64, size: i64) -> u64 {
-    (((total + size - 1) / size).max(1) as u64).min(MAX_PAGE)
-}
-
-fn page_metadata<T: PageMetadata>(value: Option<&T>) -> Option<(i64, i64)> {
-    value.map(|value| (value.total(), value.size()))
+fn page_metadata<T: PageMetadata>(value: Option<&T>) -> Option<(u64, u64)> {
+    value.map(PageMetadata::counts)
 }
 
 #[component]
@@ -108,7 +77,7 @@ pub(crate) fn Pager<T: PageMetadata + Send + Sync + 'static>(
 pub(crate) fn BrowsePager<T: PageMetadata + Send + Sync + 'static>(
     data: Data<T>,
     state: RwSignal<String>,
-    size: i64,
+    size: u64,
     #[prop(default=t("分页","Pagination"))] label: String,
     #[prop(default = false)] always: bool,
     #[prop(default = false)] empty: bool,
@@ -164,7 +133,3 @@ pub(crate) fn BrowsePager<T: PageMetadata + Send + Sync + 'static>(
             })
     }
 }
-
-#[cfg(test)]
-#[path = "../../../../test/browser/unit/common/pagination/tests.rs"]
-mod tests;

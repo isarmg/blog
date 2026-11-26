@@ -11,6 +11,67 @@ use blog_interface::html;
 use blog_interface::prelude::*;
 use serde_json::Value;
 
+fn journey_grid(page: &Value) -> impl IntoView + use<> {
+    let items = page_items(page);
+    let first = num(page, "total") - (num(page, "page") - 1) * num(page, "size");
+    items
+        .iter()
+        .enumerate()
+        .map(|(i, item)| {
+            let offset = i64::try_from(i).expect("the response contract limits page size");
+            journey_card(item, i, i + 1 < items.len(), first - offset)
+        })
+        .collect_view()
+}
+
+fn journey_card(item: &Value, index: usize, has_next: bool, number: i64) -> impl IntoView + use<> {
+    let row = index / 5;
+    let column = index % 5;
+    let reverse = row % 2 == 1;
+    let time = text(item, "create_time");
+    let cover = safe_url(&text(item, "article_cover"), false)
+        .map(|url| html::img().src(url).alt("").loading("lazy"));
+    let connector = has_next.then(|| {
+        html::span()
+            .class(if column == 4 {
+                "journey-connector journey-turn"
+            } else {
+                "journey-connector"
+            })
+            .aria_hidden("true")
+    });
+
+    html::a()
+        .child((
+            html::span().class("journey-image").child((
+                html::span().class("journey-picture").child(cover),
+                connector,
+            )),
+            html::strong().child(Sliding(
+                component_props_builder(&Sliding)
+                    .title(text(item, "article_title"))
+                    .build(),
+            )),
+            html::small().child((
+                html::time()
+                    .child(crate::dates::format(&time))
+                    .datetime(time),
+                html::span().child(number),
+            )),
+        ))
+        .style(format!(
+            "grid-column:{};grid-row:{}",
+            if reverse { 5 - column } else { column + 1 },
+            row + 1
+        ))
+        .class(if reverse {
+            "journey-item journey-reverse"
+        } else {
+            "journey-item"
+        })
+        .href(href(&format!("/article/{}", num(item, "id"))))
+}
+
 #[component]
 pub(super) fn Journey() -> impl IntoView {
     let site = site_data();
@@ -38,109 +99,7 @@ pub(super) fn Journey() -> impl IntoView {
                             )),
                             data.public_feedback(None),
                             html::div()
-                                .child(move || {
-                                    data.with_current(|value| {
-                                        value.map(|v| {
-                                            let items = page_items(v);
-                                            let len = items.len();
-                                            items
-                                                .iter()
-                                                .enumerate()
-                                                .map(|(i, item)| {
-                                                    let row = i / 5;
-                                                    let reverse = row % 2 == 1;
-                                                    View::new(
-                                                    html::a()
-                                                        .child((
-                                                            html::span()
-                                                                .child((
-                                                                    html::span()
-                                                                        .child(
-                                                                            safe_url(
-                                                                                &text(
-                                                                                    item,
-                                                                                    "article_cover",
-                                                                                ),
-                                                                                false,
-                                                                            )
-                                                                            .map(|u| {
-                                                                                View::new(
-                                                                                    html::img()
-                                                                                        .src(u)
-                                                                                        .alt("")
-                                                                                        .loading(
-                                                                                            "lazy",
-                                                                                        ),
-                                                                                )
-                                                                            }),
-                                                                        )
-                                                                        .class("journey-picture"),
-                                                                    (i < len - 1).then(|| {
-                                                                        View::new(
-    html::span()
-        .class(
-            if i % 5 == 4 {
-                "journey-connector journey-turn"
-            } else {
-                "journey-connector"
-            },
-        )
-        .aria_hidden("true"),
-)
-                                                                    }),
-                                                                ))
-                                                                .class("journey-image"),
-                                                            html::strong().child(Sliding(
-                                                                component_props_builder(&Sliding)
-                                                                    .title(text(
-                                                                        item,
-                                                                        "article_title",
-                                                                    ))
-                                                                    .build(),
-                                                            )),
-                                                            html::small().child((
-                                                                html::time()
-                                                                    .child(crate::dates::format(
-                                                                        &text(item, "create_time"),
-                                                                    ))
-                                                                    .datetime(text(
-                                                                        item,
-                                                                        "create_time",
-                                                                    )),
-                                                                html::span().child(
-                                                                    num(v, "total")
-                                                                        - i as i64
-                                                                        - (page_number(state)
-                                                                            as i64
-                                                                            - 1)
-                                                                            * 20,
-                                                                ),
-                                                            )),
-                                                        ))
-                                                        .style(format!(
-                                                            "grid-column:{};grid-row:{}",
-                                                            if reverse {
-                                                                5 - i % 5
-                                                            } else {
-                                                                i % 5 + 1
-                                                            },
-                                                            row + 1
-                                                        ))
-                                                        .class(if reverse {
-                                                            "journey-item journey-reverse"
-                                                        } else {
-                                                            "journey-item"
-                                                        })
-                                                        .href(href(&format!(
-                                                            "/article/{}",
-                                                            num(item, "id")
-                                                        ))),
-                                                )
-                                                })
-                                                .collect_view()
-                                        })
-                                    })
-                                })
+                                .child(move || data.with_current(|value| value.map(journey_grid)))
                                 .class("journey-grid"),
                             BrowsePager(
                                 component_props_builder(&BrowsePager)

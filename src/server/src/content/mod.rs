@@ -22,6 +22,17 @@ mod statistics;
 pub(crate) use authorization::begin_mutation;
 pub(crate) use input::IdempotencyKeyError;
 
+async fn finish_delete(
+    transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    change: sqlx::sqlite::SqliteQueryResult,
+) -> crate::ApiResult<serde_json::Value> {
+    if change.rows_affected() == 0 {
+        return Err(crate::absent());
+    }
+    transaction.commit().await?;
+    Ok(axum::Json(serde_json::json!({"deleted": true})))
+}
+
 #[derive(Serialize)]
 struct PageResult<T> {
     items: Vec<T>,

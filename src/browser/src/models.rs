@@ -42,8 +42,8 @@ fn binary_flag<'de, D: Deserializer<'de>>(d: D) -> Result<bool, D::Error> {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Page<T> {
     pub items: Vec<T>,
-    pub total: i64,
-    pub size: i64,
+    pub total: u64,
+    pub size: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]

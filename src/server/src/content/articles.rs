@@ -354,11 +354,7 @@ pub(super) async fn admin_delete_article_news(
         .bind(article_id)
         .execute(&mut *transaction)
         .await?;
-    if changed.rows_affected() == 0 {
-        return Err(absent());
-    }
-    transaction.commit().await?;
-    Ok(Json(serde_json::json!({"deleted":true})))
+    super::finish_delete(transaction, changed).await
 }
 
 pub(super) async fn admin_update_article_news(
@@ -781,11 +777,7 @@ pub(super) async fn delete_article(
     .bind(id)
     .execute(&mut *transaction)
     .await?;
-    if result.rows_affected() == 0 {
-        return Err(absent());
-    }
-    transaction.commit().await?;
-    Ok(Json(serde_json::json!({"deleted":true})))
+    super::finish_delete(transaction, result).await
 }
 
 #[path = "../../../../test/server/unit/content/articles/pagination_tests.rs"]

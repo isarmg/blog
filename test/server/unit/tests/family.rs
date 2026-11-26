@@ -77,7 +77,10 @@ async fn family_is_admin_owned_and_other_authors_stay_isolated() {
     assert_eq!(response.status(), StatusCode::OK);
     let homes = body_json(response).await;
     assert_eq!(homes.as_array().unwrap().len(), 1);
-    assert_eq!(homes[0]["id"], 2);
+    let mut expected = home[0].clone();
+    assert!(expected.get("status").is_none());
+    expected["status"] = 1.into();
+    assert_eq!(homes[0], expected);
     for id in [1, 3] {
         for method in ["PUT", "DELETE"] {
             let response = admin(
