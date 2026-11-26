@@ -34408,7 +34408,7 @@
         "src/admin/links.rs": "85a75c8e8a77bc98f45df5f3b2ce88dc39bff39397b2cf7700e013df1ad27cc8",
         "src/admin/moderation.rs": "65339adabe2eb9e8f5109641504532eb4c59a6d009e493e91112234bd379bc08",
         "src/admin/site.rs": "5b200af3a6b50376c08d648b2b7b955aa0aafc0700b9848acdaa5edbb96967f9",
-        "src/admin/taxonomy.rs": "71895ca42d284c1f0dda9735a5eac6ea1ac24039346b4608a215444ee87f3339",
+        "src/admin/taxonomy.rs": "992d120efa759af106906f8803825934eade69d234f3ca331710f0276d366d08",
         "src/browser.rs": "4693f0c02b5ce688816695c42efbc5dcedade7666cedde87febaa5f556a1744e",
         "src/comments.rs": "718100cce69a16f7560b4484fc1754305d49c68d247ba99e97f2c5eac296b577",
         "src/common/action.rs": "872dd97bf38b60acec5387ef6f99181679a49fb6a79c305c4c1344c8b84e51ef",
