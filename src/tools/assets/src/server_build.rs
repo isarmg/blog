@@ -549,6 +549,7 @@ pub fn build(options: &crate::Options, request: BuildRequest<'_>) -> Result<Path
         crate::build_locked(&selected, &owner)?;
     }
     if selection == BuildSelection::Web {
+        owner.release()?;
         return Ok(dist);
     }
     let receipt_directory = private_receipt_directory()?;
@@ -714,6 +715,7 @@ pub fn build(options: &crate::Options, request: BuildRequest<'_>) -> Result<Path
             publish_bytes(&output, &crate::inventory::read(&source)?)?;
         }
     }
+    owner.release()?;
     Ok(binary)
 }
 

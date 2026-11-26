@@ -83,7 +83,7 @@ pub struct Options {
 /// Its file is never renamed, removed or repaired by a competing producer.
 pub(crate) struct BuildLock {
     root: PathBuf,
-    _file: fs::File,
+    file: Option<fs::File>,
 }
 
 impl BuildLock {
@@ -155,10 +155,27 @@ impl BuildLock {
             return Err(LockError::InvalidIdentity);
         }
         match file.try_lock() {
-            Ok(()) => Ok(Self { root, _file: file }),
+            Ok(()) => Ok(Self {
+                root,
+                file: Some(file),
+            }),
             Err(fs::TryLockError::WouldBlock) => Err(LockError::Busy { root }),
             Err(fs::TryLockError::Error(source)) => Err(LockError::Acquire { path, source }),
         }
+    }
+
+    pub(crate) fn release(mut self) -> std::result::Result<(), LockError> {
+        self.unlock()
+    }
+
+    fn unlock(&mut self) -> std::result::Result<(), LockError> {
+        let Some(file) = self.file.take() else {
+            return Ok(());
+        };
+        file.unlock().map_err(|source| LockError::Release {
+            root: self.root.clone(),
+            source,
+        })
     }
 
     fn validate(&self, root: &Path) -> std::result::Result<(), LockError> {
@@ -172,6 +189,20 @@ impl BuildLock {
             return Err(LockError::DifferentRoot);
         }
         Ok(())
+    }
+}
+
+impl Drop for BuildLock {
+    fn drop(&mut self) {
+        // Unlock before close: a forked child can briefly retain this description.
+        if let Err(error) = self.unlock() {
+            use std::io::Write as _;
+            drop(writeln!(
+                std::io::stderr().lock(),
+                "{}",
+                error_chain(&error)
+            ));
+        }
     }
 }
 
@@ -520,7 +551,9 @@ fn replace_pair(
 
 pub fn build(options: &Options) -> Result<Value> {
     let owner = BuildLock::acquire(&options.root)?;
-    build_locked(options, &owner)
+    let result = build_locked(options, &owner)?;
+    owner.release()?;
+    Ok(result)
 }
 
 pub(crate) fn build_locked(options: &Options, owner: &BuildLock) -> Result<Value> {

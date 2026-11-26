@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::{io, path::Path};
 
 fn sha(bytes: &[u8]) -> String {
-    hex::encode(Sha256::digest(bytes))
+    blog_application::hexadecimal(&Sha256::digest(bytes))
 }
 
 fn root_path(value: &str) -> Value {

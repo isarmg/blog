@@ -41,6 +41,12 @@ pub enum LockError {
         #[source]
         source: io::Error,
     },
+    #[error("release product asset build lock for {root:?}")]
+    Release {
+        root: PathBuf,
+        #[source]
+        source: io::Error,
+    },
     #[error("asset build lock belongs to another product root")]
     DifferentRoot,
 }

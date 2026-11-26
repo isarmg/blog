@@ -215,7 +215,7 @@ async fn committed_responses_survive_a_subsequent_writer_and_replays_read_curren
             .merge(crate::home::admin_routes())
             .merge(crate::content::public_routes())
             .layer(axum::Extension(identity))
-            .with_state(state);
+            .with_state(Arc::new(state));
         armed.store(true, Ordering::SeqCst);
         let response = app
             .oneshot(

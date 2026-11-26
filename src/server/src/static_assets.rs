@@ -1,5 +1,5 @@
 use axum::{extract::Request, response::Response};
-use blog_application::web_assets::build::BuildMode;
+use blog_application::{hexadecimal, web_assets::build::BuildMode};
 
 #[derive(Debug, thiserror::Error)]
 pub enum AssetError {
@@ -79,7 +79,7 @@ pub(crate) fn verify_identity() -> Result<(), AssetError> {
 
 fn verify_identity_bytes(bytes: &[u8], expected_sha256: &str) -> Result<(), AssetError> {
     use sha2::{Digest, Sha256};
-    let digest: String = hex::encode(Sha256::digest(bytes));
+    let digest = hexadecimal(&Sha256::digest(bytes));
     if digest != expected_sha256 {
         return Err(AssetError::DigestMismatch);
     }

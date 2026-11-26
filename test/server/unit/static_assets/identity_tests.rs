@@ -43,7 +43,7 @@ fn compiled_identity_is_consumed_and_rejects_changed_product_schema_or_source() 
         }
         let bytes = serde_json::to_vec(&identity).unwrap();
         assert!(
-            verify_identity_bytes(&bytes, &hex::encode(Sha256::digest(&bytes))).is_err(),
+            verify_identity_bytes(&bytes, &hexadecimal(&Sha256::digest(&bytes))).is_err(),
             "{field:?}"
         );
     }
@@ -55,7 +55,7 @@ fn unknown_compiled_build_mode_is_rejected_at_json_boundary() {
     let mut identity: serde_json::Value = serde_json::from_slice(BUILD_IDENTITY).unwrap();
     identity["build_mode"] = serde_json::json!("unsupported");
     let bytes = serde_json::to_vec(&identity).unwrap();
-    let digest: String = hex::encode(Sha256::digest(&bytes));
+    let digest = hexadecimal(&Sha256::digest(&bytes));
     assert!(matches!(
         verify_identity_bytes(&bytes, &digest),
         Err(AssetError::Json(_))

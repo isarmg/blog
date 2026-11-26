@@ -1,6 +1,6 @@
 //! Accepted media formats, upload profiles and bounded container inspection.
 
-use blog_application::fs_safety::EntryName;
+use blog_application::{fs_safety::EntryName, hexadecimal};
 
 #[derive(Clone, Debug)]
 pub(super) struct MediaFilename {
@@ -19,7 +19,7 @@ impl MediaFilename {
     }
 
     pub(super) fn from_digest(digest: [u8; 32], format: MediaFormat) -> Self {
-        let name = format!("{}.{}", hex::encode(digest), format.extension());
+        let name = format!("{}.{}", hexadecimal(&digest), format.extension());
         Self {
             name: EntryName::new(name)
                 .expect("invariant: digest and media extension form a single directory entry"),

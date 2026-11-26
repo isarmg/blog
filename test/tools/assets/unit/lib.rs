@@ -213,6 +213,35 @@ fn a_competing_producer_cannot_enter_build_or_replace_an_owned_pair() -> Result<
 }
 
 #[test]
+fn producer_handoff_releases_lock_with_a_retained_handle() -> Result<()> {
+    for explicit in [false, true] {
+        let fixture = tempfile::tempdir()?;
+        let root = fixture.path();
+        let owner = BuildLock::acquire(root)?;
+        let retained = owner.file.as_ref().unwrap().try_clone()?;
+        assert!(matches!(
+            BuildLock::acquire(root),
+            Err(LockError::Busy { .. })
+        ));
+
+        if explicit {
+            owner.release()?;
+        } else {
+            drop(owner);
+        }
+        let next = BuildLock::acquire(root)?;
+        drop(retained);
+        assert!(matches!(
+            BuildLock::acquire(root),
+            Err(LockError::Busy { .. })
+        ));
+        next.release()?;
+        BuildLock::acquire(root)?.release()?;
+    }
+    Ok(())
+}
+
+#[test]
 fn build_ownership_cannot_be_used_for_another_product_root() -> Result<()> {
     let first = tempfile::tempdir()?;
     let other = tempfile::tempdir()?;
