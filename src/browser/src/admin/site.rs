@@ -1,10 +1,12 @@
 use crate::common::{
     Action, ControlledField, Feedback, Field, FilePicker, load, safe_url, t, text,
+    validation_message,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
-use serde_json::{Value, json};
+use blog_interface::{ev, html};
+use serde_json::{Map, Value};
 use wasm_bindgen::JsCast;
 
 fn media_field_value(form: &Value, key: &str, nested: bool) -> String {
@@ -12,14 +14,16 @@ fn media_field_value(form: &Value, key: &str, nested: bool) -> String {
 }
 
 fn set_media_field(form: &mut Value, key: &str, nested: bool, value: Option<String>) {
-    if nested {
-        if !form["media"].is_object() {
-            form["media"] = json!({});
+    let target = if nested {
+        let media = &mut form["media"];
+        if !media.is_object() {
+            *media = Value::Object(Map::new());
         }
-        form["media"][key] = value.map_or(Value::Null, Value::String);
+        media
     } else {
-        form[key] = value.map_or(Value::Null, Value::String);
-    }
+        form
+    };
+    target[key] = value.map_or(Value::Null, Value::String);
 }
 
 #[component]
@@ -28,12 +32,11 @@ fn SiteMediaField(
     key: &'static str,
     form: RwSignal<Value>,
     upload: Action,
-    save_busy: RwSignal<bool>,
+    disabled: Signal<bool>,
     #[prop(default = true)] nested: bool,
     #[prop(default = false)] video: bool,
 ) -> impl IntoView {
-    let value = Signal::derive(move || media_field_value(&form.get(), key, nested));
-    let disabled = Signal::derive(move || upload.busy.get() || save_busy.get());
+    let value = Signal::derive(move || form.with(|form| media_field_value(form, key, nested)));
     let filename = RwSignal::new(String::new());
     Effect::new(move |_| {
         if !upload.busy.get() {
@@ -141,126 +144,241 @@ fn SiteMediaField(
     )
 }
 
-#[component]
-fn SiteAppearance(
-    form: RwSignal<Value>,
-    upload: Action,
-    save_busy: RwSignal<bool>,
-) -> impl IntoView {
-    let fields = [
-        (
-            "background_image",
-            "背景图片",
-            "Background image",
-            false,
-            false,
-        ),
-        ("avatar", "站长头像", "Site owner avatar", false, false),
-        ("logo", "网站标识", "Site logo", true, false),
-        (
-            "journey_background",
-            "时间轴背景",
-            "Journey background",
-            true,
-            false,
-        ),
-        (
-            "journal_background",
-            "随笔背景",
-            "Journal background",
-            true,
-            false,
-        ),
+fn settings_panel(title: String, content: impl IntoView) -> impl IntoView {
+    html::section()
+        .class("blog-content-panel blog-frame blog-frame--padded blog-stack")
+        .child((html::h2().class("blog-row").child(title), content))
+}
+
+fn settings_help(message: String) -> impl IntoView {
+    html::p().class("blog-field-help blog-row").child(message)
+}
+
+fn site_appearance(form: RwSignal<Value>, upload: Action, disabled: Signal<bool>) -> impl IntoView {
+    let root_images = [
+        ("background_image", "背景图片", "Background image"),
+        ("avatar", "站长头像", "Site owner avatar"),
+    ];
+    let nested_images = [
+        ("logo", "网站标识", "Site logo"),
+        ("journey_background", "时间轴背景", "Journey background"),
+        ("journal_background", "随笔背景", "Journal background"),
         (
             "guestbook_background",
             "留言板背景",
             "Message board background",
-            true,
-            false,
         ),
         (
             "love_letter_background",
             "恋爱信笺背景",
             "Love letter background",
-            true,
-            false,
         ),
-        (
-            "love_moments_cover",
-            "点点滴滴封面",
-            "Love moments cover",
-            true,
-            false,
-        ),
-        (
-            "love_photos_cover",
-            "时光相册封面",
-            "Love photos cover",
-            true,
-            false,
-        ),
-        (
-            "love_wishes_cover",
-            "祝福墙封面",
-            "Love wishes cover",
-            true,
-            false,
-        ),
+        ("love_moments_cover", "点点滴滴封面", "Love moments cover"),
+        ("love_photos_cover", "时光相册封面", "Love photos cover"),
+        ("love_wishes_cover", "祝福墙封面", "Love wishes cover"),
         (
             "toolbox_background",
             "百宝箱背景图片",
             "Toolbox background image",
-            true,
-            false,
-        ),
-        (
-            "toolbox_video",
-            "百宝箱背景视频",
-            "Toolbox background video",
-            true,
-            true,
         ),
     ];
-    View::new(
-        blog_interface::html::section()
-            .class("blog-content-panel blog-frame blog-frame--padded blog-stack")
-            .child((
-                blog_interface::html::h2().class("blog-row").child(t("外观媒体", "Appearance media")),
-                blog_interface::html::p()
-                    .class("blog-field-help blog-row")
-                    .child(t("填写图片或视频地址，或直接上传文件。留空时使用主题配色或文字，不加载默认媒体。恋爱页头图和双方头像在恋爱笔记中设置。图片最大 10 MB，MP4 / WebM 视频最大 50 MB。", "Enter an image or video URL, or upload a file. Leave empty to use theme colors or text, without bundled media. Set the love journal header and couple avatars in Love journal. Images: up to 10 MB; MP4 / WebM videos: up to 50 MB.")),
-                blog_interface::html::div()
-                    .class("form-grid site-media-grid")
-                    .child(
-                        fields
-                            .into_iter()
-                            .map(move |(key, chinese, english, nested, video)| {
-                                SiteMediaField(
-                                    component_props_builder(&SiteMediaField)
-                                        .label(t(chinese, english))
-                                        .key(key)
-                                        .form(form)
-                                        .upload(upload)
-                                        .save_busy(save_busy)
-                                        .nested(nested)
-                                        .video(video)
-                                        .build(),
-                                )
-                            })
-                            .collect_view(),
-                    ),
-                blog_interface::html::p().class("blog-row")
-                    .role("status")
-                    .aria_live("polite")
-                    .child(move || {
-                        if upload.busy.get() {
-                            t("正在上传媒体…", "Uploading media…")
-                        } else {
-                            String::new()
-                        }
-                    }),
+    let media = root_images
+        .into_iter()
+        .map(|field| (field, false, false))
+        .chain(nested_images.into_iter().map(|field| (field, true, false)))
+        .chain([(
+            (
+                "toolbox_video",
+                "百宝箱背景视频",
+                "Toolbox background video",
+            ),
+            true,
+            true,
+        )]);
+    settings_panel(
+        t("外观媒体", "Appearance media"),
+        (
+            settings_help(t(
+                "填写图片或视频地址，或直接上传文件。留空时使用主题配色或文字，不加载默认媒体。恋爱页头图和双方头像在恋爱笔记中设置。图片最大 10 MB，MP4 / WebM 视频最大 50 MB。",
+                "Enter an image or video URL, or upload a file. Leave empty to use theme colors or text, without bundled media. Set the love journal header and couple avatars in Love journal. Images: up to 10 MB; MP4 / WebM videos: up to 50 MB.",
             )),
+            html::div().class("form-grid site-media-grid").child(
+                media
+                    .map(move |((key, chinese, english), nested, video)| {
+                        SiteMediaField(
+                            component_props_builder(&SiteMediaField)
+                                .label(t(chinese, english))
+                                .key(key)
+                                .form(form)
+                                .upload(upload)
+                                .disabled(disabled)
+                                .nested(nested)
+                                .video(video)
+                                .build(),
+                        )
+                    })
+                    .collect_view(),
+            ),
+            html::p()
+                .class("blog-row")
+                .role("status")
+                .aria_live("polite")
+                .child(move || {
+                    if upload.busy.get() {
+                        t("正在上传媒体…", "Uploading media…")
+                    } else {
+                        String::new()
+                    }
+                }),
+        ),
     )
+}
+
+fn basic_settings(form: RwSignal<Value>) -> impl IntoView {
+    let fields = [
+        (
+            "web_name",
+            t("网站名称", "Site name"),
+            Field::RequiredLine(Field::DEFAULT_LIMIT),
+        ),
+        (
+            "web_title",
+            t("网站标题", "Site title"),
+            Field::Line(Field::DEFAULT_LIMIT),
+        ),
+        (
+            "author_name",
+            t("站长显示名", "Site owner display name"),
+            Field::RequiredLine(100),
+        ),
+    ]
+    .map(|(key, label, field)| field.bind(form, key, label));
+    let [promotion_title, promotion_cover, promotion_link] =
+        ["推送标题：", "推送封面：", "推送链接："].map(|label| html::code().child(label));
+    settings_panel(
+        t("基本信息", "Basic information"),
+        (
+            html::div().child(fields).class("form-grid"),
+            settings_help(t(
+                "用于文章和随笔署名；管理员登录名与密码在右上角头像的账号设置中修改。",
+                "Used as the author of articles and notes. Change administrator sign-in credentials through the account settings avatar.",
+            )),
+            Field::Paragraph(Field::DEFAULT_LIMIT).bind(form, "notices", t("公告", "Notices")),
+            settings_help(t(
+                "使用 JSON 字符串数组或每行一条公告。",
+                "Use a JSON string array or one notice per line.",
+            )),
+            html::details().child((
+                html::summary()
+                    .class("blog-row")
+                    .child(t("推送格式", "Promotion format")),
+                html::p().class("blog-row").child((
+                    promotion_title,
+                    " ",
+                    promotion_cover,
+                    " ",
+                    promotion_link,
+                )),
+            )),
+        ),
+    )
+}
+
+fn save_site(
+    form: RwSignal<Value>,
+    save: Action,
+    validation: RwSignal<String>,
+    form_node: NodeRef<html::Form>,
+) {
+    let mut payload = form.get_untracked();
+    let name = text(&payload, "author_name").trim().to_owned();
+    if !(1..=100).contains(&name.chars().count()) {
+        validation.set(t(
+            "站长显示名须包含 1–100 个字符。",
+            "Site owner display name must contain 1–100 characters.",
+        ));
+        if let Some(field) = form_node
+            .get_untracked()
+            .and_then(|node| node.query_selector("[name=author_name]").ok().flatten())
+            .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
+            && let Err(error) = field.focus()
+        {
+            web_sys::console::warn_2(&"Unable to move browser focus".into(), &error);
+        }
+        return;
+    }
+    validation.set(String::new());
+    payload["author_name"] = Value::String(name);
+    save.run(
+        "/api/v1/content/site".into(),
+        "PUT",
+        Some(payload),
+        move |saved| {
+            form.set(saved);
+            notify(t("站点设置已保存", "Site settings saved"));
+        },
+    );
+}
+
+fn settings_form(
+    form: RwSignal<Value>,
+    save: Action,
+    upload: Action,
+    validation: RwSignal<String>,
+) -> impl IntoView {
+    let form_node = NodeRef::<html::Form>::new();
+    let disabled = Signal::derive(move || save.busy.get() || upload.busy.get());
+    let covers = t("随机封面", "Random covers");
+    html::form()
+        .node_ref(form_node)
+        .child((
+            html::fieldset()
+                .child((
+                    basic_settings(form),
+                    site_appearance(form, upload, disabled),
+                    settings_panel(
+                        covers.clone(),
+                        (
+                            settings_help(t(
+                                "使用 JSON 图片地址数组或每行一个图片地址。",
+                                "Use a JSON array of image URLs or one image URL per line.",
+                            )),
+                            Field::Paragraph(Field::DEFAULT_LIMIT).bind(
+                                form,
+                                "random_cover",
+                                covers,
+                            ),
+                        ),
+                    ),
+                ))
+                .class("blog-fieldset blog-stack blog-stack--spaced")
+                .disabled(move || disabled.get())
+                .aria_label(t("网站设置", "Site settings")),
+            upload.feedback(),
+            html::button()
+                .class("blog-button")
+                .r#type("button")
+                .child(t("取消上传", "Cancel upload"))
+                .disabled(move || !upload.busy.get())
+                .on(ev::click, move |_| upload.abort()),
+            html::div()
+                .child(
+                    html::button()
+                        .child(t("保存设置", "Save settings"))
+                        .class("blog-button")
+                        .r#type("submit")
+                        .disabled(move || disabled.get()),
+                )
+                .class("blog-actions blog-flow"),
+        ))
+        .class("blog-settings-form blog-stack")
+        .on(ev::input, move |_| validation.set(String::new()))
+        .on(ev::submit, move |event| {
+            event.prevent_default();
+            if !disabled.get_untracked() {
+                save_site(form, save, validation, form_node);
+            }
+        })
 }
 
 #[component]
@@ -269,9 +387,8 @@ pub(super) fn SiteSettings() -> impl IntoView {
     let form = RwSignal::new(Value::Null);
     let save = Action::new();
     let upload = Action::new();
-    let form_node = NodeRef::<blog_interface::html::Form>::new();
     let validation = RwSignal::new(String::new());
-    let ready = Memo::new(move |_| !form.get().is_null());
+    let ready = Memo::new(move |_| form.with(|value| !value.is_null()));
     Effect::new(move |_| {
         if let Some(v) = data.current() {
             upload.abort();
@@ -279,155 +396,25 @@ pub(super) fn SiteSettings() -> impl IntoView {
             form.set(v);
         }
     });
-    View::new(
-        blog_interface::html::section()
-            .aria_label(t("网站设置", "Site settings"))
-            .child((
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .retry(Some(Callback::new(move |()| {
-                            upload.abort();
-                            data.reload();
-                        })))
-                        .build(),
-                ),
-                save.feedback(),
-                move || {
-                    (!validation.get().is_empty()).then(|| {
-                        blog_interface::html::p().class("blog-row blog-danger").role("alert").child(validation.get())
-                    })
-                },
-                move || {
-                    ready.get().then(|| {
-                        View::new(
-                            blog_interface::html::form()
-                                .node_ref(form_node)
-                                .child((
-                                    blog_interface::html::fieldset()
-                                        .child((
-                                            blog_interface::html::section()
-                                                .child((
-                                                    blog_interface::html::h2().class("blog-row")
-                                                        .child(t("基本信息", "Basic information")),
-                                                    blog_interface::html::div()
-                                                        .child((
-                                                            Field::RequiredLine(Field::DEFAULT_LIMIT).bind(form, "web_name", t(
-                                                                        "网站名称",
-                                                                        "Site name",
-                                                                    )),
-                                                            Field::Line(Field::DEFAULT_LIMIT).bind(form, "web_title", t(
-                                                                        "网站标题",
-                                                                        "Site title",
-                                                                    )),
-                                                            Field::RequiredLine(100).bind(form, "author_name", t(
-                                                                        "站长显示名",
-                                                                        "Site owner display name",
-                                                                    )),
-                                                        ))
-                                                        .class("form-grid"),
-                                                    blog_interface::html::p()
-                                                        .child(t("用于文章和随笔署名；管理员登录名与密码在右上角头像的账号设置中修改。", "Used as the author of articles and notes. Change administrator sign-in credentials through the account settings avatar."))
-                                                        .class("blog-field-help blog-row"),
-                                                    Field::Paragraph(Field::DEFAULT_LIMIT).bind(form, "notices", t("公告", "Notices")),
-                                                    blog_interface::html::p()
-                                                        .child(t("使用 JSON 字符串数组或每行一条公告。", "Use a JSON string array or one notice per line."))
-                                                        .class("blog-field-help blog-row"),
-                                                    blog_interface::html::details().child((
-                                                        blog_interface::html::summary().class("blog-row").child(t(
-                                                            "推送格式",
-                                                            "Promotion format",
-                                                        )),
-                                                        blog_interface::html::p().class("blog-row").child((
-                                                            blog_interface::html::code()
-                                                                .child("推送标题："),
-                                                            " ",
-                                                            blog_interface::html::code()
-                                                                .child("推送封面："),
-                                                            " ",
-                                                            blog_interface::html::code()
-                                                                .child("推送链接："),
-                                                        )),
-                                                    )),
-                                                ))
-                                                .class("blog-content-panel blog-frame blog-frame--padded blog-stack"),
-                                            SiteAppearance(
-                                                component_props_builder(&SiteAppearance)
-                                                    .form(form)
-                                                    .upload(upload)
-                                                    .save_busy(save.busy)
-                                                    .build(),
-                                            ),
-                                            blog_interface::html::section()
-                                                .child((
-                                                    blog_interface::html::h2().class("blog-row")
-                                                        .child(t("随机封面", "Random covers")),
-                                                    blog_interface::html::p()
-                                                        .child(t("使用 JSON 图片地址数组或每行一个图片地址。", "Use a JSON array of image URLs or one image URL per line."))
-                                                        .class("blog-field-help blog-row"),
-                                                    Field::Paragraph(Field::DEFAULT_LIMIT).bind(form, "random_cover", t("随机封面", "Random covers")),
-                                                ))
-                                                .class("blog-content-panel blog-frame blog-frame--padded blog-stack"),
-                                        ))
-                                        .class("blog-fieldset blog-stack blog-stack--spaced")
-                                        .disabled(move || save.busy.get() || upload.busy.get())
-                                        .aria_label(t("网站设置", "Site settings")),
-                                    upload.feedback(),
-                                    blog_interface::html::button()
-                                        .class("blog-button")
-                                        .r#type("button")
-                                        .child(t("取消上传", "Cancel upload"))
-                                        .disabled(move || !upload.busy.get())
-                                        .on(blog_interface::ev::click, move |_| upload.abort()),
-                                    blog_interface::html::div()
-                                        .child(
-                                            blog_interface::html::button()
-                                                .child(t("保存设置", "Save settings"))
-                                                .class("blog-button")
-                                                .r#type("submit")
-                                                .disabled(move || {
-                                                    save.busy.get() || upload.busy.get()
-                                                }),
-                                        )
-                                        .class("blog-actions blog-flow"),
-                                ))
-                                .class("blog-settings-form blog-stack")
-                                .on(blog_interface::ev::input, move |_| validation.set(String::new()))
-                                .on(blog_interface::ev::submit, move |ev| {
-                                    ev.prevent_default();
-                                    if save.busy.get_untracked() || upload.busy.get_untracked() {
-                                        return;
-                                    }
-                                    let mut f = form.get_untracked();
-                                    let name = text(&f, "author_name").trim().to_string();
-                                    let len = name.chars().count();
-                                    if !(1..=100).contains(&len) {
-                                        validation.set(t(
-                                            "站长显示名须包含 1–100 个字符。",
-                                            "Site owner display name must contain 1–100 characters.",
-                                        ));
-                                        if let Some(field) = form_node.get_untracked()
-                                            .and_then(|node| node.query_selector("[name=author_name]").ok().flatten())
-                                            .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
-                                            && let Err(error) = field.focus() { web_sys::console::warn_2(&"Unable to move browser focus".into(), &error); }
-                                        return;
-                                    }
-                                    validation.set(String::new());
-                                    f["author_name"] = json!(name);
-                                    save.run(
-                                        "/api/v1/content/site".into(),
-                                        "PUT",
-                                        Some(f),
-                                        move |v| {
-                                            form.set(v);
-                                            notify(t("站点设置已保存", "Site settings saved"));
-                                        },
-                                    );
-                                }),
-                        )
-                    })
-                },
-            ))
-            .class("blog-content-stack blog-stack"),
-    )
+    html::section()
+        .aria_label(t("网站设置", "Site settings"))
+        .child((
+            Feedback(
+                component_props_builder(&Feedback)
+                    .error(data.error)
+                    .retry(Some(Callback::new(move |()| {
+                        upload.abort();
+                        data.reload();
+                    })))
+                    .build(),
+            ),
+            save.feedback(),
+            validation_message(validation),
+            move || {
+                ready
+                    .get()
+                    .then(|| settings_form(form, save, upload, validation))
+            },
+        ))
+        .class("blog-content-stack blog-stack")
 }

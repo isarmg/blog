@@ -111,34 +111,25 @@ impl SafeByteMatchTable {
     }
 }
 
-/// Macro to create a `SafeByteMatchTable` at compile time.
+/// Build and validate a table at compile time by testing each immutable `u8`.
 ///
-/// `safe_byte_match_table!(|b| !b.is_ascii())` expands to:
-///
-/// ```rust,ignore
-/// {
-///   use crate::parser::lexer::search::SafeByteMatchTable;
-///   #[allow(clippy::eq_op, clippy::allow_attributes)]
-///   const TABLE: SafeByteMatchTable = SafeByteMatchTable::new([
-///     (!0u8.is_ascii()),
-///     (!1u8.is_ascii()),
-///     /* ... */
-///     (!255u8.is_ascii()),
-///   ]);
-///   TABLE
-/// }
-/// ```
+/// For example, `safe_byte_match_table!(|b| !b.is_ascii())` accepts non-ASCII bytes.
 macro_rules! safe_byte_match_table {
-    (|$byte:ident| $res:expr) => {{
-        use crate::parser::lexer::search::SafeByteMatchTable;
-        // Clippy creates warnings because e.g. `safe_byte_match_table!(|b| b == 0)`
-        // is expanded to `SafeByteMatchTable([0 == 0, ... ])`
-        #[allow(clippy::eq_op, clippy::allow_attributes)]
-        const TABLE: SafeByteMatchTable = seq_macro::seq!($byte in 0u8..=255 {
-            SafeByteMatchTable::new([#($res,)*])
-        });
-        TABLE
-    }};
+    (|$byte:ident| $res:expr) => {
+        const {
+            let mut entries = [false; 256];
+            let mut index = 0u8;
+            loop {
+                let $byte = index;
+                entries[index as usize] = $res;
+                if index == u8::MAX {
+                    break;
+                }
+                index += 1;
+            }
+            $crate::parser::lexer::search::SafeByteMatchTable::new(entries)
+        }
+    };
 }
 pub(crate) use safe_byte_match_table;
 

@@ -1,5 +1,5 @@
 use crate::Error;
-use blog_application::config::{EnvMapping, EnvValueKind, Loaded};
+use blog_application::config::{EnvMapping, EnvValueKind};
 use std::path::{Path, PathBuf};
 
 pub use crate::config_definition::Settings;
@@ -11,14 +11,14 @@ enum EnvironmentSource {
     Offline,
 }
 
-pub fn load(root: &Path, config: &Path) -> Result<Loaded<Settings>, Error> {
+pub fn load(root: &Path, config: &Path) -> Result<Settings, Error> {
     load_with_environment(root, config, EnvironmentSource::Runtime)
 }
 
 /// Offline operations take their complete state target from ROOT/config only.
 /// Runtime environment overrides must never redirect a maintenance operation.
 #[cfg(feature = "maintenance")]
-pub(crate) fn load_offline(root: &Path, config: &Path) -> Result<Loaded<Settings>, Error> {
+pub(crate) fn load_offline(root: &Path, config: &Path) -> Result<Settings, Error> {
     load_with_environment(root, config, EnvironmentSource::Offline)
 }
 
@@ -26,7 +26,7 @@ fn load_with_environment(
     root: &Path,
     config: &Path,
     environment_source: EnvironmentSource,
-) -> Result<Loaded<Settings>, Error> {
+) -> Result<Settings, Error> {
     if !root.is_absolute()
         || root == Path::new("/")
         || root.components().any(|part| {
@@ -82,8 +82,8 @@ fn load_with_environment(
         &[],
         |value, source| value.validate_at(root, source),
     )?;
-    settings.value.root = root.to_path_buf();
-    if config.starts_with(settings.value.media_path()) {
+    settings.root = root.to_path_buf();
+    if config.starts_with(settings.media_path()) {
         return Err(blog_application::config::ConfigError::new(
             blog_application::config::Reason::InvalidValue,
             "/media",

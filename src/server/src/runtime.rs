@@ -13,7 +13,7 @@ use std::{fs, path::Path, sync::Arc};
 
 pub(crate) async fn run(root: &Path) -> Result<(), Error> {
     static_assets::verify()?;
-    let settings = config::load(root, &root.join("config/config.json"))?.value;
+    let settings = config::load(root, &root.join("config/config.json"))?;
     initialize_logging(&settings)?;
     let database = settings.database_path();
     let media = settings.media_path();

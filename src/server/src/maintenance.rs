@@ -23,7 +23,7 @@ pub async fn initialize(root: &Path, username: &str, password: &str) -> Result<(
     crate::verify_compiled_identity()?;
     let username = admin_auth::normalize_administrator_username(username)?;
     let password = admin_auth::Password::new(password)?;
-    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?.value;
+    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?;
     PrivateDirectory::create(&settings.data_dir)?;
     let lock = crate::config::runtime_lock(&settings)?;
     let result = async {
@@ -64,7 +64,7 @@ pub async fn initialize(root: &Path, username: &str, password: &str) -> Result<(
 /// directories cannot be opened, or its database snapshot fails validation.
 pub async fn check(root: &Path) -> Result<(), Error> {
     crate::verify_compiled_identity()?;
-    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?.value;
+    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?;
     let lock = crate::config::runtime_lock(&settings)?;
     let result = async {
         PrivateDirectory::open_existing(settings.media_path())?;
@@ -87,7 +87,7 @@ pub async fn reset_password(root: &Path, username: &str, password: &str) -> Resu
     crate::verify_compiled_identity()?;
     let username = admin_auth::normalize_administrator_username(username)?;
     let password = admin_auth::Password::new(password)?;
-    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?.value;
+    let settings = crate::config::load_offline(root, &root.join("config/config.json"))?;
     let lock = crate::config::runtime_lock(&settings)?;
     let result = async {
         PrivateDirectory::open_existing(settings.media_path())?;

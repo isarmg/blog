@@ -114,7 +114,6 @@ dependencies = [
  "blog-memory-owned-borrow",
  "blog-network-web-address",
  "blog-syntax-compiler-iterators",
- "blog-syntax-index-expansion",
  "blog-text-line-layout",
  "blog-text-terminal-width",
  "blog-text-text-boundaries",
@@ -1207,10 +1206,6 @@ dependencies = [
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
 ]
-
-[[package]]
-name = "blog-syntax-index-expansion"
-version = "0.0.0"
 
 [[package]]
 name = "blog-syntax-rust-parser"

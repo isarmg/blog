@@ -1,6 +1,6 @@
 //! Current JSON configuration with explicit, typed sources. Product Serde
 //! definitions own fields, defaults and business validation; this crate owns
-//! strict parsing, precedence, provenance and safe contract diagnostics.
+//! strict parsing, precedence and safe contract diagnostics.
 
 mod managed;
 mod strict;
@@ -11,7 +11,7 @@ mod tests;
 
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::{Value, json};
-use std::{collections::BTreeMap, fmt};
+use std::fmt;
 
 const MAX_CONFIG_BYTES: usize = 1024 * 1024;
 const MAX_OVERRIDES: usize = 256;
@@ -288,13 +288,6 @@ pub fn read_environment(
     Ok(overrides)
 }
 
-pub struct Loaded<T> {
-    pub value: T,
-    /// JSON pointers to effective leaves. Values and environment contents are
-    /// absent: this map can be safely included in configuration diagnostics.
-    pub sources: BTreeMap<String, ConfigSource>,
-}
-
 /// Resolve defaults, JSON file, environment, and command line in that order.
 ///
 /// Validate product-owned field constraints at each source boundary. The hook
@@ -312,7 +305,7 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
     environment: &[Override],
     command_line: &[Override],
     validate: impl Fn(&T, ConfigSource) -> Result<(), ConfigError>,
-) -> Result<Loaded<T>, ConfigError> {
+) -> Result<T, ConfigError> {
     let mut effective = serde_json::to_value(defaults).map_err(|cause| {
         ConfigError::new(Reason::InvalidValue, "", ConfigSource::Default)
             .with_cause(ConfigCause::SerializeDefaults(cause))
@@ -336,8 +329,6 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
         Ok::<T, ConfigError>(typed)
     };
     let mut value = check(effective.clone(), ConfigSource::Default)?;
-    let mut sources = BTreeMap::new();
-    record_sources(&effective, "", ConfigSource::Default, &mut sources);
     if let Some(bytes) = file_json {
         let file = strict::parse_json(bytes, ConfigSource::File)?;
         if !file.is_object() {
@@ -347,7 +338,7 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
                 ConfigSource::File,
             ));
         }
-        merge(&mut effective, file, "", &mut sources);
+        merge(&mut effective, file);
         value = check(effective.clone(), ConfigSource::File)?;
     }
     for (overrides, source) in [
@@ -379,14 +370,12 @@ pub fn resolve_validated<T: Serialize + DeserializeOwned>(
             // unknown fields or invalid types. Product constraints are checked
             // after the complete source, not against a partly applied layer.
             value = strict::deserialize::<T>(effective.clone(), source)?;
-            remove_sources(&item.path, &mut sources);
-            record_sources(&item.value, &item.path, source, &mut sources);
         }
         if !overrides.is_empty() {
             validate_at(&value, source)?;
         }
     }
-    Ok(Loaded { value, sources })
+    Ok(value)
 }
 
 fn pointer_segments(pointer: &str) -> Option<(Vec<String>, String)> {
@@ -414,50 +403,17 @@ fn child_path(parent: &str, key: &str) -> String {
     format!("{parent}/{}", key.replace('~', "~0").replace('/', "~1"))
 }
 
-fn remove_sources(path: &str, sources: &mut BTreeMap<String, ConfigSource>) {
-    let prefix = format!("{path}/");
-    sources.retain(|key, _| key != path && !key.starts_with(&prefix));
-}
-
-fn record_sources(
-    value: &Value,
-    path: &str,
-    source: ConfigSource,
-    sources: &mut BTreeMap<String, ConfigSource>,
-) {
-    if let Value::Object(map) = value
-        && !map.is_empty()
-    {
-        for (key, child) in map {
-            record_sources(child, &child_path(path, key), source, sources);
-        }
-    } else {
-        sources.insert(path.to_string(), source);
-    }
-}
-
-fn merge(
-    current: &mut Value,
-    overlay: Value,
-    path: &str,
-    sources: &mut BTreeMap<String, ConfigSource>,
-) {
+fn merge(current: &mut Value, overlay: Value) {
     match (current, overlay) {
         (Value::Object(current), Value::Object(overlay)) => {
             for (key, value) in overlay {
-                let child = child_path(path, &key);
                 if let Some(existing) = current.get_mut(&key) {
-                    merge(existing, value, &child, sources);
+                    merge(existing, value);
                 } else {
-                    record_sources(&value, &child, ConfigSource::File, sources);
                     current.insert(key, value);
                 }
             }
         }
-        (current, overlay) => {
-            remove_sources(path, sources);
-            record_sources(&overlay, path, ConfigSource::File, sources);
-            *current = overlay;
-        }
+        (current, overlay) => *current = overlay,
     }
 }

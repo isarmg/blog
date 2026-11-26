@@ -110,12 +110,6 @@ path = "../../syntax/compiler-iterators"
 features = []
 default-features = true
 
-[dependencies.seq_macro]
-package = "blog-syntax-index-expansion"
-path = "../../syntax/index-expansion"
-features = []
-default-features = true
-
 [dependencies.oxc_ast_macros]
 package = "blog-javascript-syntax-derive"
 path = "../../javascript/syntax-derive"

@@ -6040,13 +6040,13 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "f0b32a43357509fba9c8824bef1f299981a2107e834d29bf3ff8de3df88c3c7c"
+    "Cargo.lock": "7a9d8451fb4e102d09e1371ff6f3461ae842ef17ae0852a284b87ebb62223d0d"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
     "src/application/Cargo.toml": "e883dbc59887fc0611283c7f13ef220c3c4cc42f358cddd1e848c65af5313444",
     "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
-    "src/foundation/assets/compiler/Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
+    "src/foundation/assets/compiler/Cargo.toml": "ffbf8e462f4ae93554fcc24bd0ec7cad4fafe58703e5a412fe655dbf96ff76db",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
     "src/foundation/assets/style-compiler/Cargo.toml": "c2556622a5effcbd6c0dea94e33483251955cfd44a35253dd20b1cd3240a77ad",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
@@ -34282,7 +34282,7 @@
         "src/admin_sqlite/management.rs": "d30acade08d9f79fc0ece5013ba84c3b8f565ab8f1e398236db711400df2dd8c",
         "src/admin_sqlite/mod.rs": "7f9a2020ca05f39e8714a1f65a2ec06944ae20d0059212e3a27427427a66a84e",
         "src/config/managed.rs": "0aba8a88c1c78ec5e8495e8747a3b31bef183e7e6176865862ac628654b8a565",
-        "src/config/mod.rs": "c862c5489e9ee9c7485a41ed9852999a92fb9a3c828a5c8715f3777829582e6f",
+        "src/config/mod.rs": "e130fdfcab0083f9edf74cb32d07e82a010c863b155dcbcd67e0d8b0f2c13a66",
         "src/config/strict.rs": "7e0e15673e76a7d4dcf9c31cad46bd9274487b316ba27245756c1a6f468ec65f",
         "src/configuration_contract.rs": "2b22e14e33038086c41226d93cdbeccb2898aa47bf275df9e4e728fd010c6368",
         "src/configuration_contract/rules.rs": "661427b59927b0822668c4a9854e0d6a3cd78dcf73c2393b76b6c429352972b6",
@@ -34347,7 +34347,7 @@
         "test/application/unit/admin_sqlite/login_attempts/tests.rs": "0c79313d0f0805e20dd6542897b490a3c215d0939ae37d6eb598a3f39f10b8a1",
         "test/application/unit/admin_sqlite/management/tests.rs": "a0b7f2aee55d64f985039431953d9fe8493adc8836a44ba8ed248740e9c7d71f",
         "test/application/unit/admin_sqlite/tests.rs": "4ae26d15bc847544b25c40afb6e4902e89df4fb97441fdb7d89518ddee6537f2",
-        "test/application/unit/config/tests.rs": "2f6fa6bd44911737c694b60c345d4fb0fab68e694040671bba7da76b91479821",
+        "test/application/unit/config/tests.rs": "8ee0a0809155a4d7abaff1d6aa1635545ed41afb2e69433443d15d84b278c1b0",
         "test/application/unit/configuration_contract/rules/tests.rs": "f0b492af315524a71af15f065b9705a2d233d74e6f174e70d06409ed313f9882",
         "test/application/unit/configuration_contract/tests.rs": "497b1e5a50f8153e78f8d5fcd4765c826a0cb67c6cf2973254d10376a4eaa21c",
         "test/application/unit/contracts/administrators/tests.rs": "b2820623ff48e15d44caa9b9eeac81fcbf02838caad7fe4bc0a9d83c29cd6725",
@@ -34407,7 +34407,7 @@
         "src/admin/letter.rs": "69fd34ed608a6d14e103783f250fca77096969d492c6a15402e1eef3a944769f",
         "src/admin/links.rs": "85a75c8e8a77bc98f45df5f3b2ce88dc39bff39397b2cf7700e013df1ad27cc8",
         "src/admin/moderation.rs": "ec9da87e4cf9805cdc32517c5cd3af08b6b2823ed4975caeec0c79f38b58641d",
-        "src/admin/site.rs": "0514257298313997a903c614121d6cad6097d8e8e8971991815aa652476ed85f",
+        "src/admin/site.rs": "5b200af3a6b50376c08d648b2b7b955aa0aafc0700b9848acdaa5edbb96967f9",
         "src/admin/taxonomy.rs": "71895ca42d284c1f0dda9735a5eac6ea1ac24039346b4608a215444ee87f3339",
         "src/browser.rs": "4693f0c02b5ce688816695c42efbc5dcedade7666cedde87febaa5f556a1744e",
         "src/comments.rs": "7f0c3bfa4b90fca12bf5b51dca607a2088c461d283e0db908a1c75772380956b",
@@ -34515,14 +34515,13 @@
         "src/foundation/memory/owned-borrow",
         "src/foundation/network/web-address",
         "src/foundation/syntax/compiler-iterators",
-        "src/foundation/syntax/index-expansion",
         "src/foundation/text/line-layout",
         "src/foundation/text/terminal-width",
         "src/foundation/text/text-boundaries"
       ],
       "directory": "src/foundation/assets/compiler",
       "files_sha256": {
-        "Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
+        "Cargo.toml": "ffbf8e462f4ae93554fcc24bd0ec7cad4fafe58703e5a412fe655dbf96ff76db",
         "parts/borrowed_text/.cargo_vcs_info.json": "a02da9075ae145256dab8ff224c31220d82c4389b650068154e0675533f283a1",
         "parts/borrowed_text/src/lib.rs": "9aeb83daf0098231c280727eff0fb1bbfbd7372e6bfbe0fbe038c020bb610896",
         "parts/bounded_index/.cargo_vcs_info.json": "b358523ff41c3bcee35e15a8476e79750f8f948de3c8ff8eab9ebf340e1ea67d",
@@ -34719,7 +34718,7 @@
         "parts/parser/src/lexer/numeric.rs": "9b246fd99ee9730ca033c69d0666fe06e0748bf2ea14d16dd27865329958c7df",
         "parts/parser/src/lexer/punctuation.rs": "d0eb79ffa3e4725f0b3d89e507d1d18da6b93143df4b2af529be0ff38e992b65",
         "parts/parser/src/lexer/regex.rs": "8bf419d26d520b7d48537bacbe99e0930702b65fc11ce297d75d972640aae42f",
-        "parts/parser/src/lexer/search.rs": "ba8a62e5746cfadbffdd2adbe8c1e97cd7cda05018d9a0d4ea1b22079932d248",
+        "parts/parser/src/lexer/search.rs": "d421cb7c447d168e138369db8599e795bf215ffb28fe626cdc593681a517dacd",
         "parts/parser/src/lexer/source.rs": "453ab791cdb958cb6bf6c62c82707221bef687d636cdb1154ea251e0b8bd9a19",
         "parts/parser/src/lexer/string.rs": "63943f95f0ebc5b7faf26736e40f059878f26a07b0e3839345967c60432a331e",
         "parts/parser/src/lexer/template.rs": "2daa209eedc74399df3fe19855a9b98db52197f6960f1077217419616b5cf0f1",
@@ -47823,7 +47822,7 @@
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
         "src/administrator.rs": "703bb1615220bf11cd4d949234f607bc185ea0fc518a6c70e02bc07d2fa1ec29",
         "src/app.rs": "eaa38043ca7c4a19a7fb8676d9e1458a8874d3aac5c7c966d4ac9212935ee36e",
-        "src/config.rs": "cbd22b11aa7aa6a6c3fe22d8311c9192a1ff3a615e11b7fcc23bb66921a17ade",
+        "src/config.rs": "f2bfd36e246ce8152b0f456b3079b8f610fbc4e30850b64d27049ed0ca2d0ac6",
         "src/config_definition.rs": "ccccd30fef770247ff32d4beedead7ba878efcabc3fb4e357c7de7ca443c21ac",
         "src/content/articles.rs": "b63c75c7c3721488326354c6c74cadb32157151278c46bb3d2d042da5a438302",
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
@@ -47847,12 +47846,12 @@
         "src/lib.rs": "10dc9ba109e34896bbfd3b43e7f16070a53749a47765bc9ab7ad6b5f81e8985a",
         "src/lifecycle.rs": "8757492cf14a15f3635a2225960d3f17118fc184a280d197c8a498a5a37c4f34",
         "src/main.rs": "b587a932c9a90d9780f2a81b784f5bc7342ea8dfd9ce619d87a863f2cdb35ea4",
-        "src/maintenance.rs": "350cd9ff57ff46dd753b43364caad68c22ac03ca4a95639441267e687c844f1e",
+        "src/maintenance.rs": "fd48aa154d442c9142299933024c721dacfe4ca11f1b63ae1c9d0de7dc832cb1",
         "src/media.rs": "80797c6b3b41ffd3f898f6e97e6a242f85672f33e86c25ec3315253aab2ad4fa",
         "src/media/formats.rs": "ef57e892f9dc017e59ceab0ea430fde243bf796c7064d295194f540919677a88",
         "src/media/references.rs": "11882b9dcca1a19c7c144c2dbc72a3fbc74c7b10dc8cb693403daa40a21ed30a",
         "src/media/storage.rs": "44cb32f10788fa08bd46e50afd2d7fbb5562c57cab3cbb9cdcf4f8b9cb9fbc3d",
-        "src/runtime.rs": "5f9ad464c3c0c7adb7a3bbd62b710793212cf81c13e7effb893289009bdc0f21",
+        "src/runtime.rs": "7ac2fa17c5dfb2a247944ab99bae4e42b19ef4daa828b40cd04be67fc15bdac2",
         "src/schema.rs": "bcdaf13cb66a8a7c4b3f6eb24be32bc60d29633807fecda9612012314e71a72c",
         "src/schema_definition.rs": "8ac18c726b151002f5239750395590ad896aea6e2159f1a5dcf96e30755adfe6",
         "src/static_assets.rs": "5c8ffb12f3ae5265fc7d45ba4941058442cf07f33f020b1b5a878c61fc9ed72c"
@@ -51266,14 +51265,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/syntax/index-expansion": {
-          "features": [],
-          "name": "blog-syntax-index-expansion",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/syntax/rust-parser": {
           "features": [
             "clone-impls",
@@ -53751,14 +53742,6 @@
             "proc-macro"
           ],
           "name": "blog-syntax-derive-structure",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/syntax/index-expansion": {
-          "features": [],
-          "name": "blog-syntax-index-expansion",
           "roles": [
             "compile"
           ],

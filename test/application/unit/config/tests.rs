@@ -132,7 +132,7 @@ fn resolve<T: Serialize + DeserializeOwned>(
     file_json: Option<&[u8]>,
     environment: &[Override],
     command_line: &[Override],
-) -> Result<Loaded<T>, ConfigError> {
+) -> Result<T, ConfigError> {
     resolve_validated(
         defaults,
         file_json,
@@ -143,7 +143,7 @@ fn resolve<T: Serialize + DeserializeOwned>(
 }
 
 #[test]
-fn explicit_sources_have_one_precedence_and_nested_leaf_provenance() {
+fn explicit_sources_preserve_precedence_and_merge_nested_defaults() {
     let env = read_environment(
         &[
             EnvMapping {
@@ -172,16 +172,10 @@ fn explicit_sources_have_one_precedence_and_nested_leaf_provenance() {
         &[Override::new("/listen", "127.0.0.1:10000")],
     )
     .unwrap();
-    assert_eq!(result.value.listen, "127.0.0.1:10000");
-    assert_eq!(result.value.workers, 12);
-    assert!(result.value.tls.enabled);
-    assert_eq!(result.value.tls.password, "file-secret");
-    assert_eq!(result.sources["/listen"], ConfigSource::CommandLine);
-    assert_eq!(result.sources["/workers"], ConfigSource::Environment);
-    assert_eq!(result.sources["/tls/password"], ConfigSource::File);
-    assert_eq!(result.sources["/tls/enabled"], ConfigSource::Default);
-    let diagnostic = serde_json::to_string(&result.sources).unwrap();
-    assert!(!diagnostic.contains("secret"));
+    assert_eq!(result.listen, "127.0.0.1:10000");
+    assert_eq!(result.workers, 12);
+    assert!(result.tls.enabled);
+    assert_eq!(result.tls.password, "file-secret");
 }
 
 #[test]
@@ -366,7 +360,7 @@ fn normal_current_serde_enum_contracts_work_with_safe_value_failures() {
         (&br#"{"mode":{"Port":80}}"#[..], Mode::Port(80)),
     ] {
         assert_eq!(
-            resolve(&default, Some(bytes), &[], &[]).unwrap().value.mode,
+            resolve(&default, Some(bytes), &[], &[]).unwrap().mode,
             expected
         );
     }
@@ -705,16 +699,14 @@ fn cross_field_constraints_are_checked_for_the_complete_override_source() {
             Override::new("/queue_capacity", 32),
         ],
     ] {
-        for (environment, command_line, source) in [
-            (overrides.as_slice(), &[][..], ConfigSource::Environment),
-            (&[][..], overrides.as_slice(), ConfigSource::CommandLine),
+        for (environment, command_line) in [
+            (overrides.as_slice(), &[][..]),
+            (&[][..], overrides.as_slice()),
         ] {
             let loaded = resolve_validated(&defaults, None, environment, command_line, validate)
                 .expect("a valid complete source must not depend on field application order");
-            assert_eq!(loaded.value.queue_capacity, 32);
-            assert_eq!(loaded.value.batch_size, 16);
-            assert_eq!(loaded.sources["/queue_capacity"], source);
-            assert_eq!(loaded.sources["/batch_size"], source);
+            assert_eq!(loaded.queue_capacity, 32);
+            assert_eq!(loaded.batch_size, 16);
         }
     }
     let error = resolve_validated(
