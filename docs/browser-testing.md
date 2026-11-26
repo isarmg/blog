@@ -9,7 +9,7 @@
 ```sh
 (cd src/web && npm ci && npx playwright install --with-deps chromium firefox)
 npm --prefix src/web run test:unit
-npm --prefix src/web run test:browser:blog-interface
+env -u BLOG_SMOKE_URL npm --prefix src/web run test:browser:blog-interface
 ```
 
 `npm ci` 和浏览器安装可能联网。固定版本、依赖关系及常用 API 见[测试工具说明](dependencies/testing.md)。
@@ -33,7 +33,7 @@ npm --prefix src/web run test:browser:blog-interface
 
 `test/browser/article-video.mjs` 在真实编辑器和公开文章中检查视频上传、正文光标插入、多播放器预览、保存与重新加载、受限平台嵌入和上传失败恢复。平台播放器请求使用本地响应，测试不依赖第三方服务；实际编码与媒体响应由视频输入和原生服务测试覆盖。
 
-`test/browser/style-contract.mjs` 在 390px、1280px、2560px 的明暗主题中检查后台全部页面，包括有数据的表格和横向滚动操作、分页、多行字段、Markdown 预览、媒体查看器、通知与认证错误，以及下拉菜单的正常绘制和回退交互。它同时测量实际页面边距、控件尺寸、自然换行导航和 G4 轮廓状态。`test/browser/public-style-baseline.mjs` 可通过 `BLOG_PUBLIC_BASELINE_DIST` 指定修改前的独立产物，对照公开页的布局、尺寸、字体、颜色与圆角边缘。
+`test/browser/style-contract.mjs` 在 390px、1280px、2560px 的明暗主题中检查后台全部页面，包括有数据的表格和横向滚动操作、分页、多行字段、Markdown 预览、媒体查看器、通知与认证错误，以及下拉菜单的正常绘制和回退交互。它同时测量实际页面边距、控件尺寸、自然换行导航和 G4 轮廓状态。对比公开页改动时，先分别构建修改前和当前版本的资源，再运行 `BLOG_PUBLIC_BASELINE_DIST=/旧版/dist node test/browser/public-style-baseline.mjs`。旧版目录是必需参数；日常 CI 不跑这项对比。
 
 `test/browser/corner-candidates.mjs` 检查公开页和管理页的正圆角尺寸均属于已登记样式角色，以及动态插入、属性和类变化、移除后的绘制状态。它还对相同 DOM 测量全元素样式发现与缓存候选的局部成本；设置 `BLOG_CORNER_BENCHMARK_OUT` 可保存结果，这项数据不代表整页渲染性能。
 
@@ -41,7 +41,7 @@ DOM 边界回归先运行 `bash test/interface/dom/browser/build.sh`，再执行
 
 在仓库根运行 `bash test/interface/browser/build.sh` 和 `node test/interface/browser/corner-listener-lifecycle.mjs`，可通过公开圆角 API 验证 iframe 导航、停止与析构。用例覆盖同源窗口转为跨源后释放，以及浏览器移除监听器失败时的原始错误和回调生命周期。
 
-需要验证真实持久化时，先按[开发说明](development.md)构建前端、服务端并安装测试浏览器，再从仓库根运行 `bash test/operations/smoke.sh`。它默认读取 `target/debug/blog`（或 `$CARGO_TARGET_DIR/debug/blog`），可用 `BLOG_SMOKE_BINARY` 指定其他已构建的程序。不应将 `BLOG_SMOKE_URL` 指向生产实例：部分页面脚本会创建、修改或删除内容。`test/browser/rust-native-domain.mjs` 使用真实生成资源，API 和剪贴板使用 fixture；持久化与真实数据库行为由后端和安装测试覆盖。
+要验证持久化，先按[开发说明](development.md)构建前后端并安装浏览器，再运行 `bash test/operations/smoke.sh`。它默认用 `${CARGO_TARGET_DIR:-target}/debug/blog`，也可用 `BLOG_SMOKE_BINARY` 指定程序。脚本自行选择回环端口，把临时实例地址传给浏览器；无需设置 `BLOG_SMOKE_URL`。单独跑 `browser-smoke.mjs` 时保持该变量未设置，否则它会访问指定实例；勿指向生产站点。
 
 ## WASM 启动检查
 

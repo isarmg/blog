@@ -65,7 +65,7 @@ python3 src/tools/rust-sources/manage.py verify --metadata
 python3 src/tools/check-independence.py
 ```
 
-`verify` 只检查已有收据；`refresh` 显式接纳当前文件内容，并重新生成源码清单与用途关系。生成文档不手工编辑。如果改动包目录、用途或来源说明，运行 `python3 src/tools/rust-sources/docs.py` 重建 [本地包目录](dependencies/catalog.md) 和 [来源资料索引](dependencies/origins/README.md)，再用 `--check` 核对；这两个索引不由 `manage.py refresh` 更新。原始 origin、归档和许可材料保持原字节；新增来源可追加。
+`verify` 只检查已有收据；`refresh` 显式接纳当前文件内容，并重新生成源码清单与用途关系。生成文档不手工编辑。如果改动包目录、用途、来源、Cargo 入口路径，或在包内增删、移动 Markdown 说明，运行 `python3 src/tools/rust-sources/docs.py` 重建 [本地包目录](dependencies/catalog.md) 和 [来源资料索引](dependencies/origins/README.md)，再用 `--check` 核对；这两个索引不由 `manage.py refresh` 更新。原始 origin、归档和许可材料保持原字节；新增来源可追加。
 
 `local-modifications.json` 使用 schema 1 的 `changes` 数组，每项包含 `directory`、非空 `reason`，以及可选的 `file` 或 `files`。新声明使用当前用途目录；已登记项只允许追加。路径必须是安全的仓库相对路径。
 

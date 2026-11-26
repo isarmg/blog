@@ -49,7 +49,9 @@
 
 `background_image`、`avatar` 和 `random_cover` 继续分别表示首页背景、站长头像和随机文章封面；家庭资料的 `bg_cover` 表示“家”页背景。空白媒体地址保存为 `null`，清空配置不会恢复内置图片或视频。媒体地址只接受 HTTP(S) 或站点根路径，拒绝其它协议、协议相对地址和控制字符。
 
-管理员图片上传入口为 `POST /api/v1/content/upload`，支持 PNG、JPEG、GIF、WebP，最大 10 MiB；视频上传入口为 `POST /api/v1/content/upload-video`，接受含视频轨道的 MP4、WebM，最大 50 MiB。请求体是文件原始字节，不是 JSON 或 multipart 表单；服务端按实际文件内容判断类型，用 SHA-256 命名，文件扩展名与请求 MIME 不能替代格式检查。本地资源被数据库中未删除的文章、站点外观或其它受检字段引用时，删除返回 `409 Conflict`。仅在浏览器中编辑、尚未保存的草稿不在检查范围；匿名评论与树洞消息中的纯文本提及也不阻止删除。
+管理员图片上传入口为 `POST /api/v1/content/upload`，支持 PNG、JPEG、GIF、WebP，最大 10 MiB；视频上传入口为 `POST /api/v1/content/upload-video`，接受含视频轨道的 MP4、WebM，最大 50 MiB。请求体是文件原始字节，不是 JSON 或 multipart 表单；服务端按实际文件内容判断类型，用 SHA-256 命名。上传成功返回 `id`、`path`、`mime_type` 和字节数 `size`。相同文件重复上传会复用原资源记录。
+
+删除用 `DELETE /api/v1/content/resources/{id}`，JSON 正文里的 `path` 必须是上传或列表返回的完整路径。ID 不存在返回 `404`；路径不匹配，或文件仍被已保存的文章、站点外观等引用时，返回 `409`。未保存的草稿、匿名评论和树洞消息中的纯文本提及不阻止删除。
 
 内容寻址的 `/media/<摘要>.<扩展名>` 成功响应使用 `Cache-Control: public, max-age=31536000, immutable`，包括 HEAD、范围请求和条件请求。删除文件后，源站返回 404，但浏览器或代理中已经缓存的副本仍可在有效期内使用；媒体删除不提供缓存撤回。
 

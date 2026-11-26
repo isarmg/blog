@@ -10,7 +10,7 @@ sudo journalctl -u blog.service -n 100 --utc --no-pager
 curl -fsS http://127.0.0.1:8081/readyz
 ```
 
-`/readyz` 返回 HTTP 200 和 `{"ready":true}`，表示服务能响应且 SQLite 可以执行查询，不代表代理、浏览器和上传文件均正常。另从公开地址打开首页、文章和 `/admin`，验证资源加载与登录。
+`/readyz` 返回 HTTP 200 和 `{"ready":true}` 时，服务可响应且 SQLite 查询成功。再用公开地址打开首页、带图片的文章和 `/admin`，分别检查代理、媒体和登录。
 
 运行日志为 `ROOT/logs/server.jsonl`。每个文件上限为 8 MiB，最多保留 4 个轮转文件（`server.1.jsonl` 至 `server.4.jsonl`）。记录故障时的 UTC 时间、请求路径及响应头 `X-Request-ID`，用请求 ID 关联日志，不要收集密码或 Cookie。
 
@@ -34,7 +34,9 @@ sudo systemctl stop blog.service &&
   sudo systemctl start blog.service
 ```
 
-`check` 把 `site.sqlite` 及已有的 `-wal`、`-journal` 复制到 `ROOT/run`，须预留足够空间；快照输入合计上限为 4 GiB。工具在快照上核验数据库结构、完整性、业务数据和管理员凭据；它不替代备份，也不逐个检查媒体内容。密码重置也需要这份临时快照。
+每次启动服务、离线检查和密码重置都需要临时数据库快照。它把 `site.sqlite` 及已有的 `-wal`、`-journal` 复制到 `ROOT/run`，在副本上检查结构、完整性、业务数据和管理员凭据。媒体文件不参与快照。
+
+停服维护前确认 `ROOT/run` 所在分区有足够空间。这几个数据库文件合计不能超过 4 GiB；复制并回读源文件的采集阶段共用 10 秒。磁盘慢或空间不足时，服务可能在监听端口前就启动失败，此时先看 journal。
 
 服务与工具共用实例锁，不要删除锁文件绕过占用。源码开发可停服后，以实例账号执行 `./target/debug/blog-setup --root "$BLOG_ROOT" check`。
 
@@ -42,7 +44,7 @@ sudo systemctl stop blog.service &&
 
 ## 恢复管理员访问
 
-仍能登录时使用[账号设置](usage.md#修改管理员账号)。忘记密码时，将以下 `admin` 替换为**当前**管理员用户名。先输入新密码再停服，取消提示或留空不会中断站点：
+仍能登录时使用[账号设置](usage.md#修改管理员账号)。忘记密码时，将以下 `admin` 替换为**当前**管理员用户名。新密码须为 12–1024 个 UTF-8 字节，不含 ASCII 控制字符；先输入再停服，取消提示或留空不会中断站点：
 
 ```sh
 ROOT=/opt/isarmg/blog
@@ -60,9 +62,25 @@ ROOT=/opt/isarmg/blog
 
 重置会原子更新密码并撤销原有管理员会话，不会创建新账号或更改用户名。成功后重新登录。
 
-## 备份与替换程序
+## 备份
 
-1. 停服后，将 `ROOT/config/config.json`、完整的 `data_dir`（含 `site.sqlite` 及存在的 WAL 等伴随文件）和实际 `media` 复制到实例外的受限位置。备份含凭据和会话；放在 `ROOT` 顶层的备份归档会导致维护校验失败。需保留历史日志时一并复制 `ROOT/logs`。若只是例行备份，复制成功后即可重启原服务。
-2. 在独立目录或主机还原副本，不要用硬链接与原库共享文件。恢复配置与运行账号的属主、权限，并准备服务账号所有的 `0700` 目录 `ROOT/logs` 和 `ROOT/run`。将配置中的绝对数据或媒体路径改为指向**副本**；同机演练请为副本设置未占用的回环端口。
-3. 测试升级时，将**目标版本**的已校验包放在实例账号能进入但不能写入的位置，以该账号运行包中的 `libexec/blog-setup --root 副本绝对路径 check`。`maintenance.sh --root 旧实例` 只会调用旧实例的工具，不能验证目标版本是否兼容。
-4. 检查通过后，在隔离的恢复实例启动匹配的服务，核对首页、管理员登录、已有文章及上传文件。`install.sh` 不提供原地升级，服务也不会自动迁移不匹配的数据库；检查失败时保留原版本与备份，不要重新初始化旧数据。
+停服后，将以下内容复制到实例目录外的受限位置；备份含管理员凭据和会话。复制完成后即可重启原站。
+
+- `ROOT/config/config.json`。
+- 完整的 `data_dir`，包括 `site.sqlite` 及现存的伴随文件。
+- 实际使用的媒体目录；如需保留历史日志，也复制 `ROOT/logs`。
+
+## 恢复与试升级
+
+1. 在独立位置还原配置、数据和媒体；不要与原库共享硬链接。按[配置参考](configuration.md#目录与权限)恢复属主和权限，另建服务账号所有的 `0700` 目录 `ROOT/logs` 和 `ROOT/run`。
+2. 检查副本 JSON：所有绝对数据、媒体路径都应指向副本。同机演练用未占用的回环端口。本机浏览器通过 HTTP 试登录时，只在副本设 `development=true`；测试生产模式则保持 `false`，使用独立的 HTTPS 地址。
+3. 普通恢复用原版本发行包；试升级用**目标版本**的发行包。将已校验包放在服务账号可进入但不可修改的位置。设置 `PACKAGE` 和 `COPY_ROOT` 分别指向解压包和已恢复副本的绝对路径，运行：
+
+   ```sh
+   sudo -u isarmg-blog -- "$PACKAGE/libexec/blog-setup" --root "$COPY_ROOT" check &&
+     sudo -u isarmg-blog -- "$PACKAGE/bin/blog" --root "$COPY_ROOT"
+   ```
+
+4. 该服务在前台运行。从另一终端检查副本端口的 `/readyz`，用浏览器核对管理员登录、已有文章及上传文件。演练结束按 Ctrl-C 停止副本。
+
+`install.sh` 只做首次安装。没有原地升级命令或旧结构自动迁移；不要用 `initialize` 修复旧库。若目标版本检查失败，继续使用原版本与原数据。

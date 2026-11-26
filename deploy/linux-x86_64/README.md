@@ -14,7 +14,7 @@ tar -xzpf "$archive"
 cd -P -- "${archive%.tar.gz}"
 ```
 
-归档内 `share/package.json` 列出程序、文档等不可变文件的摘要、大小和权限；`share/package.sha256` 是该清单的摘要。安装器会复核这些内容，但包内自检不能替代下载校验。正式包标记为 `kind=release`；`kind=candidate` 是候选构建。离线手册在 `share/README.md` 和 `share/docs/`。
+归档内 `share/package.json` 列出程序、文档等不可变文件的摘要、大小和权限；`share/package.sha256` 是该清单的摘要。安装器会复核包内文件，也接受候选构建。生产部署选用清单中 `kind` 为 `release` 的发行包。离线手册在 `share/README.md` 和 `share/docs/`。
 
 ## 首次安装
 
@@ -45,7 +45,7 @@ curl -fsS --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8081/r
 
 ## 接入 HTTPS
 
-内置服务监听 HTTP。生产保持 `development=false`，由反向代理终止 TLS。使用默认回环监听时，代理将站点页面、静态资源、`/media/` 和 `/api/` 一起转给 `http://127.0.0.1:8081`，不要拆到不同的浏览器源。
+生产保持 `development=false`。浏览器通过 HTTPS 访问反向代理；代理终止 TLS，用明文 HTTP/1.1 把页面、静态资源、`/media/` 和 `/api/` 一起转给 `http://127.0.0.1:8081`（默认监听地址）。上游不要配置为 HTTPS 或 h2c。
 
 代理只接收本站公开域名，将该域名和非默认端口作为上游 `Host`，保留浏览器的 `Origin` 和 `Sec-Fetch-Site`。例如从 `https://blog.example.org:8443/admin` 登录时，上游 `Host` 应是 `blog.example.org:8443`，不能改成 `127.0.0.1:8081`。仅传 `X-Forwarded-Host` 或 `X-Forwarded-Proto` 不能替代同源检查。用公开 HTTPS 地址打开首页和 `/admin`，实际登录一次。
 

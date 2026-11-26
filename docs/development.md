@@ -61,11 +61,12 @@ unset blog_password
 
 ```sh
 cargo +1.100.0 run --locked --offline -p blog-assets -- build --product-root . --offline
-cargo +1.100.0 run --locked --offline -p blog-assets -- serve --product-root . --debug --bind 127.0.0.1:5173
+cargo +1.100.0 run --locked --offline -p blog-assets -- serve --product-root . --debug \
+  --bind 127.0.0.1:5173 --proxy /api=http://127.0.0.1:18091 --proxy /media=http://127.0.0.1:18091
 cargo +1.100.0 run --locked --offline -p blog-assets -- server --product-root . --config blog-assets.json --mode development --offline
 ```
 
-`serve` 构建资源并监控变更；`preview` 直接提供已有资源，不重新构建或监控。两者都会读取 [rust-web.toml](../src/web/rust-web.toml) 的代理配置，默认把 `/api` 转发到 `127.0.0.1:8081`。要连接上面的临时实例，追加 `--proxy /api=http://127.0.0.1:18091`；预览页面中的写入也会转发，不要指向生产实例。`server` 按根 `blog-assets.json` 协调前端与服务端构建。前端源码固定为 `src/web`，该文件的 `web.dist` 只选择静态输出目录；资源编译直接调用 Rust 构建器。具体选项见[构建器说明](../src/tools/assets/README.md)。
+`serve` 构建资源并监控变更；`preview` 直接提供已有资源。两者的[默认代理](../src/web/rust-web.toml)只把 `/api` 转发到 `127.0.0.1:8081`。上例将 API 和上传后的图片、视频（`/media`）都转发到临时实例；登录与写入也会到达该实例。`server` 按根 `blog-assets.json` 协调前后端构建。前端源码固定为 `src/web`，该文件的 `web.dist` 只选择静态输出目录；资源编译直接调用 Rust 构建器。具体选项见[构建器说明](../src/tools/assets/README.md)。
 
 | 输入或输出 | 用途 |
 | --- | --- |
@@ -93,7 +94,7 @@ python3 src/tools/rust-sources/docs.py --check
 
 CI 还会生成原生与 WASM 的完整 API 文档，并将文档警告作为错误处理；本地生成命令和输出位置见[依赖参考](dependencies/README.md#api-文档)。
 
-按实际消费者和目标运行检查：根默认成员包括服务端、application 和 setup；构建器及浏览器域测试使用原生目标，浏览器应用使用 WASM 目标。
+根默认成员是服务端、application 和 setup。浏览器应用的 `blog-assets test` 和 `blog-browser-domain-tests` 都在宿主运行；WASM 目标由构建和 Clippy 检查，页面交互由 Playwright 在浏览器中执行。
 
 ```sh
 cargo +1.100.0 fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check
