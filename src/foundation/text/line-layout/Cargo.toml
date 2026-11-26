@@ -34,7 +34,7 @@ publish = false
 [features]
 default = ["std", "unicode-linebreak", "unicode-width", "smawk"]
 smawk = ["std", "dep:smawk"]
-std = ["unicode-width?/default"]
+std = []
 unicode-linebreak = ["std", "icu_segmenter"]
 unicode-width = ["dep:unicode-width"]
 

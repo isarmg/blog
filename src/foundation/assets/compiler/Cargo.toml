@@ -72,7 +72,7 @@ default-features = true
 package = "blog-text-terminal-width"
 path = "../../text/terminal-width"
 features = []
-default-features = true
+default-features = false
 
 [dependencies.compact_str]
 package = "blog-collections-inline-string"

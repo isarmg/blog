@@ -29,8 +29,8 @@
 //!
 //! This crate has one Cargo feature flag, `"cjk"`
 //! (enabled by default).
-//! It enables the [`UnicodeWidthChar::width_cjk`]
-//! and [`UnicodeWidthStr::width_cjk`],
+//! It enables the `UnicodeWidthChar::width_cjk`
+//! and `UnicodeWidthStr::width_cjk`,
 //! which perform an alternate width calculation
 //! more suited to CJK contexts. The flag also unseals the
 //! [`UnicodeWidthChar`] and [`UnicodeWidthStr`] traits.

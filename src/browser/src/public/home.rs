@@ -2,9 +2,10 @@
 use super::appearance::{avatar, site_name};
 use super::articles::Card;
 use super::shell::{Chrome, notices, site_data};
-use crate::common::{Data, href, list, load, load_typed, query, safe_url, t, text};
+use crate::common::{Data, href, load, load_typed, query, safe_url, t, text};
 use crate::models::{
-    ArticleSummary, Category, HomeSection as HomeSectionModel, HomeSource, Label, Page, SiteStats,
+    ArticleSummary, Category, HomeSection as HomeSectionModel, HomeSource, Label, Page, Site,
+    SiteStats,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -12,7 +13,6 @@ use blog_interface::ev;
 use blog_interface::html;
 use blog_interface::modal::ModalSurface;
 use blog_interface::prelude::*;
-use serde_json::{Value, json};
 
 const RECENT_MESSAGES: usize = 9;
 
@@ -78,6 +78,257 @@ fn label_links(data: Data<Vec<Label>>) -> impl IntoView {
     }
 }
 
+#[derive(Clone)]
+struct PushNotice {
+    title: String,
+    cover: String,
+    link: String,
+}
+
+fn home_notices(site: Data<Site>) -> (RwSignal<String>, RwSignal<Option<PushNotice>>) {
+    let banner = RwSignal::new(String::new());
+    let push = RwSignal::new(None);
+    Effect::new(move |_| {
+        let items = site.with_current(|value| {
+            notices(
+                value
+                    .and_then(|site| site.notices.as_deref())
+                    .unwrap_or_default(),
+            )
+        });
+        let mut fields = [None; 3];
+        let mut public = Vec::new();
+        for item in &items {
+            if let Some((index, value)) = ["推送标题：", "推送封面：", "推送链接："]
+                .into_iter()
+                .enumerate()
+                .find_map(|(index, prefix)| item.strip_prefix(prefix).map(|value| (index, value)))
+            {
+                fields[index].get_or_insert(value);
+            } else {
+                public.push(item.as_str());
+            }
+        }
+        banner.set(public.join(" · "));
+        let [title, cover, link] = fields.map(Option::unwrap_or_default);
+        if title.is_empty() || safe_url(link, false).is_none() {
+            return;
+        }
+        let key = format!("blog-push:{link}");
+        let store = window().local_storage().ok().flatten();
+        if store
+            .as_ref()
+            .is_some_and(|store| store.get_item(&key).ok().flatten().as_deref() == Some("seen"))
+        {
+            return;
+        }
+        let notice = PushNotice {
+            title: title.into(),
+            cover: cover.into(),
+            link: link.into(),
+        };
+        let timer = blog_interface::thread_bound::SendWrapper::new(
+            blog_interface::timers::callback::Timeout::new(2000, move || {
+                push.set(Some(notice));
+                if let Some(store) = store
+                    && let Err(error) = store.set_item(&key, "seen")
+                {
+                    web_sys::console::debug_2(
+                        &"Notice receipt remains limited to this document".into(),
+                        &error,
+                    );
+                }
+            }),
+        );
+        on_cleanup(move || drop(timer));
+    });
+    (banner, push)
+}
+
+fn push_dialog(push: RwSignal<Option<PushNotice>>) -> impl IntoView {
+    move || {
+        push.get().map(|notice| {
+            let close = Callback::new(move |()| push.set(None));
+            let title = t("每日推荐", "Daily recommendation");
+            html::div()
+                .class("push-backdrop")
+                .role("presentation")
+                .child(ModalSurface(
+                    component_props_builder(&ModalSurface)
+                        .class("push-dialog")
+                        .label(title.clone())
+                        .close(close)
+                        .dismiss_on_backdrop(true)
+                        .children(ToChildren::to_children(move || {
+                            (
+                                html::button()
+                                    .child("×")
+                                    .class("push-close")
+                                    .r#type("button")
+                                    .attr("data-blog-initial-focus", "")
+                                    .aria_label(t("关闭每日推荐", "Close daily recommendation"))
+                                    .on(ev::click, move |_| close.run(())),
+                                html::h2().child(title.clone()),
+                                html::h3().child(notice.title.clone()),
+                                safe_url(&notice.cover, false).map(|url| {
+                                    html::img().src(url).alt(t("推荐封面", "Recommended cover"))
+                                }),
+                                html::a()
+                                    .child(t("立即前往 →", "Visit now →"))
+                                    .href(safe_url(&notice.link, false).map(|url| href(&url)))
+                                    .target("_blank")
+                                    .rel("noopener noreferrer")
+                                    .on(ev::click, move |_| close.run(())),
+                            )
+                        }))
+                        .build(),
+                ))
+                .on(ev::click, move |event| {
+                    if event.target() == event.current_target() {
+                        close.run(());
+                    }
+                })
+        })
+    }
+}
+
+fn profile_stat(label: String, count: impl IntoView) -> impl IntoView {
+    html::span().child((label, html::strong().child(count)))
+}
+
+fn home_profile(
+    site: Data<Site>,
+    stats: Data<SiteStats>,
+    categories: Data<Vec<Category>>,
+) -> impl IntoView {
+    html::section().class("aside-profile").child((
+        html::div().class("aside-avatar-wrap").child(move || {
+            site.with_current(|site| {
+                avatar(
+                    site_name(site),
+                    site.and_then(|site| site.avatar.as_deref())
+                        .unwrap_or_default(),
+                    "aside-avatar",
+                    t("站长头像", "Site owner avatar"),
+                )
+            })
+        }),
+        html::h2().child(move || {
+            site.with_current(|site| {
+                site.and_then(|site| site.web_name.as_deref())
+                    .filter(|name| !name.is_empty())
+                    .unwrap_or("blog")
+                    .to_owned()
+            })
+        }),
+        html::div().class("aside-stats").child((
+            profile_stat(t("📖 文章", "📖 Articles"), move || {
+                stats.with_current(|stats| stats.map_or(0, |stats| stats.article_count))
+            }),
+            profile_stat(t("📒 分类", "📒 Categories"), move || {
+                categories.with_current(|rows| rows.map_or(0, Vec::len))
+            }),
+            profile_stat(t("🔥 访问量", "🔥 Views"), move || {
+                stats.with_current(|stats| stats.map_or(0, |stats| stats.view_count))
+            }),
+        )),
+    ))
+}
+
+fn home_search() -> impl IntoView {
+    let language = query("lang");
+    let label = t("搜索", "Search");
+    html::form()
+        .class("aside-search")
+        .action("/search")
+        .method("get")
+        .child((
+            (!language.is_empty())
+                .then(|| html::input().r#type("hidden").name("lang").value(language)),
+            html::label().child(label.clone()).r#for("home-search"),
+            html::div().child((
+                html::input()
+                    .id("home-search")
+                    .name("q")
+                    .maxlength("200")
+                    .placeholder(t("搜索文章", "Search articles")),
+                html::button().child("⌕").r#type("submit").aria_label(label),
+            )),
+        ))
+}
+
+fn category_links(categories: Data<Vec<Category>>) -> impl IntoView {
+    const GRADIENTS: [&str; 4] = [
+        "linear-gradient(110deg,#358bff,#15c6ff)",
+        "linear-gradient(110deg,#18c9a7,#1eebeb)",
+        "linear-gradient(110deg,#ff6655,#ffbf37)",
+        "linear-gradient(110deg,#8c72e9,#d3a4f4)",
+    ];
+    html::section()
+        .class("aside-categories")
+        .aria_label(t("分类速览", "Category overview"))
+        .child(move || {
+            categories.with_current(|value| {
+                value
+                    .into_iter()
+                    .flatten()
+                    .enumerate()
+                    .map(|(i, category)| {
+                        html::a()
+                            .href(href(&format!("/sort?sort_id={}", category.id)))
+                            .style(format!("background:{}", GRADIENTS[i % GRADIENTS.len()]))
+                            .child((
+                                html::small().child(t("速览", "Overview")),
+                                html::strong().child(category.sort_name.clone()),
+                                html::span()
+                                    .child(category.sort_description.clone().unwrap_or_default()),
+                            ))
+                    })
+                    .collect_view()
+            })
+        })
+}
+
+fn home_aside(
+    site: Data<Site>,
+    stats: Data<SiteStats>,
+    categories: Data<Vec<Category>>,
+    recommended: Data<Page<ArticleSummary>>,
+    labels: Data<Vec<Label>>,
+    messages: Data,
+) -> impl IntoView {
+    html::aside()
+        .class("home-aside")
+        .aria_label(t("网站侧栏", "Site sidebar"))
+        .child((
+            home_profile(site, stats, categories),
+            home_search(),
+            recommendations(recommended),
+            html::section().class("aside-labels").child((
+                html::h2().child(t("🏷 标签", "🏷 Tags")),
+                html::div().child(label_links(labels)),
+            )),
+            html::section().class("aside-latest").child((
+                html::h2().child(t("💬 最新弹幕", "💬 Recent messages")),
+                html::div().child(move || {
+                    messages.with_current(|value| {
+                        value
+                            .into_iter()
+                            .flat_map(|value| {
+                                value.as_array().expect(
+                                    "invariant: latest messages passed the list response contract",
+                                )
+                            })
+                            .take(RECENT_MESSAGES)
+                            .map(|message| html::p().child(text(message, "message")))
+                            .collect_view()
+                    })
+                }),
+            )),
+            category_links(categories),
+        ))
+}
+
 #[component]
 pub(super) fn Home() -> impl IntoView {
     let site = site_data();
@@ -92,46 +343,7 @@ pub(super) fn Home() -> impl IntoView {
     let messages = load(Signal::derive(|| {
         format!("/api/v1/tree-hole?size={RECENT_MESSAGES}")
     }));
-    let push = RwSignal::new(None::<Value>);
-    Effect::new(move |_| {
-        let items = site
-            .current()
-            .map_or_default(|v| notices(&v.notices.unwrap_or_default()));
-        let get = |prefix: &str| {
-            items
-                .iter()
-                .find_map(|s| s.strip_prefix(prefix).map(str::to_string))
-                .unwrap_or_default()
-        };
-        let title = get("推送标题：");
-        let link = get("推送链接：");
-        if title.is_empty() || safe_url(&link, false).is_none() {
-            return;
-        }
-        let key = format!("blog-push:{link}");
-        let store = window().local_storage().ok().flatten();
-        if store
-            .as_ref()
-            .is_some_and(|s| s.get_item(&key).ok().flatten().as_deref() == Some("seen"))
-        {
-            return;
-        }
-        let value = json!({"title":title,"link":link,"cover":get("推送封面：")});
-        let timer = blog_interface::thread_bound::SendWrapper::new(
-            blog_interface::timers::callback::Timeout::new(2000, move || {
-                push.set(Some(value));
-                if let Some(s) = store
-                    && let Err(error) = s.set_item(&key, "seen")
-                {
-                    web_sys::console::debug_2(
-                        &"Notice receipt remains limited to this document".into(),
-                        &error,
-                    );
-                }
-            }),
-        );
-        on_cleanup(move || drop(timer));
-    });
+    let (banner, push) = home_notices(site);
     View::new(Chrome(
         component_props_builder(&Chrome)
             .home(true)
@@ -145,254 +357,34 @@ pub(super) fn Home() -> impl IntoView {
                         "首页栏目加载失败",
                         "Unable to load home sections",
                     ))),
-                    html::div()
-                        .child((
-                            html::aside()
-                                .child((
-                                    html::section()
-                                        .child((
-                                            html::div()
-                                                .child(move || {
-                                                    site.with_current(|site| {
-                                                        avatar(
-                                                            site_name(site),
-                                                            site.and_then(|site| {
-                                                                site.avatar.as_deref()
-                                                            })
-                                                            .unwrap_or_default(),
-                                                            "aside-avatar",
-                                                            t("站长头像", "Site owner avatar"),
-                                                        )
-                                                    })
-                                                })
-                                                .class("aside-avatar-wrap"),
-                                            html::h2().child(move || {
-                                                site.current()
-                                                    .map(|v| v.web_name.unwrap_or_default())
-                                                    .filter(|s| !s.is_empty())
-                                                    .unwrap_or("blog".into())
-                                            }),
-                                            html::div()
-                                                .child((
-                                                    html::span().child((
-                                                        t("📖 文章", "📖 Articles"),
-                                                        html::strong().child(move || {
-                                                            stats
-                                                                .current()
-                                                                .map_or(0, |v| v.article_count)
-                                                        }),
-                                                    )),
-                                                    html::span().child((
-                                                        t("📒 分类", "📒 Categories"),
-                                                        html::strong().child(move || {
-                                                            categories
-                                                                .current()
-                                                                .unwrap_or_default()
-                                                                .len()
-                                                        }),
-                                                    )),
-                                                    html::span().child((
-                                                        t("🔥 访问量", "🔥 Views"),
-                                                        html::strong().child(move || {
-                                                            stats
-                                                                .current()
-                                                                .map_or(0, |v| v.view_count)
-                                                        }),
-                                                    )),
-                                                ))
-                                                .class("aside-stats"),
-                                        ))
-                                        .class("aside-profile"),
-                                    html::form()
-                                        .child((
-                                            (!query("lang").is_empty()).then(|| {
-                                                View::new(
-                                                    html::input()
-                                                        .r#type("hidden")
-                                                        .name("lang")
-                                                        .value(query("lang")),
-                                                )
-                                            }),
-                                            html::label()
-                                                .child(t("搜索", "Search"))
-                                                .r#for("home-search"),
-                                            html::div().child((
-                                                html::input()
-                                                    .id("home-search")
-                                                    .name("q")
-                                                    .maxlength("200")
-                                                    .placeholder(t("搜索文章", "Search articles")),
-                                                html::button()
-                                                    .child("⌕")
-                                                    .r#type("submit")
-                                                    .aria_label(t("搜索", "Search")),
-                                            )),
-                                        ))
-                                        .class("aside-search")
-                                        .action("/search")
-                                        .method("get"),
-                                    recommendations(recommended),
-                                    html::section()
-                                        .child((
-                                            html::h2().child(t("🏷 标签", "🏷 Tags")),
-                                            html::div().child(label_links(labels)),
-                                        ))
-                                        .class("aside-labels"),
-                                    html::section()
-                                        .child((
-                                            html::h2()
-                                                .child(t("💬 最新弹幕", "💬 Recent messages")),
-                                            html::div().child(move || {
-                                                list(messages.current())
-                                                    .into_iter()
-                                                    .take(RECENT_MESSAGES)
-                                                    .map(|m| {
-                                                        View::new(
-                                                            html::p().child(text(&m, "message")),
-                                                        )
-                                                    })
-                                                    .collect_view()
-                                            }),
-                                        ))
-                                        .class("aside-latest"),
-                                    html::section()
-                                        .child(move || {
-                                            categories
-                                                .current()
-                                                .unwrap_or_default()
-                                                .into_iter()
-                                                .enumerate()
-                                                .map(|(i, c)| {
-                                                    View::new(
-    html::a()
-        .child(
-            (
-                    html::small()
-                    .child( t("速览",
-                    "Overview")),
-                    html::strong()
-                    .child( c.sort_name.clone()),
-                    html::span()
-                    .child( c.sort_description
-                    .clone().unwrap_or_default())
-                ,),
-        )
-        .style(
-            format!(
-                "background:{}", ["linear-gradient(110deg,#358bff,#15c6ff)",
-                "linear-gradient(110deg,#18c9a7,#1eebeb)",
-                "linear-gradient(110deg,#ff6655,#ffbf37)",
-                "linear-gradient(110deg,#8c72e9,#d3a4f4)"] [i % 4]
-            ),
-        )
-        .href(href(&format!("/sort?sort_id={}", c.id))),
-)
-                                                })
-                                                .collect_view()
-                                        })
-                                        .class("aside-categories")
-                                        .aria_label(t("分类速览", "Category overview")),
-                                ))
-                                .class("home-aside")
-                                .aria_label(t("网站侧栏", "Site sidebar")),
-                            html::div()
-                                .child((
-                                    html::div()
-                                        .child((
-                                            html::span().child("🔊").aria_hidden("true"),
-                                            html::p().child(move || {
-                                                site.current()
-                                                    .map(|v| {
-                                                        notices(&v.notices.unwrap_or_default())
-                                                            .into_iter()
-                                                            .filter(|s| {
-                                                                ![
-                                                                    "推送标题：",
-                                                                    "推送封面：",
-                                                                    "推送链接：",
-                                                                ]
-                                                                .iter()
-                                                                .any(|p| s.starts_with(p))
-                                                            })
-                                                            .collect::<Vec<_>>()
-                                                            .join(" · ")
-                                                    })
-                                                    .filter(|s| !s.is_empty())
-                                                    .unwrap_or(t("欢迎光临", "Welcome"))
-                                            }),
-                                        ))
-                                        .class("announcement"),
-                                    For(component_props_builder(&For)
-                                        .each(move || sections.current().unwrap_or_default())
-                                        .key(|s| s.id)
-                                        .children(move |section| {
-                                            View::new(HomeSection(
-                                                component_props_builder(&HomeSection)
-                                                    .section(section)
-                                                    .build(),
-                                            ))
-                                        })
-                                        .build()),
-                                ))
-                                .class("home-content"),
-                        ))
-                        .class("home-layout"),
-                    move || {
-                        push.get().map(|recommendation| {
-                            let close = Callback::new(move |()| push.set(None));
-                            html::div()
-                                .class("push-backdrop")
-                                .role("presentation")
-                                .child(ModalSurface(
-                                    component_props_builder(&ModalSurface)
-                                        .class("push-dialog")
-                                        .label(t("每日推荐", "Daily recommendation"))
-                                        .close(close)
-                                        .dismiss_on_backdrop(true)
-                                        .children(ToChildren::to_children(move || {
-                                            (
-                                                html::button()
-                                                    .child("×")
-                                                    .class("push-close")
-                                                    .r#type("button")
-                                                    .attr("data-blog-initial-focus", "")
-                                                    .aria_label(t(
-                                                        "关闭每日推荐",
-                                                        "Close daily recommendation",
-                                                    ))
-                                                    .on(ev::click, move |_| close.run(())),
-                                                html::h2()
-                                                    .child(t("每日推荐", "Daily recommendation")),
-                                                html::h3().child(text(&recommendation, "title")),
-                                                safe_url(&text(&recommendation, "cover"), false)
-                                                    .map(|url| {
-                                                        html::img()
-                                                            .src(url)
-                                                            .alt(t("推荐封面", "Recommended cover"))
-                                                    }),
-                                                html::a()
-                                                    .child(t("立即前往 →", "Visit now →"))
-                                                    .href(
-                                                        safe_url(
-                                                            &text(&recommendation, "link"),
-                                                            false,
-                                                        )
-                                                        .map(|url| href(&url)),
-                                                    )
-                                                    .target("_blank")
-                                                    .rel("noopener noreferrer")
-                                                    .on(ev::click, move |_| close.run(())),
-                                            )
-                                        }))
-                                        .build(),
-                                ))
-                                .on(ev::click, move |event| {
-                                    if event.target() == event.current_target() {
-                                        close.run(());
+                    html::div().class("home-layout").child((
+                        home_aside(site, stats, categories, recommended, labels, messages),
+                        html::div().class("home-content").child((
+                            html::div().class("announcement").child((
+                                html::span().child("🔊").aria_hidden("true"),
+                                html::p().child(move || {
+                                    let summary = banner.get();
+                                    if summary.is_empty() {
+                                        t("欢迎光临", "Welcome")
+                                    } else {
+                                        summary
                                     }
+                                }),
+                            )),
+                            For(component_props_builder(&For)
+                                .each(move || sections.current().unwrap_or_default())
+                                .key(|section| section.id)
+                                .children(move |section| {
+                                    HomeSection(
+                                        component_props_builder(&HomeSection)
+                                            .section(section)
+                                            .build(),
+                                    )
                                 })
-                        })
-                    },
+                                .build()),
+                        )),
+                    )),
+                    push_dialog(push),
                 )
             }))
             .build(),

@@ -6046,7 +6046,7 @@
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
     "src/application/Cargo.toml": "e883dbc59887fc0611283c7f13ef220c3c4cc42f358cddd1e848c65af5313444",
     "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
-    "src/foundation/assets/compiler/Cargo.toml": "ffbf8e462f4ae93554fcc24bd0ec7cad4fafe58703e5a412fe655dbf96ff76db",
+    "src/foundation/assets/compiler/Cargo.toml": "a1b8ccb028a390571bba5a2279b91051ffb40bd0270d78fa6d4085ba845c77d5",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
     "src/foundation/assets/style-compiler/Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
@@ -6209,7 +6209,7 @@
     "src/foundation/text/compile-time-text-macros/Cargo.toml": "625345ef2db0e01372c988b9bf82ef095d7b7ecf45231fbcfbcc1dea2fef049c",
     "src/foundation/text/compile-time-text/Cargo.toml": "0321defdfc72689cebb822a33d69a122095c7067ebc050b86478399bc17e825f",
     "src/foundation/text/inline-ascii/Cargo.toml": "8b9056ac99cda852663c68a807b5aba17d7f6f668271ea9bff98c5775b276036",
-    "src/foundation/text/line-layout/Cargo.toml": "1e47969cb2f30767f5d1d05ceb115dbfc868b059965bc23224ce5d4016dbfa46",
+    "src/foundation/text/line-layout/Cargo.toml": "37d54e9665d7b22db26bdc16de734c1dc905aa7b125a9bf4b2d72520ad04b9a1",
     "src/foundation/text/macro-identifier-case/Cargo.toml": "57aecabbc61a5b88323473b2ebf249cd8c32747dd261cd8e97c75a4a3a809fbd",
     "src/foundation/text/monotone-minima/Cargo.toml": "8eb5d8bf2d5a2d92f1b33762f6fde17dc11d644f52970b3c5316683da2954548",
     "src/foundation/text/pattern-search/Cargo.toml": "9982b7fa69e7817f5ff3a4394e2c1f10048a2acc447013fd525206a010ac93bc",
@@ -34433,7 +34433,7 @@
         "src/public/appearance.rs": "b677e5d8b65916c5bf362e6a1eb4b74000e9f7d7fc5f5907a4237bb57fda6b98",
         "src/public/articles.rs": "74ea404fac7b565aa94af2bd68e0d785aa87ab14c66b2e2dbeece86f92730bfa",
         "src/public/guestbook.rs": "3ac530d0a6c382216538edeaf162ca15f8d3458021a131fcad5a9a7fb759e88a",
-        "src/public/home.rs": "0a685eb8d4b83b46b9e5f2e2a73fd99daeba9e7e2d9849ff762bcbb2b6850c63",
+        "src/public/home.rs": "a1296b4b0964613bc60cd0f9c677e152ae3a86095c116bdd2194ca4a5aeea76c",
         "src/public/journal.rs": "2cc52a31d2faed93765d73b239cca52f8c5282af8cb43eb192388b8416f34185",
         "src/public/love.rs": "c573ec5ae71938a9684cf837b0ee8d59a1d2a495c2ae33e0fd905aaf359cd8c9",
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
@@ -34521,7 +34521,7 @@
       ],
       "directory": "src/foundation/assets/compiler",
       "files_sha256": {
-        "Cargo.toml": "ffbf8e462f4ae93554fcc24bd0ec7cad4fafe58703e5a412fe655dbf96ff76db",
+        "Cargo.toml": "a1b8ccb028a390571bba5a2279b91051ffb40bd0270d78fa6d4085ba845c77d5",
         "parts/borrowed_text/.cargo_vcs_info.json": "a02da9075ae145256dab8ff224c31220d82c4389b650068154e0675533f283a1",
         "parts/borrowed_text/src/lib.rs": "9aeb83daf0098231c280727eff0fb1bbfbd7372e6bfbe0fbe038c020bb610896",
         "parts/bounded_index/.cargo_vcs_info.json": "b358523ff41c3bcee35e15a8476e79750f8f948de3c8ff8eab9ebf340e1ea67d",
@@ -45310,7 +45310,7 @@
       "directory": "src/foundation/text/line-layout",
       "files_sha256": {
         ".cargo_vcs_info.json": "3da9e0d5c68ed674dfe78a41e26f4b4c50938c575584ff0a9519220099da1960",
-        "Cargo.toml": "1e47969cb2f30767f5d1d05ceb115dbfc868b059965bc23224ce5d4016dbfa46",
+        "Cargo.toml": "37d54e9665d7b22db26bdc16de734c1dc905aa7b125a9bf4b2d72520ad04b9a1",
         "dprint.json": "22ea366aae4121d5924e467ab5ef2bc35ce963487e7aeb51f678b0edbddb9ca1",
         "src/columns.rs": "853673cef877f3b12b07a4dc9b6dc1fce794d768221ceb2c471e8a4c6b66e442",
         "src/core.rs": "c72806a026dfee1fea53e8cd345d591904adafdc74685f7bc64fa15b463835e5",
@@ -45848,7 +45848,7 @@
         ".cargo_vcs_info.json": "2b3ffdf5745bce739a2d8c7c277074ec5f1753df8323746cc012ca2c2fe2d0b0",
         "Cargo.toml": "3772a95afb91d63d5cc6dbc2efb22797f4b037fb6e6cf3168ee911d7c5c517e2",
         "scripts/unicode.py": "c0d9718de758d5729cef3def36cf9fa2c853b53cffd28fc2471ae694db04ba77",
-        "src/lib.rs": "be8917e1a821806c0ce7a392564c72731a5f7d02155429a37b08571ad246a0bf",
+        "src/lib.rs": "ec20421e7fc5646118ca7e996dc4d454747b43f8e6bb7f76b73b59034672f3bd",
         "src/tables.rs": "f02cd91e9ff03d4ad8a21a0c47bb9aa4529ba4b0a8d1c18d21c7e212d33d8fe4"
       },
       "layer": "text",
@@ -47831,7 +47831,7 @@
         "src/content/family.rs": "d8e3ac7edaf53f38e8de459de73b4017f24de8059fe0689079a35ea9829b55b1",
         "src/content/guestbook.rs": "36f05b37e2a8cef38528174ee98a52247170078d41631fb55719b5ca165ebcb4",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
-        "src/content/letter.rs": "a43b2b08718247477f3698d84853a67a2eb0c2eaa84dee124aa32705dfcdabf3",
+        "src/content/letter.rs": "0ee63cf6547973a87251519012dbe16802f801be54ad8bb2ba9a953fc96bf0c7",
         "src/content/links.rs": "66a56657071430eaaef03a30c88ce8c9f2a3e1414a68badc4b2362500f2c972f",
         "src/content/mod.rs": "7a54c3213fa6de82c6e2e053987172b5802e25f0561b68759184e9500f6008c8",
         "src/content/notes.rs": "36de5f35daca88c128e5411b91c0152afebb6cbc1c81c9947d878c7e02826b76",
@@ -51424,10 +51424,7 @@
           "version": "0.0.0"
         },
         "src/foundation/text/terminal-width": {
-          "features": [
-            "cjk",
-            "default"
-          ],
+          "features": [],
           "name": "blog-text-terminal-width",
           "roles": [
             "compile"
@@ -53905,10 +53902,7 @@
           "version": "0.0.0"
         },
         "src/foundation/text/terminal-width": {
-          "features": [
-            "cjk",
-            "default"
-          ],
+          "features": [],
           "name": "blog-text-terminal-width",
           "roles": [
             "compile"

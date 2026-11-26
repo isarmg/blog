@@ -81,10 +81,10 @@ fn stored_content(stored: &StoredLetter) -> Result<LetterContent, AppError> {
     serde_json::from_str(raw).map_err(AppError::StoredLetter)
 }
 
-async fn load_stored_letter(
+async fn load_author_letter(
     connection: &mut sqlx::SqliteConnection,
-    author: i64,
-) -> Result<Option<StoredLetter>, AppError> {
+) -> Result<(i64, Option<StoredLetter>), AppError> {
+    let author = crate::site_author_id(&mut *connection).await?;
     // The reserved type is scoped to the current site author. Detect duplicate
     // rows rather than choosing a different visible letter after hiding one.
     let mut rows = sqlx::query_as::<_, StoredLetter>(
@@ -100,15 +100,14 @@ async fn load_stored_letter(
             "站点作者存在多份信笺",
         ));
     }
-    Ok(rows.pop())
+    Ok((author, rows.pop()))
 }
 
 pub(super) async fn public_letter(
     State(state): State<AppState>,
 ) -> ApiResult<Option<LetterContent>> {
-    let author = crate::site_author_id(&state.pool).await?;
     let mut connection = state.pool.acquire().await?;
-    let Some(stored) = load_stored_letter(&mut connection, author).await? else {
+    let (_, Some(stored)) = load_author_letter(&mut connection).await? else {
         return Ok(Json(None));
     };
     let content = stored_content(&stored)?;
@@ -116,9 +115,8 @@ pub(super) async fn public_letter(
 }
 
 pub(super) async fn admin_letter(State(state): State<AppState>) -> ApiResult<ManagedLetter> {
-    let author = crate::site_author_id(&state.pool).await?;
     let mut connection = state.pool.acquire().await?;
-    let Some(stored) = load_stored_letter(&mut connection, author).await? else {
+    let (_, Some(stored)) = load_author_letter(&mut connection).await? else {
         // A read has no side effects. An empty private draft is only a UI model.
         return Ok(Json(ManagedLetter::default()));
     };
@@ -141,8 +139,8 @@ pub(super) async fn save_letter(
     let encoded =
         serde_json::to_string(&content).expect("invariant: letter strings serialize to JSON");
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let author = crate::site_author_id(&mut *transaction).await?;
-    if let Some(stored) = load_stored_letter(&mut transaction, author).await? {
+    let (author, stored) = load_author_letter(&mut transaction).await?;
+    if let Some(stored) = stored {
         stored_content(&stored)?;
         sqlx::query(
             "UPDATE wei_yan SET content=?,is_public=? WHERE id=? AND type='letter' AND user_id=?",
