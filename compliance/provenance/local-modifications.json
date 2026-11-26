@@ -4891,6 +4891,18 @@
       "file": "src/validator/types.rs",
       "reason": "Document component-specific return information without unresolved rustdoc links in core-module-only builds.",
       "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/network/web-address",
+      "files": [
+        "src/address/mod.rs",
+        "src/address/origin.rs",
+        "src/address/parser.rs",
+        "src/address/path_segments.rs",
+        "src/form/mod.rs"
+      ],
+      "reason": "Integrate the complete runtime changes from url 2.5.9 and form_urlencoded 1.2.3, including the upstream origin policy for RUSTSEC-2026-0592. Retain local module paths, consolidated features and central tests.",
+      "production_behavior_change": true
     }
   ]
 }

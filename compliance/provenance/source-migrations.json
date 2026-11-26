@@ -12473,6 +12473,88 @@
         }
       ],
       "retired_origins": []
+    },
+    {
+      "id": "import-url-2-5-9-and-form-urlencoded-1-2-3",
+      "reason": "Record the checksum-verified url 2.5.9 and form_urlencoded 1.2.3 archives.",
+      "from": [],
+      "to": [
+        {
+          "directory": "src/foundation/url-2.5.9",
+          "name": "url",
+          "version": "2.5.9",
+          "origins": [
+            "url@2.5.9"
+          ]
+        },
+        {
+          "directory": "src/foundation/form_urlencoded-1.2.3",
+          "name": "form_urlencoded",
+          "version": "1.2.3",
+          "origins": [
+            "form_urlencoded@1.2.3"
+          ]
+        }
+      ],
+      "retired_origins": []
+    },
+    {
+      "id": "update-maintained-web-address-to-url-2-5-9",
+      "reason": "Integrate the patched URL parser and its required form serializer in web-address without changing its other source identities.",
+      "from": [
+        {
+          "directory": "src/foundation/network/web-address",
+          "name": "blog-network-web-address",
+          "version": "0.0.0",
+          "origins": [
+            "form_urlencoded@1.2.2",
+            "idna@1.1.0",
+            "idna_adapter@1.2.2",
+            "percent-encoding@2.3.2",
+            "url@2.5.8"
+          ]
+        },
+        {
+          "directory": "src/foundation/url-2.5.9",
+          "name": "url",
+          "version": "2.5.9",
+          "origins": [
+            "url@2.5.9"
+          ]
+        },
+        {
+          "directory": "src/foundation/form_urlencoded-1.2.3",
+          "name": "form_urlencoded",
+          "version": "1.2.3",
+          "origins": [
+            "form_urlencoded@1.2.3"
+          ]
+        }
+      ],
+      "to": [
+        {
+          "directory": "src/foundation/network/web-address",
+          "name": "blog-network-web-address",
+          "version": "0.0.0",
+          "origins": [
+            "form_urlencoded@1.2.3",
+            "idna@1.1.0",
+            "idna_adapter@1.2.2",
+            "percent-encoding@2.3.2",
+            "url@2.5.9"
+          ]
+        }
+      ],
+      "retired_origins": [
+        {
+          "id": "form_urlencoded@1.2.2",
+          "reason": "Replace the form implementation with 1.2.3 as required by url 2.5.9."
+        },
+        {
+          "id": "url@2.5.8",
+          "reason": "Replace the parser with url 2.5.9 for RUSTSEC-2026-0592."
+        }
+      ]
     }
   ]
 }

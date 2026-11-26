@@ -168,6 +168,8 @@
     "compliance/licenses/upstream/foldhash-0.2.0/LICENSE": "b1181a40b2a7b25cf66fd01481713bc1005df082c53ef73e851e55071b102744",
     "compliance/licenses/upstream/form_urlencoded-1.2.2/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "compliance/licenses/upstream/form_urlencoded-1.2.2/LICENSE-MIT": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
+    "compliance/licenses/upstream/form_urlencoded-1.2.3/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "compliance/licenses/upstream/form_urlencoded-1.2.3/LICENSE-MIT": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
     "compliance/licenses/upstream/futures-0.3.34/LICENSE-APACHE": "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
     "compliance/licenses/upstream/futures-0.3.34/LICENSE-MIT": "6652c868f35dfe5e8ef636810a4e576b9d663f3a17fb0f5613ad73583e1b88fd",
     "compliance/licenses/upstream/futures-channel-0.3.34/LICENSE-APACHE": "275c491d6d1160553c32fd6127061d7f9606c3ea25abfad6ca3f6ed088785427",
@@ -572,6 +574,8 @@
     "compliance/licenses/upstream/unicode-width-0.2.2/LICENSE-MIT": "7b63ecd5f1902af1b63729947373683c32745c16a10e8e6292e2e2dcd7e90ae0",
     "compliance/licenses/upstream/url-2.5.8/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
     "compliance/licenses/upstream/url-2.5.8/LICENSE-MIT": "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5",
+    "compliance/licenses/upstream/url-2.5.9/LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+    "compliance/licenses/upstream/url-2.5.9/LICENSE-MIT": "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5",
     "compliance/licenses/upstream/utf8_iter-1.0.4/COPYRIGHT": "c30152c94a6d75e021adbc52b3a52470366a46edb917e17deae3259251af244c",
     "compliance/licenses/upstream/utf8_iter-1.0.4/LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "compliance/licenses/upstream/utf8_iter-1.0.4/LICENSE-MIT": "3fa4ca83dcc9237839b1bdeb2e6d16bdfb5ec0c5ce42b24694d8bbf0dcbef72c",
@@ -725,6 +729,7 @@
     "compliance/provenance/archives/flume-0.12.0.crate": "5e139bc46ca777eb5efaf62df0ab8cc5fd400866427e56c68b22e414e53bd3be",
     "compliance/provenance/archives/foldhash-0.2.0.crate": "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb",
     "compliance/provenance/archives/form_urlencoded-1.2.2.crate": "cb4cb245038516f5f85277875cdaa4f7d2c9a0fa0468de06ed190163b1581fcf",
+    "compliance/provenance/archives/form_urlencoded-1.2.3.crate": "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e",
     "compliance/provenance/archives/futures-0.3.34.crate": "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3",
     "compliance/provenance/archives/futures-channel-0.3.34.crate": "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4",
     "compliance/provenance/archives/futures-core-0.3.34.crate": "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e",
@@ -989,6 +994,7 @@
     "compliance/provenance/archives/unicode-segmentation-1.13.3.crate": "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8",
     "compliance/provenance/archives/unicode-width-0.2.2.crate": "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254",
     "compliance/provenance/archives/url-2.5.8.crate": "ff67a8a4397373c3ef660812acab3268222035010ab8680ec4215f38ba3d0eed",
+    "compliance/provenance/archives/url-2.5.9.crate": "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a",
     "compliance/provenance/archives/utf8_iter-1.0.4.crate": "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be",
     "compliance/provenance/archives/utf8parse-0.2.2.crate": "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821",
     "compliance/provenance/archives/vcpkg-0.2.15.crate": "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426",
@@ -5955,11 +5961,23 @@
         "file": "src/validator/types.rs",
         "production_behavior_change": false,
         "reason": "Document component-specific return information without unresolved rustdoc links in core-module-only builds."
+      },
+      {
+        "directory": "src/foundation/network/web-address",
+        "files": [
+          "src/address/mod.rs",
+          "src/address/origin.rs",
+          "src/address/parser.rs",
+          "src/address/path_segments.rs",
+          "src/form/mod.rs"
+        ],
+        "production_behavior_change": true,
+        "reason": "Integrate the complete runtime changes from url 2.5.9 and form_urlencoded 1.2.3, including the upstream origin policy for RUSTSEC-2026-0592. Retain local module paths, consolidated features and central tests."
       }
     ],
     "schema": 1
   },
-  "local_modifications_sha256": "f72ed0cb3768f7ce1f9f903b3f743ef9c085e5cb6b9fa51a75e6e4449d40ecbb",
+  "local_modifications_sha256": "5393c9baa1abd57c4b3e226beb745a107bbfa451d40af965c8d7e498abe347a0",
   "lockfiles_sha256": {
     "Cargo.lock": "81f973783cf915d92489b560dab2019d218491e94d06a4aa4764eff2411ab20c"
   },
@@ -6078,7 +6096,7 @@
     "src/foundation/network/request-pipeline/Cargo.toml": "ec51c7d02e0c2d5caf4b5066a0e241f36d5d842164b7b7dd306ded6ec9f5e06e",
     "src/foundation/network/request-router/Cargo.toml": "26e810c1f96a43153492fcd520aa5e9693617dea2d4d39874ba7265601efccfc",
     "src/foundation/network/route-matcher/Cargo.toml": "d4c8b33644097cd37f57f5c703e284deee89afcf08d2d51e1d6246f630455221",
-    "src/foundation/network/web-address/Cargo.toml": "c437717685612f599134a281aa6d19bb41b492dca44dc509be354f531de47d5f",
+    "src/foundation/network/web-address/Cargo.toml": "5e37bce57c0218c3304529d7b74a88bb286f5f9d59d78671e6cc914e4a6a1e2d",
     "src/foundation/platform/error-code/Cargo.toml": "e9ded2a1b3fdadfa7175a49cfd241ae6dc4f1613cfec9170c0230db4dd8a8099",
     "src/foundation/platform/linux-abi/Cargo.toml": "7d766d8f4d29b4f05749fe8daf93dcc05172e914f513c74ddc32d6fe52ac7bd4",
     "src/foundation/platform/local-time-zone/Cargo.toml": "a44cc82e683b4d6cfa69fb5cc37bd2c8e87bbd6263871e74ebef894c1431cdbd",
@@ -6276,6 +6294,7 @@
     "flume@0.12.0": "7bd73ff4e2fa993df70909e5226cbfeb1ff646d049373fc8244b39173e0b023b",
     "foldhash@0.2.0": "46a235e2c9e228751e26616dd4c5572a2c16934b96380e5b074ec79977471827",
     "form_urlencoded@1.2.2": "7a296a288bf88250344a417334962670c1dd5ba374c28979e60d22313efaec06",
+    "form_urlencoded@1.2.3": "8b148bbef272563fddeba4ccf7a82793b1ec6e97b1b8e2c8dc678f0ecb591659",
     "futures-channel@0.3.34": "268115ed5bb9bdfff33376c4fb6096499d09d107c6ae8a147878d4e59284df8a",
     "futures-core@0.3.34": "dc31b449489a77ab9fa03893baf52c7ba69448bc20709c2684da75197dab0ddb",
     "futures-executor@0.3.34": "6a0d1e3ac4a6a346f84fc512605d6696e22ac2661f76ce5e557a1f2a456012a9",
@@ -6540,6 +6559,7 @@
     "unicode-segmentation@1.13.3": "2b4802411249bb522be4a8974e9796251dc9c077b8a8bbec4c681bca515aa96a",
     "unicode-width@0.2.2": "22ec99cb4a829f7ebd26be90d3dcaeada345a487eb30d0c60f7869066c950bd6",
     "url@2.5.8": "e9c743910d4701ee30b073f98c75e08529b66d2ead54350ef4e0b266dbc40775",
+    "url@2.5.9": "7207363eb100e146e23aef85856dd0ded6f4bcde6b16864b70ff1b4bada854e0",
     "utf8_iter@1.0.4": "d22d0e1e1bfb7e823a004dfcbe60ef268a9a78452425e75ab9016dfbd2b0a646",
     "utf8parse@0.2.2": "fb2b450b827c96de902dfd9d628d139899e986ccbaaab59e3c87c03edd78af5e",
     "vcpkg@0.2.15": "90456d59f0f8a1acfd4a23cd09cfabe59267dd96d9444d1080fc809103b55a9e",
@@ -11501,6 +11521,38 @@
         "version": "1.2.2"
       },
       "version": "1.2.2"
+    },
+    "form_urlencoded@1.2.3": {
+      "changes": [
+        "Use the form serializer version required by url 2.5.9.",
+        "Keep the maintained web-address module layout, local dependency wiring and feature boundaries."
+      ],
+      "directory": "src/foundation/form_urlencoded-1.2.3",
+      "id": "form_urlencoded@1.2.3",
+      "license": "MIT OR Apache-2.0",
+      "license_materials": [
+        "compliance/licenses/upstream/form_urlencoded-1.2.3/LICENSE-APACHE",
+        "compliance/licenses/upstream/form_urlencoded-1.2.3/LICENSE-MIT"
+      ],
+      "name": "form_urlencoded",
+      "original_files_sha256": {
+        ".cargo_vcs_info.json": "1566e69a00a98914bfb5b34cac55714b07d75f999c0654f5f15c39610e2a6058",
+        "Cargo.lock": "251ed4ddc1c65537dbfbfc9c6126415397da10f6119a17a7674250601311775a",
+        "Cargo.toml": "47a39fced5fea0239010d6cc5e65bdd6312ef348e029be8389e4be8a14b5ce99",
+        "Cargo.toml.orig": "ec6d88693dc9d81b2dc3ab510295130a0a61edf0f7ee30b0c67ca4df2f1295e5",
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "20c7855c364d57ea4c97889a5e8d98470a9952dade37bd9248b9a54431670e5e",
+        "src/lib.rs": "99f16d4890b77f5a809476ff957babda3c08b7f3455726915162fdeb50d87da3"
+      },
+      "repository": "https://github.com/servo/rust-url",
+      "upstream": {
+        "archive": "compliance/provenance/archives/form_urlencoded-1.2.3.crate",
+        "archive_sha256": "afa489199eaffb1211795df1c6236ce1ad0d41a6fa45250add73e3b02420f06e",
+        "archive_url": "https://static.crates.io/crates/form_urlencoded/form_urlencoded-1.2.3.crate",
+        "name": "form_urlencoded",
+        "version": "1.2.3"
+      },
+      "version": "1.2.3"
     },
     "futures-channel@0.3.34": {
       "changes": [
@@ -29109,6 +29161,50 @@
       },
       "version": "2.5.8"
     },
+    "url@2.5.9": {
+      "changes": [
+        "Use the published URL parser and origin implementation for RUSTSEC-2026-0592.",
+        "Keep the maintained web-address module layout, local dependency wiring and feature boundaries."
+      ],
+      "directory": "src/foundation/url-2.5.9",
+      "id": "url@2.5.9",
+      "license": "MIT OR Apache-2.0",
+      "license_materials": [
+        "compliance/licenses/upstream/url-2.5.9/LICENSE-APACHE",
+        "compliance/licenses/upstream/url-2.5.9/LICENSE-MIT"
+      ],
+      "name": "url",
+      "original_files_sha256": {
+        ".cargo_vcs_info.json": "6694ea703881edb84f8b077df14120796b034ce81e1fa501e1b477cd8242f6c1",
+        "Cargo.lock": "afd7075167dbbfd9761bc1aa41c4349d2eb11801f0653804da3d6acbd9974750",
+        "Cargo.toml": "8f084b776440d30dd3c1334d0a35126ecf2d2fa8ef18d3ac6c4318ec747adbbd",
+        "Cargo.toml.orig": "4524a58196e7fb6bfc6dc4704400799596ad3c6c40924a04167f4979e65a583e",
+        "LICENSE-APACHE": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+        "LICENSE-MIT": "b38f11f6096706e6de553dabe2a7ed142d59b6fa8c97e290c67496154745cdd5",
+        "README.md": "141354cfa79fe3a7e739834bf6e001ff1293169e1809cf9eb6d5c8af0b7a191f",
+        "src/host.rs": "24bba45b14cb843ea0fe5c857284d458097a13a84847f5c6a15a14c9e1334335",
+        "src/lib.rs": "208c0d522e74e04bafe1107b58acd2c932095b013a86de60e9126f15cb73f0c8",
+        "src/origin.rs": "53d1fb0b3832609ba6be7001df906f03226a501acee1d114e22c6d572ebfadad",
+        "src/parser.rs": "9f868941a6291c323bf8020db4a733b0b460397b693164cb7da863e69ecfc69e",
+        "src/path_segments.rs": "a9c23a17afa6551b87b789a28407b83493ce73251d8cb16b9268ebb5f499eac9",
+        "src/quirks.rs": "c3c8380f9dbecf65924272e904cad8876bda0c62e0e48a3c6b1344fac258102f",
+        "src/slicing.rs": "b59bf2fa4cbfd31619b860766268d4e99b46537d3b9702b73f6d0a979a7de24a",
+        "tests/expected_failures.txt": "9c258df221787cbd08f2e6016c7bd64da28008c5e9c38bd7a155b0a440112019",
+        "tests/setters_tests.json": "ca0fd23fa12bedd6a1258c66f641500349abd942fad9c23336f23d88ed4a9a47",
+        "tests/unit.rs": "3c95ebee99f84189407ec0ec68e3a10903249d09fe59957eb4711ecb76d287e2",
+        "tests/urltestdata.json": "d2eef2efe1d230f86456b2910ddf268d755dcec4ee491efc1ecd7cf742d1499e",
+        "tests/wpt.rs": "1a8e313fd63b93a263dc58cfd09dcbc0598618b8f8b736ffff05d4b33a1e7ada"
+      },
+      "repository": "https://github.com/servo/rust-url",
+      "upstream": {
+        "archive": "compliance/provenance/archives/url-2.5.9.crate",
+        "archive_sha256": "f00cd2407bb42c0ef17be88d4cf020f5cceffd121665bac9b8b9493a369b3b1a",
+        "archive_url": "https://static.crates.io/crates/url/url-2.5.9.crate",
+        "name": "url",
+        "version": "2.5.9"
+      },
+      "version": "2.5.9"
+    },
     "utf8_iter@1.0.4": {
       "changes": [
         "Use repository-local path dependencies for the supported Linux amd64 / browser WASM closure.",
@@ -41019,19 +41115,19 @@
       ],
       "directory": "src/foundation/network/web-address",
       "files_sha256": {
-        "Cargo.toml": "c437717685612f599134a281aa6d19bb41b492dca44dc509be354f531de47d5f",
+        "Cargo.toml": "5e37bce57c0218c3304529d7b74a88bb286f5f9d59d78671e6cc914e4a6a1e2d",
         "src/address/host.rs": "f2dc1d381191e9fbc1f9891fb18abe5fa0cf9d6b3572e9e2b904f3c5b774c25a",
-        "src/address/mod.rs": "f8efa67b5f4e50a72a2205f53da5e2d81d70db46d63808acd4d10e42d50a5f50",
-        "src/address/origin.rs": "59b1c4deec8498df11da1bf6a406cab291894d0fec05845385fc0b6f30898c98",
-        "src/address/parser.rs": "f3ade316b1420e4623a948f218122be14990f356a0fea3f62e63e94cbb46c102",
-        "src/address/path_segments.rs": "9f44d498a00c5e485215e5f1253c16dae774da1532fb9b09159637edc9ee9f9b",
+        "src/address/mod.rs": "b26544cfd747678ba1112f29abfb267224cb67e2298bda2ce9779d43b5d55515",
+        "src/address/origin.rs": "edd61574135e3713bbe0618212cc1ee77315b09f3366ad97edf0c05e82a42f31",
+        "src/address/parser.rs": "2e7c30d215937342f766ac4667eb1d743e792ede7e0b11c09119fe1e06e0327b",
+        "src/address/path_segments.rs": "da10c147d94dc72dfd13f31c2ff51f6d4c5c0d1d4087563ed3407e3f8474103e",
         "src/address/quirks.rs": "8ee5f52e4dbc3d8e83eb5367201736520beef1cc5937786c679dc906d7349a83",
         "src/address/slicing.rs": "80bd1272dbbf1f83f1bcd5cf0e623b8daaab6ad08b5894a0545dde3cbab179ba",
         "src/domain/deprecated.rs": "bfdef55b4d1d722dbb716d0185a8de3754a5e0bc8e148668a6a191e90167bf9e",
         "src/domain/mod.rs": "6e3acd396b64672aea4215a362af776a26bf5e6915bd71ec469b3f2990b70989",
         "src/domain/punycode.rs": "efa0f8c466142f82d0134c6aa84feb3a6e0a094688bedc0f224dcdbe5b239ba5",
         "src/domain/uts46.rs": "6bdd39b36f69b4a3c1abcb5fba1ee9dce5414d74b9c990a959d0cde2260e8870",
-        "src/form/mod.rs": "d0bced81fbf62a807f007b0487a83098be1949ab9649251b14f1928880c3d311",
+        "src/form/mod.rs": "24c7e3cbdfbe8ecee4968cc7c9096dc82a0d5439ef0f3b46a3b400f3eff63e08",
         "src/lib.rs": "564197417bf462e4b7d3ede62f277311a6f4276dfd375447b677f541c1661e0d",
         "src/percent/ascii_set.rs": "64440233731b4d35c2ee49e83a3d7cdf25b334ddb24e322b9d7651bb1547ed68",
         "src/percent/mod.rs": "32aa0218738aa6530e1565072f9feb394448bd74de3871edb4f1d0205840eb2a",
@@ -41041,15 +41137,16 @@
       "name": "blog-network-web-address",
       "origin": null,
       "origins": [
-        "form_urlencoded@1.2.2",
+        "form_urlencoded@1.2.3",
         "idna@1.1.0",
         "idna_adapter@1.2.2",
         "percent-encoding@2.3.2",
-        "url@2.5.8"
+        "url@2.5.9"
       ],
       "purpose": "web address",
       "tests_sha256": {
         "test/foundation/network/web-address/benches/domain/all.rs": "0de635135f3cc57d32640954715e5a6f7708b984d83b7ba182d86558b184098b",
+        "test/foundation/network/web-address/integration/address_contracts.rs": "2cf0ececaf1fac88d12f77f6ea1b701e9056190b62c87f0cf3cce59700c8a80b",
         "test/foundation/network/web-address/legacy/address/functions/src/slicing/test_count_digits_52.rs": "b4694bccd7df37ed43547c8d4585df6190ff7778282ba043adb6c2d369a62c28",
         "test/foundation/network/web-address/legacy/address/tests/expected_failures.txt": "dd016d320be3fe6ad3810c22302f8eabd755d9effc937b2193dbf222855c4b7f",
         "test/foundation/network/web-address/legacy/address/tests/setters_tests.json": "a3a4cbd7b798bc2c4d9656dc50be7397a5a5ed1f0b52daa1da1ad654d38c1dcd",
@@ -47508,7 +47605,7 @@
   "platform_guard_sha256": {
     "src/tools/assets/src/platform_contract.rs": "36e1fcb9f7ce24ea01a94805125d01239c51ee97d063a68f69664cb66a184725"
   },
-  "policy_sha256": "4d02d3ae88c6fd96ef60152b6362956d30542664dad3a00b0f2bb47b211a3ef1",
+  "policy_sha256": "faf9e3a6713557ebbd42cb0b24f227bd674757473ef8cb1e6fe7b19cddf82621",
   "resolutions": [
     {
       "packages": {
@@ -54162,6 +54259,10 @@
       "event": "linux-amd64-retire-unused-backends",
       "reason": "Restrict native compiler discovery to the supported AMD64 Linux GNU host; no product Windows compiler consumer remains."
     },
+    "form_urlencoded@1.2.2": {
+      "event": "update-maintained-web-address-to-url-2-5-9",
+      "reason": "Replace the form implementation with 1.2.3 as required by url 2.5.9."
+    },
     "futures-intrusive@0.5.0": {
       "event": "unify-sqlite-worker-fair-mutex",
       "reason": "No remaining implementation or consumer after SQLite worker synchronization moved to Tokio."
@@ -54365,6 +54466,10 @@
     "unicode-properties@0.1.4": {
       "event": "purpose-specialization",
       "reason": "No remaining product, browser, build or test declaration consumes this implementation after SQLite/CSR specialization."
+    },
+    "url@2.5.8": {
+      "event": "update-maintained-web-address-to-url-2-5-9",
+      "reason": "Replace the parser with url 2.5.9 for RUSTSEC-2026-0592."
     },
     "vcpkg@0.2.15": {
       "event": "linux-amd64-retire-unused-backends",
@@ -66878,9 +66983,91 @@
             "version": "3.0.1"
           }
         ]
+      },
+      {
+        "from": [],
+        "id": "import-url-2-5-9-and-form-urlencoded-1-2-3",
+        "reason": "Record the checksum-verified url 2.5.9 and form_urlencoded 1.2.3 archives.",
+        "retired_origins": [],
+        "to": [
+          {
+            "directory": "src/foundation/url-2.5.9",
+            "name": "url",
+            "origins": [
+              "url@2.5.9"
+            ],
+            "version": "2.5.9"
+          },
+          {
+            "directory": "src/foundation/form_urlencoded-1.2.3",
+            "name": "form_urlencoded",
+            "origins": [
+              "form_urlencoded@1.2.3"
+            ],
+            "version": "1.2.3"
+          }
+        ]
+      },
+      {
+        "from": [
+          {
+            "directory": "src/foundation/network/web-address",
+            "name": "blog-network-web-address",
+            "origins": [
+              "form_urlencoded@1.2.2",
+              "idna@1.1.0",
+              "idna_adapter@1.2.2",
+              "percent-encoding@2.3.2",
+              "url@2.5.8"
+            ],
+            "version": "0.0.0"
+          },
+          {
+            "directory": "src/foundation/url-2.5.9",
+            "name": "url",
+            "origins": [
+              "url@2.5.9"
+            ],
+            "version": "2.5.9"
+          },
+          {
+            "directory": "src/foundation/form_urlencoded-1.2.3",
+            "name": "form_urlencoded",
+            "origins": [
+              "form_urlencoded@1.2.3"
+            ],
+            "version": "1.2.3"
+          }
+        ],
+        "id": "update-maintained-web-address-to-url-2-5-9",
+        "reason": "Integrate the patched URL parser and its required form serializer in web-address without changing its other source identities.",
+        "retired_origins": [
+          {
+            "id": "form_urlencoded@1.2.2",
+            "reason": "Replace the form implementation with 1.2.3 as required by url 2.5.9."
+          },
+          {
+            "id": "url@2.5.8",
+            "reason": "Replace the parser with url 2.5.9 for RUSTSEC-2026-0592."
+          }
+        ],
+        "to": [
+          {
+            "directory": "src/foundation/network/web-address",
+            "name": "blog-network-web-address",
+            "origins": [
+              "form_urlencoded@1.2.3",
+              "idna@1.1.0",
+              "idna_adapter@1.2.2",
+              "percent-encoding@2.3.2",
+              "url@2.5.9"
+            ],
+            "version": "0.0.0"
+          }
+        ]
       }
     ],
     "schema": 1
   },
-  "source_migrations_sha256": "13592531f76610a56325c3060c054c79b6d5793fc72b5f3f57d288ee71f3cca8"
+  "source_migrations_sha256": "7b997ac162ba7e21a02a99f2a71117680404278fd146f5e5836bbc55103781c4"
 }

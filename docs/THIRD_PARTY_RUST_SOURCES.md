@@ -122,7 +122,7 @@
 | src/foundation/network/request-pipeline | blog-network-request-pipeline | tower-layer@0.3.3, tower-service@0.3.3, tower@0.5.3 | tower-layer@0.3.3: MIT; tower-service@0.3.3: MIT; tower@0.5.3: MIT |
 | src/foundation/network/request-router | blog-network-request-router | axum-core@0.5.6, axum@0.8.9 | axum-core@0.5.6: MIT; axum@0.8.9: MIT |
 | src/foundation/network/route-matcher | blog-network-route-matcher | matchit@0.8.4 | matchit@0.8.4: MIT AND BSD-3-Clause |
-| src/foundation/network/web-address | blog-network-web-address | form_urlencoded@1.2.2, idna@1.1.0, idna_adapter@1.2.2, percent-encoding@2.3.2, url@2.5.8 | form_urlencoded@1.2.2: MIT OR Apache-2.0; idna@1.1.0: MIT OR Apache-2.0; idna_adapter@1.2.2: Apache-2.0 OR MIT; percent-encoding@2.3.2: MIT OR Apache-2.0; url@2.5.8: MIT OR Apache-2.0 |
+| src/foundation/network/web-address | blog-network-web-address | form_urlencoded@1.2.3, idna@1.1.0, idna_adapter@1.2.2, percent-encoding@2.3.2, url@2.5.9 | form_urlencoded@1.2.3: MIT OR Apache-2.0; idna@1.1.0: MIT OR Apache-2.0; idna_adapter@1.2.2: Apache-2.0 OR MIT; percent-encoding@2.3.2: MIT OR Apache-2.0; url@2.5.9: MIT OR Apache-2.0 |
 | src/foundation/platform/error-code | blog-platform-error-code | errno@0.3.14 | errno@0.3.14: MIT OR Apache-2.0 |
 | src/foundation/platform/linux-abi | blog-platform-linux-abi | linux-raw-sys@0.12.1 | linux-raw-sys@0.12.1: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | src/foundation/platform/local-time-zone | blog-platform-local-time-zone | iana-time-zone@0.1.65 | iana-time-zone@0.1.65: MIT OR Apache-2.0 |

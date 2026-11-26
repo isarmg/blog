@@ -4,6 +4,7 @@ set -euo pipefail
 project_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$project_root"
 
+cargo test --locked --offline -p blog-network-web-address --test address-contracts
 cargo test --locked --offline -p blog-network-http-message --lib --test accepted-encodings
 cargo test --locked --offline -p blog-collections-slot-storage --test consumer-contracts
 cargo test --locked --offline -p blog-encoding-application-base-encoding --test consumer-contracts
