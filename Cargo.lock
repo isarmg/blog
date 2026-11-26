@@ -326,10 +326,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "blog-crypto-algorithm-identifiers"
-version = "0.0.0"
-
-[[package]]
 name = "blog-crypto-conditional-move"
 version = "0.0.0"
 
@@ -348,7 +344,6 @@ dependencies = [
 name = "blog-crypto-digest-traits"
 version = "0.0.0"
 dependencies = [
- "blog-crypto-algorithm-identifiers",
  "blog-crypto-constant-time-utilities",
  "blog-math-constant-array",
 ]

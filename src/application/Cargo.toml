@@ -19,7 +19,7 @@ argon2 = {  features = ["std"], path = "../foundation/crypto/password-derivation
 base64 = {  path = "../foundation/encoding/application-base-encoding",package = "blog-encoding-application-base-encoding"}
 getrandom = {  path = "../foundation/platform/system-entropy",package = "blog-platform-system-entropy"}
 hmac = {  path = "../foundation/crypto/message-authentication",package = "blog-crypto-message-authentication"}
-sha2 = {  path = "../foundation/crypto/secure-hash",package = "blog-crypto-secure-hash"}
+sha2 = { default-features = false, features = ["alloc"], path = "../foundation/crypto/secure-hash", package = "blog-crypto-secure-hash" }
 subtle = {  path = "../foundation/crypto/constant-time-comparison",package = "blog-crypto-constant-time-comparison"}
 thiserror = {  path = "../foundation/diagnostics/typed-error",package = "blog-diagnostics-typed-error"}
 bytes = {  path = "../foundation/encoding/byte-buffer",package = "blog-encoding-byte-buffer"}

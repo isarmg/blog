@@ -6040,11 +6040,11 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "37a09ea2cd91b5c1ee9312318ded8415f2c5d09edb02e0b362b25e93a8834263"
+    "Cargo.lock": "dd1f824464860685eda0f23ef7668780a1fdb5128f8eafed67cda2f6eb7282d8"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
-    "src/application/Cargo.toml": "48f09b3353e4d8d83de1941ed3460ad748608b3c5341944144e4024468ef5dd4",
+    "src/application/Cargo.toml": "e883dbc59887fc0611283c7f13ef220c3c4cc42f358cddd1e848c65af5313444",
     "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
     "src/foundation/assets/compiler/Cargo.toml": "643994ddc38ab4ccc2508b416591961912a65eef7172343e675f1cebdd349223",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
@@ -6246,8 +6246,8 @@
     "src/interface/Cargo.toml": "ad57df9faff3a0b96abe7987206a7c50f3b55b8c464861059c331957048978c2",
     "src/interface/dom/Cargo.toml": "713d669f33ccff2be4d4610e24a2f5896ae4c677115db9468bef0a222e238661",
     "src/interface/macros/Cargo.toml": "b3209604affaa821d4a8e7d10470354514715e21a417cca8071449a05c571f19",
-    "src/server/Cargo.toml": "8289a40c099801eacbca914ecfc9758867a17e9ff69cdb64fde0aa037a26f0b7",
-    "src/tools/assets/Cargo.toml": "e2b282bc203185f29a3e7615cfa24768e5e37a7a755e41e6446dc2d7523fa6bd",
+    "src/server/Cargo.toml": "81996e9848cd559718d2de9394ee437449917ddd26a9afcd22260f1828d29168",
+    "src/tools/assets/Cargo.toml": "46f9c916a4c43d0328a353c5f9b8bf3c0292a8f14fb6324213625b72362a6542",
     "src/tools/setup/Cargo.toml": "1ba4df69c6f5dd3a751053ae61b2d026d9b840da9eb7b6fd95202aa3d0289383",
     "test/browser-domain/Cargo.toml": "a8960cc84bf02373c106ffdc6f501659768e979774076041ca45d3a9769b6477"
   },
@@ -34266,7 +34266,7 @@
       ],
       "directory": "src/application",
       "files_sha256": {
-        "Cargo.toml": "48f09b3353e4d8d83de1941ed3460ad748608b3c5341944144e4024468ef5dd4",
+        "Cargo.toml": "e883dbc59887fc0611283c7f13ef220c3c4cc42f358cddd1e848c65af5313444",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "schemas/admin/persistent-v1.sql": "767889d1925178d8ac632ed54e2e4e69ec8253d2b4e798b62bcfca4d948d8ec6",
         "schemas/platform/v1.sql": "f96ee5c99dc7dd89dc2c0bfb4dc332ce9ca28a314e4e6685aa1e96ee7cdae199",
@@ -34287,7 +34287,7 @@
         "src/configuration_contract.rs": "2b22e14e33038086c41226d93cdbeccb2898aa47bf275df9e4e728fd010c6368",
         "src/configuration_contract/rules.rs": "bc163b5af2d4e0b468b7554342c39688cf373074bcd2e430f632eae8832b72f6",
         "src/contracts/administrators.rs": "08f437169adf4e90644a14423940c6cbabf4d35ac8189653d4dda408801db501",
-        "src/contracts/mod.rs": "7931d2dca94a1dbec49cd13c76ea21709f771854a8b3179ee4849c35b8937562",
+        "src/contracts/mod.rs": "9e17ded144fd3c145db01eeb0fe05fa9b0c03db4385f937337371155f7a6c427",
         "src/error/mod.rs": "b88983e22255adcfba3a7bb9eb05945e46762155a867c2d21c72cc86c0e7e9fc",
         "src/fs_safety/mod.rs": "d6b73b2091d1220d830ed8540098207c854901872a1a659baceb83bac0226cdc",
         "src/fs_safety/unix.rs": "1cb7d1b24b564848357e68bb15f7bba58f434a680a15a83055d26d68e8d85ef9",
@@ -34330,7 +34330,6 @@
       "purpose": "认证、SQLite 持久化、安装契约和资产响应",
       "tests_sha256": {
         "test/application/fixtures/contracts/administrator-auth.fixtures.json": "3620693c7cf179e06ffcc76e2b63b07e6003b53a5ee976daca18fbfcf38d24e6",
-        "test/application/fixtures/contracts/backup-manifest.fixtures.json": "9a06175c3297bebe366faf39778e27c2d8ae1107cdf6b6a35468873352535eea",
         "test/application/fixtures/contracts/error-envelope.fixtures.json": "a41a84b073e638865eaf5f67d94b0519f86b9be55af27d728340cbe25a587353",
         "test/application/fixtures/contracts/release.fixtures.json": "eeb2b31d814bc8f282685d82ac70940de69283398503f121d7b91dedb8265bdc",
         "test/application/fixtures/contracts/state-contract.fixtures.json": "0ae149ab0daeb000bc33a4c943c7b4c6179638cf01e7539435836fc67716a2d2",
@@ -34352,7 +34351,7 @@
         "test/application/unit/configuration_contract/rules/tests.rs": "6b40b774d1e71552edcd8c884fcefe377c66bbd9a686fcfff155faa2117e0723",
         "test/application/unit/configuration_contract/tests.rs": "497b1e5a50f8153e78f8d5fcd4765c826a0cb67c6cf2973254d10376a4eaa21c",
         "test/application/unit/contracts/administrators/tests.rs": "b2820623ff48e15d44caa9b9eeac81fcbf02838caad7fe4bc0a9d83c29cd6725",
-        "test/application/unit/contracts/tests.rs": "63777b2ef682224f63a230318dba287e5958e86f95d6f7ba947aa66856842316",
+        "test/application/unit/contracts/tests.rs": "7f70c1a04be744101a881c2e9becaa14c643b5de1cf7d0250529a5abbe65020c",
         "test/application/unit/error/tests.rs": "781811c2325658293b91d9e7fe270aefef2502e04f71f143c5bc0f9d6cdd8e3d",
         "test/application/unit/fs_safety/tests.rs": "b1c10c2661fd6d92aab62d0f8f98d05de95d2a49497602ecbabf126e16141636",
         "test/application/unit/fs_safety/unix/tests.rs": "cbe6015d891c721f375257cd62329aa47ef5d412327d71b3e2a63b8fa85a62b9",
@@ -34438,7 +34437,7 @@
         "src/public/journal.rs": "2cc52a31d2faed93765d73b239cca52f8c5282af8cb43eb192388b8416f34185",
         "src/public/love.rs": "c573ec5ae71938a9684cf837b0ee8d59a1d2a495c2ae33e0fd905aaf359cd8c9",
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
-        "src/public/photos.rs": "3555a0fafea8c58bd9936fb7ccddb7f530fbd441d1fb8034ab64a0edbb33ba57",
+        "src/public/photos.rs": "59be1503acf00f1bda4945df555bd325befacffaf38d9b601e4eac1de0b4e662",
         "src/public/shell.rs": "fd5ad242f9b22f3244f5eeb93b6f2e1c776da840062a0e362e2eb5f962842ccb",
         "src/public/toolbox.rs": "931ae8d6b1f360311c135034be58e434bed1a8c1e1c5c1758fdc9a80efd609b8",
         "src/select.rs": "e5e8fb575165c79304b6826b53694d4775d845226b4331112f7a6b9fc04a61ea"
@@ -47819,7 +47818,7 @@
       ],
       "directory": "src/server",
       "files_sha256": {
-        "Cargo.toml": "8289a40c099801eacbca914ecfc9758867a17e9ff69cdb64fde0aa037a26f0b7",
+        "Cargo.toml": "81996e9848cd559718d2de9394ee437449917ddd26a9afcd22260f1828d29168",
         "build.rs": "be0f3519d6cb90210893d9be699cc826350d252a723edb34e90943d42e3793c4",
         "schema/initialize-site-author.sql": "fa82753ff3758d95a71df0fd0c0318cfe134b4738137cd7d3f30c93cb2f500af",
         "schema/product.sql": "ce3fd1607f0e2fb22bdcd7c9304a81b28e04b5b6d88ab16b966cd5edd2a1c4cf",
@@ -47830,7 +47829,7 @@
         "src/content/articles.rs": "b63c75c7c3721488326354c6c74cadb32157151278c46bb3d2d042da5a438302",
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
         "src/content/catalog.rs": "1c0f5f6b896f20b167cc731886bbae7b5dae73a43be6d58eb9dbaa12cd3847da",
-        "src/content/comments.rs": "bfaca2cf6bdf1982992a653c21d2ac44f1f03387fb0b138be6045369b4487a34",
+        "src/content/comments.rs": "b9d19db7d1610bf43e2c3e6e933537f42a26071bebd23d2879e38aa0489cfbb2",
         "src/content/family.rs": "d8e3ac7edaf53f38e8de459de73b4017f24de8059fe0689079a35ea9829b55b1",
         "src/content/guestbook.rs": "36f05b37e2a8cef38528174ee98a52247170078d41631fb55719b5ca165ebcb4",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
@@ -47930,7 +47929,7 @@
       "directory": "src/tools/assets",
       "files_sha256": {
         ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-        "Cargo.toml": "e2b282bc203185f29a3e7615cfa24768e5e37a7a755e41e6446dc2d7523fa6bd",
+        "Cargo.toml": "46f9c916a4c43d0328a353c5f9b8bf3c0292a8f14fb6324213625b72362a6542",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "ORIGIN.json": "93ce2b98016b4bfed5ba1ace17bc948b38f9fa9cfb124a00ea4a19cd0667fb49",
         "README.md": "77a380007c6b7b8cf3d0245436d8b3f8264d4e980d94e293cdce94109b46ba8b",
@@ -48215,15 +48214,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/crypto/algorithm-identifiers": {
-          "features": [],
-          "name": "blog-crypto-algorithm-identifiers",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/crypto/conditional-move": {
           "features": [],
           "name": "blog-crypto-conditional-move",
@@ -48260,8 +48250,7 @@
             "alloc",
             "block-api",
             "default",
-            "mac",
-            "oid"
+            "mac"
           ],
           "name": "blog-crypto-digest-traits",
           "roles": [
@@ -48352,9 +48341,7 @@
         },
         "src/foundation/crypto/secure-hash": {
           "features": [
-            "alloc",
-            "default",
-            "oid"
+            "alloc"
           ],
           "name": "blog-crypto-secure-hash",
           "roles": [
@@ -50378,14 +50365,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/crypto/algorithm-identifiers": {
-          "features": [],
-          "name": "blog-crypto-algorithm-identifiers",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/crypto/conditional-move": {
           "features": [],
           "name": "blog-crypto-conditional-move",
@@ -50407,8 +50386,7 @@
             "alloc",
             "block-api",
             "default",
-            "mac",
-            "oid"
+            "mac"
           ],
           "name": "blog-crypto-digest-traits",
           "roles": [
@@ -50418,9 +50396,7 @@
         },
         "src/foundation/crypto/secure-hash": {
           "features": [
-            "alloc",
-            "default",
-            "oid"
+            "alloc"
           ],
           "name": "blog-crypto-secure-hash",
           "roles": [
@@ -52359,14 +52335,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/crypto/algorithm-identifiers": {
-          "features": [],
-          "name": "blog-crypto-algorithm-identifiers",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/crypto/conditional-move": {
           "features": [],
           "name": "blog-crypto-conditional-move",
@@ -52400,8 +52368,7 @@
             "alloc",
             "block-api",
             "default",
-            "mac",
-            "oid"
+            "mac"
           ],
           "name": "blog-crypto-digest-traits",
           "roles": [
@@ -52484,9 +52451,7 @@
         },
         "src/foundation/crypto/secure-hash": {
           "features": [
-            "alloc",
-            "default",
-            "oid"
+            "alloc"
           ],
           "name": "blog-crypto-secure-hash",
           "roles": [

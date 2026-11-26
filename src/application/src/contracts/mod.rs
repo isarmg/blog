@@ -21,7 +21,7 @@ use thiserror::Error;
 pub use crate::error::{
     ErrorCode, ErrorEnvelope, MAX_ERROR_CODE_BYTES, MAX_REQUEST_ID_BYTES, RequestId,
 };
-pub use crate::schema_identity::{Error as SchemaIdentityError, SchemaIdentity};
+pub use crate::schema_identity::SchemaIdentity;
 
 /// Largest integer represented exactly by every supported JSON consumer.
 pub const MAX_SAFE_JSON_INTEGER: u64 = 9_007_199_254_740_991;
@@ -193,15 +193,6 @@ impl AdministratorSession {
 
 /// Current state-contract wire version.
 pub const STATE_CONTRACT_VERSION: u8 = 1;
-
-/// Current backup-manifest wire version.
-pub const BACKUP_MANIFEST_VERSION: u8 = 1;
-
-/// The complete metadata identity used by backup manifests.
-///
-/// This is deliberately the canonical type from `blog_application::schema_identity`, not
-/// a second copy of the same four fields.
-pub type BackupSchemaIdentity = SchemaIdentity;
 
 /// The smaller schema reference embedded in a state contract.
 ///
@@ -398,127 +389,6 @@ impl ReleaseIdentity {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct BackupExternalRequirement {
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub kind: String,
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub kid: String,
-    #[serde(deserialize_with = "deserialize_sha256")]
-    pub sha256: String,
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub algorithm: String,
-    #[serde(deserialize_with = "deserialize_positive_safe_integer")]
-    pub envelope_version: u64,
-}
-
-impl BackupExternalRequirement {
-    /// # Errors
-    /// A requirement identifier, digest, or envelope version is invalid.
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        validate_identifier("external_requirements[].kind", &self.kind)?;
-        validate_identifier("external_requirements[].kid", &self.kid)?;
-        validate_sha256("external_requirements[].sha256", &self.sha256)?;
-        validate_identifier("external_requirements[].algorithm", &self.algorithm)?;
-        validate_positive_safe_integer(
-            "external_requirements[].envelope_version",
-            self.envelope_version,
-        )
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct BackupResource {
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub name: String,
-    pub kind: StateResourceKind,
-    #[serde(deserialize_with = "deserialize_non_empty_path")]
-    pub path: String,
-    #[serde(deserialize_with = "deserialize_non_negative_safe_integer")]
-    pub bytes: u64,
-    #[serde(deserialize_with = "deserialize_positive_safe_integer")]
-    pub files: u64,
-    #[serde(deserialize_with = "deserialize_sha256")]
-    pub sha256: String,
-}
-
-impl BackupResource {
-    /// # Errors
-    /// A resource identifier, path, count, or digest is invalid.
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        validate_identifier("resources[].name", &self.name)?;
-        validate_non_empty_path("resources[].path", &self.path)?;
-        validate_non_negative_safe_integer("resources[].bytes", self.bytes)?;
-        validate_positive_safe_integer("resources[].files", self.files)?;
-        validate_sha256("resources[].sha256", &self.sha256)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct BackupManifest {
-    #[serde(deserialize_with = "deserialize_backup_manifest_version")]
-    pub manifest_version: u8,
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub tool_version: String,
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub product: String,
-    #[serde(deserialize_with = "deserialize_identifier")]
-    pub application_version: String,
-    #[serde(deserialize_with = "deserialize_required_schema_identity")]
-    pub schema_identity: Option<SchemaIdentity>,
-    #[serde(deserialize_with = "deserialize_non_negative_safe_integer")]
-    pub created_at_epoch_seconds: u64,
-    pub external_requirements: Vec<BackupExternalRequirement>,
-    #[serde(deserialize_with = "deserialize_backup_resources")]
-    pub resources: Vec<BackupResource>,
-}
-
-impl BackupManifest {
-    /// Parse and validate one current backup-manifest JSON document.
-    /// # Errors
-    /// The bytes do not encode a current backup manifest.
-    pub fn from_slice(bytes: &[u8]) -> Result<Self, ParseError> {
-        Ok(serde_json::from_slice(bytes)?)
-    }
-
-    /// # Errors
-    /// The manifest identity, schema, timestamp, requirements, or nonempty resource list are invalid.
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        validate_exact_version(
-            "manifest_version",
-            u64::from(self.manifest_version),
-            u64::from(BACKUP_MANIFEST_VERSION),
-        )?;
-        validate_identifier("tool_version", &self.tool_version)?;
-        validate_identifier("product", &self.product)?;
-        validate_identifier("application_version", &self.application_version)?;
-        if let Some(identity) = &self.schema_identity {
-            identity.validate()?;
-            validate_non_negative_safe_integer(
-                "schema_identity.schema_revision",
-                identity.schema_revision,
-            )?;
-        }
-        validate_non_negative_safe_integer(
-            "created_at_epoch_seconds",
-            self.created_at_epoch_seconds,
-        )?;
-        for requirement in &self.external_requirements {
-            requirement.validate()?;
-        }
-        if self.resources.is_empty() {
-            return Err(ValidationError::EmptyArray { field: "resources" });
-        }
-        for resource in &self.resources {
-            resource.validate()?;
-        }
-        Ok(())
-    }
-}
-
 /// Parse the shared error envelope through the canonical `blog_application::error` type.
 /// # Errors
 /// The bytes do not encode a valid public error envelope.
@@ -554,10 +424,6 @@ pub enum ValidationError {
     },
     #[error("{field} contains duplicate value {value:?}")]
     DuplicateValue { field: &'static str, value: String },
-    #[error("{field} must contain at least one entry")]
-    EmptyArray { field: &'static str },
-    #[error("{field} must not be empty")]
-    EmptyPath { field: &'static str },
     #[error("authenticated must be true in an administrator session")]
     NotAuthenticated,
     #[error("administrator session role must be admin")]
@@ -572,8 +438,6 @@ pub enum ValidationError {
     InvalidAuthenticationToken { field: &'static str },
     #[error("{field} must contain 1 to {maximum} non-control Unicode code points")]
     InvalidCredentialText { field: &'static str, maximum: usize },
-    #[error("invalid schema identity: {0}")]
-    SchemaIdentity(#[from] SchemaIdentityError),
 }
 
 fn validate_identifier(field: &'static str, value: &str) -> Result<(), ValidationError> {
@@ -666,13 +530,6 @@ fn validate_exact_version(
             expected,
             actual,
         });
-    }
-    Ok(())
-}
-
-fn validate_non_empty_path(field: &'static str, value: &str) -> Result<(), ValidationError> {
-    if value.is_empty() {
-        return Err(ValidationError::EmptyPath { field });
     }
     Ok(())
 }
@@ -820,20 +677,6 @@ where
     Ok(STATE_CONTRACT_VERSION)
 }
 
-fn deserialize_backup_manifest_version<'de, D>(deserializer: D) -> Result<u8, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = deserialize_non_negative_safe_integer(deserializer)?;
-    validate_exact_version(
-        "manifest_version",
-        value,
-        u64::from(BACKUP_MANIFEST_VERSION),
-    )
-    .map_err(D::Error::custom)?;
-    Ok(BACKUP_MANIFEST_VERSION)
-}
-
 fn deserialize_required_state_schema<'de, D>(
     deserializer: D,
 ) -> Result<Option<StateSchemaIdentity>, D::Error>
@@ -843,38 +686,6 @@ where
     Option::<StateSchemaIdentity>::deserialize(deserializer)
 }
 
-fn deserialize_required_schema_identity<'de, D>(
-    deserializer: D,
-) -> Result<Option<SchemaIdentity>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct WireSchemaIdentity {
-        #[serde(deserialize_with = "deserialize_identifier")]
-        application: String,
-        #[serde(deserialize_with = "deserialize_identifier")]
-        application_version: String,
-        #[serde(deserialize_with = "deserialize_non_negative_safe_integer")]
-        schema_revision: u64,
-        #[serde(deserialize_with = "deserialize_sha256")]
-        schema_sha256: String,
-    }
-
-    Option::<WireSchemaIdentity>::deserialize(deserializer)?
-        .map(|wire| {
-            SchemaIdentity::new(
-                wire.application,
-                wire.application_version,
-                wire.schema_revision,
-                wire.schema_sha256,
-            )
-            .map_err(D::Error::custom)
-        })
-        .transpose()
-}
-
 fn deserialize_maintenance_locks<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
 where
     D: Deserializer<'de>,
@@ -882,28 +693,6 @@ where
     let values = Vec::<String>::deserialize(deserializer)?;
     validate_unique_identifiers("maintenance_locks", &values).map_err(D::Error::custom)?;
     Ok(values)
-}
-
-fn deserialize_non_empty_path<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let value = String::deserialize(deserializer)?;
-    validate_non_empty_path("path", &value).map_err(D::Error::custom)?;
-    Ok(value)
-}
-
-fn deserialize_backup_resources<'de, D>(deserializer: D) -> Result<Vec<BackupResource>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let resources = Vec::<BackupResource>::deserialize(deserializer)?;
-    if resources.is_empty() {
-        return Err(D::Error::custom(ValidationError::EmptyArray {
-            field: "resources",
-        }));
-    }
-    Ok(resources)
 }
 
 #[path = "../../../../test/application/unit/contracts/tests.rs"]

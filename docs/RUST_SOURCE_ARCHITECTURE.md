@@ -108,7 +108,7 @@
 
 | 当前包与路径 | 具体职责 | 构建入口 | 直接消费者 | 原始来源 |
 | --- | --- | --- | --- | --- |
-| blog-crypto-algorithm-identifiers (`src/foundation/crypto/algorithm-identifiers`) | algorithm identifiers | native, host-tools, workspace-tests | src/foundation/crypto/digest-traits | const-oid@0.10.2 |
+| blog-crypto-algorithm-identifiers (`src/foundation/crypto/algorithm-identifiers`) | algorithm identifiers | 当前入口未选用 | src/foundation/crypto/digest-traits | const-oid@0.10.2 |
 | blog-crypto-conditional-move (`src/foundation/crypto/conditional-move`) | conditional move | native, host-tools, workspace-tests | src/foundation/crypto/constant-time-utilities | cmov@0.5.4 |
 | blog-crypto-constant-time-comparison (`src/foundation/crypto/constant-time-comparison`) | constant time comparison | native, workspace-tests | src/application, src/foundation/crypto/constant-time-utilities, src/foundation/crypto/password-digest-traits, src/foundation/crypto/password-format, src/foundation/math/constant-array | subtle@2.6.1 |
 | blog-crypto-constant-time-utilities (`src/foundation/crypto/constant-time-utilities`) | constant time utilities | native, host-tools, workspace-tests | src/foundation/crypto/digest-traits, src/foundation/math/constant-array | ctutils@0.4.4 |

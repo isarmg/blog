@@ -235,61 +235,50 @@ const COMMENT_SQL: &str = "SELECT c.id,c.user_id,u.username,u.avatar,c.comment_c
     c.parent_comment_id,pu.username AS parent_username,c.floor_comment_id,
     (SELECT COUNT(*) FROM comment child WHERE child.floor_comment_id=c.id AND child.type=c.type) AS reply_count
     FROM comment c LEFT JOIN user u ON u.id=c.user_id LEFT JOIN user pu ON pu.id=c.parent_user_id";
-async fn read_root_comments(
+async fn comment_page(
     mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
     target: CommentTarget,
+    floor: Option<i64>,
     query: PageQuery,
 ) -> ApiResult<PageResult<PublicComment>> {
-    let pagination = query.bounds(10, 50);
-    let total = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM comment WHERE source=? AND type=?
+    let (count_sql, items_sql, default_size) = if floor.is_some() {
+        (
+            "SELECT COUNT(*) FROM comment WHERE floor_comment_id=? AND source=? AND type=?",
+            "WHERE c.floor_comment_id=? AND c.source=? AND c.type=?
+            ORDER BY c.create_time,c.id LIMIT ? OFFSET ?",
+            5,
+        )
+    } else {
+        (
+            "SELECT COUNT(*) FROM comment WHERE source=? AND type=?
             AND (parent_comment_id IS NULL OR parent_comment_id=0)",
-    )
-    .bind(target.source())
-    .bind(target.as_str())
-    .fetch_one(&mut *transaction)
-    .await?;
-    let items = sqlx::query_as(sqlx::AssertSqlSafe(format!(
-        "{COMMENT_SQL} WHERE c.source=? AND c.type=?
+            "WHERE c.source=? AND c.type=?
             AND (c.parent_comment_id IS NULL OR c.parent_comment_id=0)
-            ORDER BY c.create_time DESC,c.id DESC LIMIT ? OFFSET ?"
-    )))
-    .bind(target.source())
-    .bind(target.as_str())
-    .bind(pagination.size)
-    .bind(pagination.offset())
-    .fetch_all(&mut *transaction)
-    .await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
-}
-
-async fn read_comment_replies(
-    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
-    target: CommentTarget,
-    id: i64,
-    query: PageQuery,
-) -> ApiResult<PageResult<PublicComment>> {
-    let pagination = query.bounds(5, 50);
-    let total = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM comment WHERE floor_comment_id=? AND source=? AND type=?",
-    )
-    .bind(id)
-    .bind(target.source())
-    .bind(target.as_str())
-    .fetch_one(&mut *transaction)
-    .await?;
-    let items = sqlx::query_as(sqlx::AssertSqlSafe(format!(
-        "{COMMENT_SQL} WHERE c.floor_comment_id=? AND c.source=? AND c.type=?
-            ORDER BY c.create_time,c.id LIMIT ? OFFSET ?"
-    )))
-    .bind(id)
-    .bind(target.source())
-    .bind(target.as_str())
-    .bind(pagination.size)
-    .bind(pagination.offset())
-    .fetch_all(&mut *transaction)
-    .await?;
+            ORDER BY c.create_time DESC,c.id DESC LIMIT ? OFFSET ?",
+            10,
+        )
+    };
+    let pagination = query.bounds(default_size, 50);
+    let source = target.source();
+    let kind = target.as_str();
+    let mut count = sqlx::query_scalar(count_sql);
+    let mut data = sqlx::query_as(sqlx::AssertSqlSafe(format!("{COMMENT_SQL} {items_sql}")));
+    if let Some(id) = floor {
+        count = count.bind(id);
+        data = data.bind(id);
+    }
+    let total = count
+        .bind(source)
+        .bind(kind)
+        .fetch_one(&mut *transaction)
+        .await?;
+    let items = data
+        .bind(source)
+        .bind(kind)
+        .bind(pagination.size)
+        .bind(pagination.offset())
+        .fetch_all(&mut *transaction)
+        .await?;
     transaction.commit().await?;
     Ok(Json(pagination.result(items, total)))
 }
@@ -305,12 +294,8 @@ pub(super) async fn comments(
         page: query.page,
         size: query.size,
     };
-    read_root_comments(
-        transaction,
-        CommentTarget::Article(query.article_id),
-        pagination,
-    )
-    .await
+    let target = CommentTarget::Article(query.article_id);
+    comment_page(transaction, target, None, pagination).await
 }
 
 pub(super) async fn comment_replies(
@@ -328,14 +313,16 @@ pub(super) async fn comment_replies(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(absent)?;
-    read_comment_replies(transaction, CommentTarget::Article(article), id, query).await
+    let target = CommentTarget::Article(article);
+    comment_page(transaction, target, Some(id), query).await
 }
 
 pub(super) async fn message_comments(
     State(state): State<AppState>,
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<PublicComment>> {
-    read_root_comments(state.pool.begin().await?, CommentTarget::Message, query).await
+    let transaction = state.pool.begin().await?;
+    comment_page(transaction, CommentTarget::Message, None, query).await
 }
 
 pub(super) async fn message_comment_replies(
@@ -352,7 +339,7 @@ pub(super) async fn love_comments(
 ) -> ApiResult<PageResult<PublicComment>> {
     let mut transaction = state.pool.begin().await?;
     let source = crate::site_author_id(&mut *transaction).await?;
-    read_root_comments(transaction, CommentTarget::Love(source), query).await
+    comment_page(transaction, CommentTarget::Love(source), None, query).await
 }
 
 pub(super) async fn love_comment_replies(
@@ -381,7 +368,7 @@ async fn site_comment_replies(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(absent)?;
-    read_comment_replies(transaction, target, id, query).await
+    comment_page(transaction, target, Some(id), query).await
 }
 
 #[derive(Serialize, sqlx::FromRow)]

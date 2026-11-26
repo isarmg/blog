@@ -21,8 +21,6 @@ const ADMIN_AUTH_FIXTURES: &str =
     include_str!("../../fixtures/contracts/administrator-auth.fixtures.json");
 const STATE_FIXTURES: &str = include_str!("../../fixtures/contracts/state-contract.fixtures.json");
 const RELEASE_FIXTURES: &str = include_str!("../../fixtures/contracts/release.fixtures.json");
-const BACKUP_FIXTURES: &str =
-    include_str!("../../fixtures/contracts/backup-manifest.fixtures.json");
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -121,11 +119,6 @@ fn release_identity_matches_every_shared_fixture() {
     assert_fixtures(RELEASE_FIXTURES, ReleaseIdentity::from_slice);
 }
 
-#[test]
-fn backup_manifest_matches_every_shared_fixture() {
-    assert_fixtures(BACKUP_FIXTURES, BackupManifest::from_slice);
-}
-
 fn assert_fixtures<T, E>(fixtures: &str, parse: impl Fn(&[u8]) -> Result<T, E>)
 where
     E: std::fmt::Display,
@@ -159,24 +152,6 @@ fn required_nullable_fields_cannot_be_omitted() {
         "companion_contracts": []
     });
     assert!(StateContract::from_slice(&serde_json::to_vec(&state).unwrap()).is_err());
-
-    let backup = json!({
-        "manifest_version": 1,
-        "tool_version": "0.3.0",
-        "product": "sample-product",
-        "application_version": "0.3.0",
-        "created_at_epoch_seconds": 0,
-        "external_requirements": [],
-        "resources": [{
-            "name": "database",
-            "kind": "sqlite",
-            "path": "database.sqlite3",
-            "bytes": 0,
-            "files": 1,
-            "sha256": "a".repeat(64)
-        }]
-    });
-    assert!(BackupManifest::from_slice(&serde_json::to_vec(&backup).unwrap()).is_err());
 }
 
 #[test]
@@ -231,68 +206,8 @@ fn mathematically_integral_json_numbers_match_javascript_guards() {
     );
     StateContract::from_slice(state.as_bytes()).unwrap();
 
-    let backup = format!(
-        r#"{{
-                "manifest_version": 1.0,
-                "tool_version": "0.3.0",
-                "product": "sample-product",
-                "application_version": "0.3.0",
-                "schema_identity": {{
-                    "application": "sample-product",
-                    "application_version": "0.3.0",
-                    "schema_revision": 4.0,
-                    "schema_sha256": "{}"
-                }},
-                "created_at_epoch_seconds": 0e0,
-                "external_requirements": [],
-                "resources": [{{
-                    "name": "database",
-                    "kind": "sqlite",
-                    "path": "database.sqlite3",
-                    "bytes": 0.0,
-                    "files": 1e0,
-                    "sha256": "{}"
-                }}]
-            }}"#,
-        "a".repeat(64),
-        "b".repeat(64)
-    );
-    BackupManifest::from_slice(backup.as_bytes()).unwrap();
-
     let fractional = state.replace("\"revision\": 3e0", "\"revision\": 3.5");
     assert!(StateContract::from_slice(fractional.as_bytes()).is_err());
-}
-
-#[test]
-fn current_contract_does_not_invent_product_owned_array_or_path_rules() {
-    let manifest = json!({
-        "manifest_version": 1,
-        "tool_version": "0.3.0",
-        "product": "sample-product",
-        "application_version": "0.3.0",
-        "schema_identity": null,
-        "created_at_epoch_seconds": 0,
-        "external_requirements": [],
-        "resources": [
-            {
-                "name": "z-resource",
-                "kind": "data-tree",
-                "path": "../product-owned-path",
-                "bytes": 0,
-                "files": 1,
-                "sha256": "a".repeat(64)
-            },
-            {
-                "name": "z-resource",
-                "kind": "data-tree",
-                "path": "../product-owned-path",
-                "bytes": 0,
-                "files": 1,
-                "sha256": "a".repeat(64)
-            }
-        ]
-    });
-    BackupManifest::from_slice(&serde_json::to_vec(&manifest).unwrap()).unwrap();
 }
 
 #[test]

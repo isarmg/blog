@@ -18,7 +18,7 @@ rustix = { path = "../../foundation/platform/system-calls", package = "blog-plat
 hyper = { default-features = false, features = ["client-legacy", "http1", "tokio"], path = "../../foundation/network/http-transport", package = "blog-network-http-transport" }
 serde = {  features = ["derive"], path = "../../foundation/format/data-model",package = "blog-format-data-model"}
 serde_json = { path = "../../foundation/format/json",package = "blog-format-json"}
-sha2 = { path = "../../foundation/crypto/secure-hash",package = "blog-crypto-secure-hash"}
+sha2 = { default-features = false, features = ["alloc"], path = "../../foundation/crypto/secure-hash", package = "blog-crypto-secure-hash" }
 tempfile = { path = "../../foundation/filesystem/temporary-storage",package = "blog-filesystem-temporary-storage"}
 tokio = {  features = ["macros", "net", "rt", "signal", "sync", "time"], path = "../../foundation/runtime/task-scheduler",package = "blog-runtime-task-scheduler"}
 toml = { path = "../../foundation/format/configuration", package = "blog-format-configuration", default-features = false, features = ["std", "parse", "serialization"] }
@@ -32,6 +32,8 @@ path = "../../foundation/assets/compiler"
 toml = { path = "../../foundation/format/configuration", package = "blog-format-configuration", default-features = false, features = ["display"] }
 
 [build-dependencies.sha2]
+default-features = false
+features = ["alloc"]
 path = "../../foundation/crypto/secure-hash"
 package = "blog-crypto-secure-hash"
 
