@@ -15,11 +15,22 @@ pub(super) struct TreeHole {
     image_path: Option<String>,
     create_time: Option<String>,
 }
-pub(super) async fn tree_hole(State(state): State<AppState>) -> ApiResult<Vec<TreeHole>> {
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct TreeHoleQuery {
+    size: Option<i64>,
+}
+
+pub(super) async fn tree_hole(
+    State(state): State<AppState>,
+    Query(query): Query<TreeHoleQuery>,
+) -> ApiResult<Vec<TreeHole>> {
+    const MAX_SIZE: i64 = 100;
     Ok(Json(
         sqlx::query_as::<_, TreeHole>(
-            "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT 100",
+            "SELECT t.id,t.user_id,u.username,t.avatar,t.message,t.image_path,t.create_time FROM tree_hole t LEFT JOIN user u ON u.id=t.user_id ORDER BY t.id DESC LIMIT ?",
         )
+        .bind(query.size.unwrap_or(MAX_SIZE).clamp(1, MAX_SIZE))
         .fetch_all(&state.pool)
         .await?,
     ))

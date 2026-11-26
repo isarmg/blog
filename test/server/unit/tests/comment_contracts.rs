@@ -28,6 +28,48 @@ async fn anonymous_comments_and_guest_messages_preserve_plain_text() {
 }
 
 #[tokio::test]
+async fn public_tree_hole_returns_newest_rows_with_requested_or_default_limit() {
+    let (_directory, app, pool) = setup().await;
+    sqlx::query(
+        "WITH RECURSIVE seq(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM seq WHERE n < 101)
+         INSERT INTO tree_hole(id,message) SELECT n,printf('Message %d',n) FROM seq",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let read = |query: &str| {
+        app.clone().oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/tree-hole{query}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+    };
+    for (query, count) in [
+        ("", 100),
+        ("?size=9", 9),
+        ("?size=0", 1),
+        ("?size=150", 100),
+    ] {
+        let response = read(query).await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = body_json(response).await;
+        let rows = body.as_array().unwrap();
+        assert_eq!(rows.len(), count);
+        for (offset, row) in rows.iter().enumerate() {
+            let id = 101 - offset;
+            assert_eq!(row["id"], id);
+            assert_eq!(row["message"], format!("Message {id}"));
+        }
+    }
+    for query in ["?size=not-a-number", "?page=2"] {
+        let response = read(query).await.unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+}
+
+#[tokio::test]
 async fn comment_reads_preserve_sources_default_sizes_and_pagination_bounds() {
     let (_directory, app, pool) = setup().await;
     sqlx::raw_sql(

@@ -8,6 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../src/web/dist');
 const base = process.env.BLOG_SMOKE_URL || 'http://blog.test';
+// More than fits in the home sidebar, but fewer than the guestbook read limit.
+const wall = Array.from({ length: 12 }, (_, index) => ({
+  id: 12 - index, user_id: null, username: null, avatar: null, image_path: null,
+  create_time: null, message: `弹幕 ${12 - index}`,
+}));
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage({ locale: 'zh-CN' });
@@ -26,7 +31,8 @@ try {
         : url.pathname === '/api/v1/links/page' ? {items:[],total:0,page:Number(url.searchParams.get('page'))||1,size:Number(url.searchParams.get('size'))||20}
         : url.pathname === '/api/v1/links/classes' ? []
         : url.pathname === '/api/v1/notes/page' ? {items:[],total:0,page:Number(url.searchParams.get('page'))||1,size:10}
-        : ['/api/v1/family', '/api/v1/tree-hole'].includes(url.pathname) ? []
+        : url.pathname === '/api/v1/family' ? []
+        : url.pathname === '/api/v1/tree-hole' ? wall.slice(0, Number(url.searchParams.get('size') ?? 100))
         : { error: 'unauthorized' };
       await route.fulfill({ status: 'error' in payload ? 401 : 200, contentType: 'application/json', body: JSON.stringify(payload) });
       return;
@@ -43,7 +49,17 @@ try {
   });
   const homeHeading = process.env.BLOG_SMOKE_URL ? '相信记录的力量' : '测试站点';
   for (const [route, heading] of [['/', homeHeading], ['/search', '搜索文章'], ['/sort', '文章分类'], ['/jotting', 'blog'], ['/menory', 'blog'], ['/favorite', '百宝箱'], ['/favorite?tab=friends', '百宝箱'], ['/favorite?tab=music', '百宝箱'], ['/travel', '时光相册'], ['/love', '这是我们一起走过的'], ['/message', '弹幕']]) {
+    const wallRead = !process.env.BLOG_SMOKE_URL && (route === '/' || route === '/message')
+      ? page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/tree-hole')
+      : null;
     await page.goto(`${base}${route}`);
+    if (wallRead) {
+      const rows = await (await wallRead).json();
+      const expected = route === '/' ? wall.slice(0, 9) : wall;
+      assert.deepEqual(rows, expected, 'Only fetch messages used by this page');
+      const items = page.locator(route === '/' ? '.aside-latest p' : '.message-barrage-item span');
+      await expect(items).toHaveText(expected.map(row => row.message));
+    }
     await expect(page.locator("html")).toHaveAttribute("data-blog-runtime", "blog-interface");
     await page.getByRole('heading', { name: heading }).first().waitFor();
     console.log(`${route}: rendered`);

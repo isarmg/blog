@@ -14,6 +14,8 @@ use blog_interface::modal::ModalSurface;
 use blog_interface::prelude::*;
 use serde_json::{Value, json};
 
+const RECENT_MESSAGES: usize = 9;
+
 #[component]
 pub(super) fn Home() -> impl IntoView {
     let site = site_data();
@@ -25,7 +27,9 @@ pub(super) fn Home() -> impl IntoView {
         "/api/v1/articles?size=5&recommended=true".into()
     }));
     let labels = load_typed::<Vec<Label>>(Signal::derive(|| "/api/v1/labels".into()));
-    let messages = load(Signal::derive(|| "/api/v1/tree-hole".into()));
+    let messages = load(Signal::derive(|| {
+        format!("/api/v1/tree-hole?size={RECENT_MESSAGES}")
+    }));
     let push = RwSignal::new(None::<Value>);
     Effect::new(move |_| {
         let items = site
@@ -283,7 +287,7 @@ pub(super) fn Home() -> impl IntoView {
                                             html::div().child(move || {
                                                 list(messages.current())
                                                     .into_iter()
-                                                    .take(9)
+                                                    .take(RECENT_MESSAGES)
                                                     .map(|m| {
                                                         View::new(
                                                             html::p().child(text(&m, "message")),
