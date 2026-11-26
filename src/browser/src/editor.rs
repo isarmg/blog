@@ -2,13 +2,15 @@ use crate::common::Action;
 use crate::common::{
     ApiErrorCode, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
     ListState, LocalErrorCode, Pager, RequestOptions, flag, form_check, invalid, load, load_typed,
-    navigate, num, safe_url, t, table_time, text, validation_message,
+    navigate, num, page_items, safe_url, t, table_time, text, validation_message,
 };
 use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
+use blog_interface::{ev, html};
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 mod insertion;
 use insertion::Insertion;
@@ -133,7 +135,7 @@ fn prepare_creation(
 
 fn pending_creation(receipt: RwSignal<Option<CreationReceipt>>) -> impl IntoView {
     move || {
-        receipt.get().map(|_| {
+        receipt.with(Option::is_some).then(|| {
             View::new(blog_interface::html::p().class("blog-row").role("status").child(t(
                 "原提交等待确认；确认后会保留较新的修改。",
                 "The original submission is awaiting confirmation. Your newer edits will be kept.",
@@ -661,7 +663,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         .child(t("取消", "Cancel"))
                                         .class("blog-button")
                                         .r#type("button")
-                                        .disabled(move || save.busy.get() || creation.get().is_some())
+                                        .disabled(move || save.busy.get() || creation.with(Option::is_some))
                                         .on(blog_interface::ev::click, move |_| {
                                             upload.abort();
                                             navigate("articles");
@@ -672,7 +674,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 t("媒体上传中…", "Uploading media…")
                                             } else if save.busy.get() {
                                                 t("保存中…", "Saving…")
-                                            } else if creation.get().is_some() {
+                                            } else if creation.with(Option::is_some) {
                                                 t("确认原文章提交", "Confirm original article")
                                             } else {
                                                 t("保存文章", "Save article")
@@ -680,7 +682,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         })
                                         .class("blog-button")
                                         .r#type("submit")
-                                        .formnovalidate(move || creation.get().is_some())
+                                        .formnovalidate(move || creation.with(Option::is_some))
                                         .disabled(move || save.busy.get() || upload.busy.get()),
                                 ))
                                 .class("blog-actions blog-flow"),
@@ -698,7 +700,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                         return;
                     }
                     let f = form.get_untracked();
-                    let issue = if creation.get_untracked().is_some() {
+                    let issue = if creation.with_untracked(Option::is_some) {
                         None
                     } else if f.article_title.trim().is_empty()
                         || f.article_title.chars().count() > 120
@@ -816,6 +818,31 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
         .class("blog-content-stack blog-stack"),
 )
 }
+fn editor_table<const N: usize>(
+    name: String,
+    columns: [String; N],
+    rows: impl IntoView,
+) -> impl IntoView {
+    let headings = columns
+        .into_iter()
+        .map(|label| html::th().child(label))
+        .collect_view();
+    html::div()
+        .child(
+            html::table()
+                .child((
+                    html::thead().child(html::tr().child(headings)),
+                    html::tbody().child(rows),
+                ))
+                .class("blog-table")
+                .aria_label(name),
+        )
+        .class("blog-table-scroll blog-frame")
+        .tabindex("0")
+        .role("region")
+        .aria_label(t("数据表格", "Data table"))
+}
+
 #[component]
 fn NewsEditor(id: i64) -> impl IntoView {
     let page = RwSignal::new(1u64);
@@ -832,7 +859,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
     let receipt = creation_receipt(save);
     let validation = RwSignal::new(String::new());
     let reset = Callback::new(move |()| {
-        if receipt.get_untracked().is_some() {
+        if receipt.with_untracked(Option::is_some) {
             return;
         }
         let empty = json!({"content":"","create_time":""});
@@ -841,15 +868,17 @@ fn NewsEditor(id: i64) -> impl IntoView {
         editing.set(None);
         validation.set(String::new());
     });
-    let render_row = move |item: News| {
+    let locked = move || save.busy.get() || receipt.with(Option::is_some);
+    let render_row = move |item: &News| {
         let entry_id = item.id;
-        let edit = item.clone();
+        let content = item.content.clone();
+        let create_time = item.create_time.clone();
         View::new(
             blog_interface::html::tr().child((
                 blog_interface::html::td()
-                    .child(crate::dates::format(&item.create_time.unwrap_or_default())),
+                    .child(crate::dates::format(item.create_time.as_deref().unwrap_or_default())),
                 blog_interface::html::td()
-                    .child(item.content)
+                    .child(item.content.clone())
                     .class("comment-cell"),
                 blog_interface::html::td().child(
                     blog_interface::html::div()
@@ -857,7 +886,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             blog_interface::html::button()
                                 .child(t("编辑", "Edit"))
                                 .class("blog-button")
-                                .disabled(move || save.busy.get() || receipt.get().is_some())
+                                .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
                                     if form.get_untracked() != original.get_untracked()
                                         && !window()
@@ -869,9 +898,10 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                     {
                                         return;
                                     }
-                                    let f = json!({ "content" : edit.content,
-                    "create_time" : crate ::dates::input(& edit.create_time.clone()
-                    .unwrap_or_default()) });
+                                    let f = json!({
+                                        "content": content,
+                                        "create_time": crate::dates::input(create_time.as_deref().unwrap_or_default())
+                                    });
                                     form.set(f.clone());
                                     original.set(f);
                                     editing.set(Some(entry_id));
@@ -879,7 +909,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             blog_interface::html::button()
                                 .child(t("删除", "Delete"))
                                 .class("blog-button blog-danger")
-                                .disabled(move || save.busy.get() || receipt.get().is_some())
+                                .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
                                     if window()
                                         .confirm_with_message(&t(
@@ -931,8 +961,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                     .child((blog_interface::html::span().class("blog-field-label blog-row").child(t("进展时间（UTC）", "Update time (UTC)")),
                     blog_interface::html::input()
                     .class("blog-input").r#type("datetime-local").step("1")
-                    .prop("value", move | | text(&
-                    form.get(), "create_time"))
+                    .prop("value", move || form.with(|form| text(form, "create_time")))
                     .on(blog_interface::ev::input, move | ev | form
                     .update(| f | f["create_time"] = json!(event_target_value(&
                     ev)))),)).class("blog-form-field blog-stack"),
@@ -941,11 +970,11 @@ fn NewsEditor(id: i64) -> impl IntoView {
                     "Leave blank to use current UTC for a new update, or keep its existing time when editing.")).class("blog-field-help blog-row"),
                     blog_interface::html::div()
                     .child((blog_interface::html::button()
-                    .child( move | | if receipt.get().is_some() {
+                    .child( move | | if receipt.with(Option::is_some) {
                     t("确认原进展提交", "Confirm original update")
                     } else if editing.get().is_some() { t("保存修改",
                     "Save changes") } else { t("发布进展", "Publish update") }).class("blog-button").r#type("submit")
-                    .formnovalidate(move || receipt.get().is_some()),
+                    .formnovalidate(move || receipt.with(Option::is_some)),
                     move | | (editing.get().is_some() || form.get() != original
                     .get()).then(| | View::new(
     blog_interface::html::button()
@@ -955,7 +984,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
         )
         .class("blog-button")
         .r#type("button")
-        .disabled(move || receipt.get().is_some())
+        .disabled(move || receipt.with(Option::is_some))
         .on(
             blog_interface::ev::click,
             move |_| if form.get_untracked() == original.get_untracked()
@@ -974,7 +1003,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
 )),)).class("blog-actions blog-flow"),))
                     .class("blog-fieldset blog-stack")
                     .disabled(move
-                    | | save.busy.get() || data.current().is_none()))
+                    | | save.busy.get() || data.with_current(|page| page.is_none())))
                     .class("editor-form blog-frame blog-frame--padded blog-stack").on(blog_interface::ev::submit,
                     move |ev| {
                         ev.prevent_default();
@@ -983,7 +1012,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                         }
                         let f = form.get_untracked();
                         let content = text(&f, "content");
-                        let confirming = receipt.get_untracked().is_some();
+                        let confirming = receipt.with_untracked(Option::is_some);
                         if !confirming && !(1..=1024).contains(&content.trim().chars().count()) {
                             validation.set(t("进展正文须为 1–1024 个字符", "Update content must contain 1–1024 characters"));
                             return;
@@ -1020,41 +1049,11 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move | | data.current().map(| v | View::new(
-    blog_interface::html::div()
-        .child(
-
-            blog_interface::html::table()
-                    .child(
-                        (
-                                blog_interface::html::thead()
-                                .child( blog_interface::html::tr()
-                                .child((blog_interface::html::th()
-                                .child( t("时间",
-                                "Time")),
-                                blog_interface::html::th()
-                                .child( t("内容",
-                                "Content")),
-                                blog_interface::html::th()
-                                .child( t("操作",
-                                "Actions")),))),
-                                blog_interface::html::tbody()
-                                .child( v.items
-                                .into_iter().map(render_row).collect_view())
-                            ,),
-                    )
-                    .class("blog-table")
-                    .aria_label(
+                    move || data.with_current(|page| page.map(|page| editor_table(
                         t("文章进展", "Article updates"),
-                    ),
-        )
-        .class("blog-table-scroll blog-frame")
-        .tabindex("0")
-        .role("region")
-        .aria_label(
-            t("数据表格", "Data table"),
-        ),
-)),
+                        [t("时间", "Time"), t("内容", "Content"), t("操作", "Actions")],
+                        page.items.iter().map(render_row).collect_view(),
+                    ))),
                     Pager(component_props_builder(& Pager)
                     .data( data)
                     .page( page)
@@ -1068,6 +1067,23 @@ fn NewsEditor(id: i64) -> impl IntoView {
 fn empty_note() -> Value {
     json!({"content":"","image_path":null,"is_public":true})
 }
+fn note_fields(note: &Value, is_public: bool) -> Value {
+    json!({"content":note["content"], "image_path":note["image_path"], "is_public":is_public})
+}
+
+fn note_preview(url: String, lightbox: RwSignal<Option<String>>) -> impl IntoView {
+    let source = url.clone();
+    html::button()
+        .child(
+            html::img()
+                .src(url)
+                .alt(t("查看随笔图片", "View note image")),
+        )
+        .class("moderation-photo")
+        .r#type("button")
+        .on(ev::click, move |_| lightbox.set(Some(source.clone())))
+}
+
 #[component]
 pub fn Notes() -> impl IntoView {
     let page = RwSignal::new(1u64);
@@ -1084,7 +1100,7 @@ pub fn Notes() -> impl IntoView {
     let lightbox = RwSignal::new(None::<String>);
     let validation = RwSignal::new(String::new());
     let reset = Callback::new(move |()| {
-        if receipt.get_untracked().is_some() {
+        if receipt.with_untracked(Option::is_some) {
             return;
         }
         upload.abort();
@@ -1094,14 +1110,16 @@ pub fn Notes() -> impl IntoView {
         filename.set(String::new());
         validation.set(String::new());
     });
-    let render_row = move |item: Value| {
-        let id = num(&item, "id");
-        let edit = item.clone();
-        let toggle = item.clone();
+    let locked = move || save.busy.get() || upload.busy.get() || receipt.with(Option::is_some);
+    let render_row = move |item: &Value| {
+        let id = num(item, "id");
+        let is_public = flag(item, "is_public");
+        let edit = Arc::new(note_fields(item, is_public));
+        let toggle = Arc::clone(&edit);
         View::new(
             blog_interface::html::tr().child((
                 blog_interface::html::td().child({
-                    let n = text(&item, "username");
+                    let n = text(item, "username");
                     if n.is_empty() {
                         t("站长", "Site owner")
                     } else {
@@ -1109,41 +1127,25 @@ pub fn Notes() -> impl IntoView {
                     }
                 }),
                 blog_interface::html::td()
-                    .child(text(&item, "content"))
+                    .child(text(item, "content"))
                     .class("comment-cell"),
-                blog_interface::html::td().child(safe_url(&text(&item, "image_path"), true).map(
-                    |u| {
-                        let click = u.clone();
-                        View::new(
-                            blog_interface::html::button()
-                                .child(
-                                    blog_interface::html::img()
-                                        .src(u)
-                                        .alt(t("查看随笔图片", "View note image")),
-                                )
-                                .class("moderation-photo")
-                                .r#type("button")
-                                .on(blog_interface::ev::click, move |_| {
-                                    lightbox.set(Some(click.clone()));
-                                }),
-                        )
-                    },
-                )),
-                blog_interface::html::td().child(if flag(&item, "is_public") {
+                html::td().child(
+                    safe_url(&text(item, "image_path"), true)
+                        .map(|url| note_preview(url, lightbox)),
+                ),
+                html::td().child(if is_public {
                     t("公开", "Public")
                 } else {
                     t("私密", "Private")
                 }),
-                blog_interface::html::td().child(table_time(&text(&item, "create_time"))),
+                blog_interface::html::td().child(table_time(&text(item, "create_time"))),
                 blog_interface::html::td().child(
                     blog_interface::html::div()
                         .child((
                             blog_interface::html::button()
                                 .child(t("编辑", "Edit"))
                                 .class("blog-button")
-                                .disabled(move || {
-                                    save.busy.get() || upload.busy.get() || receipt.get().is_some()
-                                })
+                                .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
                                     if form.get_untracked() != original.get_untracked()
                                         && !window()
@@ -1155,32 +1157,30 @@ pub fn Notes() -> impl IntoView {
                                     {
                                         return;
                                     }
-                                    let f = json!({ "content" : edit["content"],
-                    "image_path" : edit["image_path"], "is_public" : flag(& edit,
-                    "is_public") });
+                                    let f = edit.as_ref().clone();
                                     form.set(f.clone());
                                     original.set(f);
                                     editing.set(Some(id));
                                     filename.set(String::new());
                                 }),
                             blog_interface::html::button()
-                                .child(if flag(&item, "is_public") {
+                                .child(if is_public {
                                     t("隐藏", "Hide")
                                 } else {
                                     t("公开", "Publish")
                                 })
                                 .class("blog-button")
                                 .disabled(move || {
-                                    save.busy.get()
-                                        || upload.busy.get()
-                                        || receipt.get().is_some()
-                                        || editing.get() == Some(id) && form.get() != original.get()
+                                    locked()
+                                        || editing.get() == Some(id)
+                                            && form.with(|form| {
+                                                original.with(|original| form != original)
+                                            })
                                 })
                                 .on(blog_interface::ev::click, move |_| {
-                                    let visible = !flag(&toggle, "is_public");
-                                    let input = json!({
-                    "content" : toggle["content"], "image_path" :
-                    toggle["image_path"], "is_public" : visible });
+                                    let visible = !is_public;
+                                    let mut input = toggle.as_ref().clone();
+                                    input["is_public"] = json!(visible);
                                     save.run(
                                         format!("/api/v1/content/notes/{id}"),
                                         "PUT",
@@ -1204,9 +1204,7 @@ pub fn Notes() -> impl IntoView {
                             blog_interface::html::button()
                                 .child(t("删除", "Delete"))
                                 .class("blog-button blog-danger")
-                                .disabled(move || {
-                                    save.busy.get() || upload.busy.get() || receipt.get().is_some()
-                                })
+                                .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
                                     if window()
                                         .confirm_with_message(&t(
@@ -1261,18 +1259,10 @@ pub fn Notes() -> impl IntoView {
                     f["image_path"] = Value::String(path)); filename.set(name);
                     notify(t("图片已上传", "Image uploaded")); }); }))
                     .build()),
-                    move | | safe_url(& text(& form.get(), "image_path"), true).map(|
-                    url | { let click = url.clone(); View::new(
+                    move || form.with(|form| safe_url(&text(form, "image_path"), true)).map(|url| View::new(
     blog_interface::html::div()
-        .child(
-            (
-                    blog_interface::html::button()
-                    .child( blog_interface::html::img()
-                    .src(url)
-                    .alt(t("查看随笔图片",
-                    "View note image"))).class("moderation-photo")
-                    .r#type("button").on(blog_interface::ev::click, move |
-                    _ | lightbox.set(Some(click.clone()))),
+        .child((
+                    note_preview(url, lightbox),
                     blog_interface::html::button()
                     .child( t("移除图片",
                     "Remove image")).class("blog-button").r#type("button")
@@ -1283,18 +1273,18 @@ pub fn Notes() -> impl IntoView {
                     .set(String::new()); })
                 ,),
         ),
-) }),
+)),
                     form_check(form, "is_public", t(" 公开可见",
                     " Publicly visible")),
                     blog_interface::html::div()
                     .child((blog_interface::html::button()
                     .child( move | | if upload.busy.get() { t("图片上传中…",
                     "Uploading image…") } else if save.busy.get() {
-                    t("保存中…", "Saving…") } else if receipt.get().is_some() {
+                    t("保存中…", "Saving…") } else if receipt.with(Option::is_some) {
                     t("确认原随笔提交", "Confirm original note") } else if editing.get().is_some()
                     { t("保存修改", "Save changes") } else { t("发布",
                     "Publish") }).class("blog-button").r#type("submit")
-                    .formnovalidate(move || receipt.get().is_some())
+                    .formnovalidate(move || receipt.with(Option::is_some))
                     .disabled(move
                     | | save.busy.get() || upload.busy.get()),
                     move | | (editing.get().is_some() || form.get() != original.get()
@@ -1307,7 +1297,7 @@ pub fn Notes() -> impl IntoView {
         .class("blog-button")
         .r#type("button")
         .disabled(
-            move || save.busy.get() || receipt.get().is_some(),
+            move || save.busy.get() || receipt.with(Option::is_some),
         )
         .on(
             blog_interface::ev::click,
@@ -1335,7 +1325,7 @@ pub fn Notes() -> impl IntoView {
                         }
                         let f = form.get_untracked();
                         let content = text(&f,"content");
-                        let confirming = receipt.get_untracked().is_some();
+                        let confirming = receipt.with_untracked(Option::is_some);
                         if !confirming && !(1..=1024).contains(&content.trim().chars().count()) {
                             validation.set(t("随笔正文须为 1–1024 个字符", "Note content must contain 1–1024 characters"));
                             return;
@@ -1361,7 +1351,7 @@ pub fn Notes() -> impl IntoView {
                             receipt.set(None);
                             if target.is_none() && form.get_untracked() != submitted {
                                 editing.set(Some(num(&v,"id")));
-                                original.set(json!({"content":v["content"],"image_path":v["image_path"],"is_public":flag(&v,"is_public")}));
+                                original.set(note_fields(&v, flag(&v, "is_public")));
                                 notify(t("原随笔已确认，较新的修改可继续保存。", "Original note confirmed. Your newer edits are ready to save."));
                             } else {
                                 reset.run(());
@@ -1371,41 +1361,12 @@ pub fn Notes() -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move | | data.current_items().map(| items | View::new(
-    blog_interface::html::div()
-        .child(
-
-            blog_interface::html::table()
-                    .child(
-                        (
-                                blog_interface::html::thead()
-                                .child( blog_interface::html::tr()
-                                .child( [t("作者",
-                                "Author"), t("内容", "Content"), t("图片", "Image"),
-                                t("状态", "Status"), t("时间", "Time"), t("操作",
-                                "Actions")].into_iter().map(| l | View::new(
-    blog_interface::html::th()
-        .child(
-
-            l,
-        ),
-)).collect_view())),
-                                blog_interface::html::tbody()
-                                .child( items.into_iter().map(render_row).collect_view())
-                            ,),
-                    )
-                    .class("blog-table")
-                    .aria_label(
+                    move || data.with_current(|page| page.map(|page| editor_table(
                         t("随笔列表", "Note list"),
-                    ),
-        )
-        .class("blog-table-scroll blog-frame")
-        .tabindex("0")
-        .role("region")
-        .aria_label(
-            t("数据表格", "Data table"),
-        ),
-)),
+                        [t("作者", "Author"), t("内容", "Content"), t("图片", "Image"),
+                         t("状态", "Status"), t("时间", "Time"), t("操作", "Actions")],
+                        page_items(page).iter().map(render_row).collect_view(),
+                    ))),
                     ListState(component_props_builder(& ListState)
                     .data( data)
                     .empty( t("暂无随笔",

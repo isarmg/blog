@@ -34424,7 +34424,7 @@
         "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
         "src/dates.rs": "e74422fb4ada91d800f3d4a3b0ca3ddc46776fd6cf99a88f4a77081b677a5f1e",
-        "src/editor.rs": "1f753d94a2a086b1443e9fd1a9f8b8cf2d187c29b93ae9d128c6474f2b708032",
+        "src/editor.rs": "03c0475985f8c4a8e27647dc85af50025db53a28297c59bc8ba042567d0a3c88",
         "src/editor/insertion.rs": "f83fb8295c9753d863728da53ef265bcac4a2541571ededaf567573ebfc22fb5",
         "src/lib.rs": "a0c8349911140a65c7eea34d44e5a8dee103f56fb256d889386494e7dd514762",
         "src/markdown.rs": "a4573f58260a81123c21ec5fc460616842b7bcca5399c35c05782ff20b3bc602",
