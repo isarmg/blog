@@ -312,7 +312,7 @@
 | blog-sync-concurrent-collections (`src/foundation/sync/concurrent-collections`) | 并发工具、队列、epoch回收与工作窃取 | native, workspace-tests | src/foundation/runtime/worker-pool, src/foundation/storage/sqlite-access | crossbeam-deque@0.8.8, crossbeam-epoch@0.9.21, crossbeam-queue@0.3.14, crossbeam-utils@0.8.23 |
 | blog-sync-exclusive-value (`src/foundation/sync/exclusive-value`) | exclusive value | native, host-tools, workspace-tests | src/foundation/network/request-pipeline, src/foundation/network/request-router | sync_wrapper@1.0.2 |
 | blog-sync-initialization (`src/foundation/sync/initialization`) | initialization | native, web-release, host-tools, workspace-tests | src/foundation/collections/keyed-hash, src/foundation/diagnostics/structured-events, src/foundation/wasm/browser-bridge | once_cell@1.21.4 |
-| blog-sync-lazy-global (`src/foundation/sync/lazy-global`) | lazy global | native, host-tools, workspace-tests | src/foundation/collections/concurrent-slab | lazy_static@1.5.1 |
+| blog-sync-lazy-global (`src/foundation/sync/lazy-global`) | lazy global | 当前入口未选用 | 入口或保留实现 | lazy_static@1.5.1 |
 | blog-sync-message-channel (`src/foundation/sync/message-channel`) | message channel | native, workspace-tests | src/foundation/storage/sqlite-access | flume@0.12.0 |
 | blog-sync-mutex (`src/foundation/sync/mutex`) | mutex | 当前入口未选用 | src/foundation/diagnostics/structured-events, src/foundation/runtime/task-scheduler, src/foundation/sync/initialization, src/foundation/sync/spin-lock | lock_api@0.4.14, parking_lot@0.12.5, parking_lot_core@0.9.12 |
 | blog-sync-notification (`src/foundation/sync/notification`) | notification | native, workspace-tests | src/foundation/storage/sqlite-access | event-listener@5.4.2 |

@@ -6040,7 +6040,7 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "e7267dcf08dcdc2541a7c57a88951403d4f4bcade4296b174596737ed53604ca"
+    "Cargo.lock": "dd55eb45a21369107b40fcab85def3c20ed3f286087a1eae50d908272e04c272"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6058,7 +6058,7 @@
     "src/foundation/cli/terminal-style/Cargo.toml": "838455f8d27d280d6223bec5f434c1c3e5c30ba4d6f0f58af4fb74a040648d00",
     "src/foundation/collections/bit-set/Cargo.toml": "50645c4f5e7108ecd675ceee7b341bb6d8435c9f989921cf98301c686be0467e",
     "src/foundation/collections/compiler-hash/Cargo.toml": "8581cf1b2db905d9ff4373a541b2aa63658bc87b5e6416365e04f86c22574aec",
-    "src/foundation/collections/concurrent-slab/Cargo.toml": "77048beca078a4764429dae14628a9c693721e07dc354fc84dd0d7ac7a5932ca",
+    "src/foundation/collections/concurrent-slab/Cargo.toml": "e36d810fe92b723070cc5a8d62add1b468073e047b26e7a7d55e01a051d2aca8",
     "src/foundation/collections/database-hash-table/Cargo.toml": "78b84286e9c58135104b509915045c648b7487026398931d0cb6e9cc0e62c99a",
     "src/foundation/collections/fast-hash/Cargo.toml": "9f8f5022d569bd62c689980b468b24edb730b2c476686dd0fde8440048ab67d4",
     "src/foundation/collections/hash-table/Cargo.toml": "4048819e7be52110780a65acb97809ca2dfabd319ae189e9c8d83ad77545fb3c",
@@ -35919,15 +35919,13 @@
       "version": "0.0.0"
     },
     "src/foundation/collections/concurrent-slab": {
-      "dependencies": [
-        "src/foundation/sync/lazy-global"
-      ],
+      "dependencies": [],
       "directory": "src/foundation/collections/concurrent-slab",
       "files_sha256": {
         ".cargo_vcs_info.json": "847b9f2663818742ca86c2785244ea5e842d326c7538e63bf7769e0cd153f41c",
         ".clog.toml": "2e6342fb60b6cc03617622254713c4f61dc32fc1b600bd1f30c6dbc827b49b34",
         ".envrc": "9b7fdb978bdcfc6b1b47b7100c329f63567f91ca47d83b32e4e87df61e8a8689",
-        "Cargo.toml": "77048beca078a4764429dae14628a9c693721e07dc354fc84dd0d7ac7a5932ca",
+        "Cargo.toml": "e36d810fe92b723070cc5a8d62add1b468073e047b26e7a7d55e01a051d2aca8",
         "src/cfg.rs": "affe821b0543c88a6445dfdf148b5f83ad12210b97da7c3a108a5a36f88ccf29",
         "src/clear.rs": "d36f067470671598a8d4b102c73c6f4c9576df1dbd9b40127b6efe69ade168fe",
         "src/implementation.rs": "dec81aebb88e006ab405256fb16e8ecca6b07c3582c1c803bdfcc2a84b1d21cf",
@@ -35939,8 +35937,8 @@
         "src/page/stack.rs": "05be6e70697d1cb049c1d4c9524218016e57b3ae38d7b63887c872d762ff73a0",
         "src/pool.rs": "cf04cec4e24984a40c9300dc86baf6fb79432be7cd3a2276ad69a0c932be4098",
         "src/shard.rs": "6f6f4a6d0576ebc5bd0ffe3ec9fbf114535189dce38390e03f4196eb898a4f98",
-        "src/sync.rs": "854745526503dc145992314731eb49c17104ad593441f332a8b829882759c471",
-        "src/tid.rs": "48af5907286139c6b18c9482299eb0474e9033ab371d93a6a3e73f164d6ad14f"
+        "src/sync.rs": "1212eefd59a3fa1f854f681a30cb01e6b0f1b99c1328deaf3efb70d4af1d27f1",
+        "src/tid.rs": "13c63e6e98dfaec6326c6402eae74ba33241e1be68a528a17d3b80e2485554d2"
       },
       "layer": "collections",
       "name": "blog-collections-concurrent-slab",
@@ -47839,7 +47837,7 @@
         "src/content/statistics.rs": "a2654a95e608cc3fafd81f27c672d4dae89e4c98cc53e5300962ec38fd0bb893",
         "src/database.rs": "f417b6c62e60603d8053d0d06a3c7ba12c7cfe3dbb80e93b7127bc2ac73e7719",
         "src/error.rs": "5e96135be93dd04959c677aa4e177b17b4fc8a61df4fd14b6bb463f7a47a5ae1",
-        "src/home.rs": "529decdb3595a9b32b30add4aa0cb4ae7d9f403c2ccf5c2a6322cc598dfaff0f",
+        "src/home.rs": "974183d827fb9a592559ca8a73cdc90efde1ad1be644f20bdc3fca2a37fef257",
         "src/installation_definition.rs": "c5cc8b5942e218e22d3d18aadfa28a885d354a2f96998122ea6e4811876ae4cf",
         "src/lib.rs": "10dc9ba109e34896bbfd3b43e7f16070a53749a47765bc9ab7ad6b5f81e8985a",
         "src/lifecycle.rs": "8757492cf14a15f3635a2225960d3f17118fc184a280d197c8a498a5a37c4f34",
@@ -47888,7 +47886,7 @@
         "test/server/unit/tests/comment_contracts.rs": "9c91b7ab56d1af67f8d6570f7c4203a64ea5897a61a8675fbe9f206254c6ef05",
         "test/server/unit/tests/commit_responses.rs": "e60f50d5638a412cd85480718424c85624b5e81eee9bfdbd3716f5637c55e5fc",
         "test/server/unit/tests/family.rs": "ee0c5a73daa7edcb8f64061cbdd40b153be10a7aa5737a6a4d5342d850bc933c",
-        "test/server/unit/tests/management.rs": "74b4bb18470bf590c9b99f147c3de548f21d97a2c172299444ad87ee1b8f1cee",
+        "test/server/unit/tests/management.rs": "234fecb54b315fc2f0a2d021fd9ec405b35c0f8c9e9e1eb3e911ee48fa964b32",
         "test/server/unit/tests/media_management.rs": "07e75815d876ea675039c58acf948526e0407320338429ae17bda896850fe47b",
         "test/server/unit/tests/media_names.rs": "68e63a489049ba235a1bbb22ffafb25bb315f80c095fddc8458044db571f964d",
         "test/server/unit/tests/news_timestamps.rs": "37c1daee1376c6f85535b1a393c1740f8085db0a4795d625970ad88ef6f6a34f",
@@ -49174,15 +49172,6 @@
             "std"
           ],
           "name": "blog-sync-initialization",
-          "roles": [
-            "compile",
-            "runtime"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/sync/lazy-global": {
-          "features": [],
-          "name": "blog-sync-lazy-global",
           "roles": [
             "compile",
             "runtime"
@@ -51161,14 +51150,6 @@
             "std"
           ],
           "name": "blog-sync-initialization",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/sync/lazy-global": {
-          "features": [],
-          "name": "blog-sync-lazy-global",
           "roles": [
             "compile"
           ],
@@ -53557,14 +53538,6 @@
             "std"
           ],
           "name": "blog-sync-initialization",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/sync/lazy-global": {
-          "features": [],
-          "name": "blog-sync-lazy-global",
           "roles": [
             "compile"
           ],

@@ -1,6 +1,5 @@
 //! Standard-library primitives used by the concurrent implementation.
 
-pub(crate) use lazy_static::lazy_static;
 pub(crate) use std::{
     hint,
     sync::{atomic, Mutex},

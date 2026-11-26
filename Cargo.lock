@@ -235,9 +235,6 @@ version = "0.0.0"
 [[package]]
 name = "blog-collections-concurrent-slab"
 version = "0.0.0"
-dependencies = [
- "blog-sync-lazy-global",
-]
 
 [[package]]
 name = "blog-collections-database-hash-table"
@@ -1121,10 +1118,6 @@ version = "0.0.0"
 
 [[package]]
 name = "blog-sync-initialization"
-version = "0.0.0"
-
-[[package]]
-name = "blog-sync-lazy-global"
 version = "0.0.0"
 
 [[package]]

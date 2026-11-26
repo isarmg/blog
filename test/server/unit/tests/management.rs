@@ -289,13 +289,15 @@ async fn validated_letter_limits_cover_worst_case_json_escaping() {
 
 #[tokio::test]
 async fn home_section_targets_are_parsed_before_replacing_the_existing_sections() {
+    const MANAGE: &str = "/api/v1/content/home-sections";
+    const PUBLIC: &str = "/api/v1/home-sections";
     let (_directory, app, pool) = setup().await;
     let session = login(&app).await;
     sqlx::query("INSERT INTO sort(id,sort_name) VALUES(1,'Category')")
         .execute(&pool)
         .await
         .unwrap();
-    let before = public(&app, "/api/v1/home-sections").await;
+    let before = public(&app, PUBLIC).await;
     for (kind, sort_id) in [
         ("latest", json!(1)),
         ("recommended", json!(1)),
@@ -307,21 +309,21 @@ async fn home_section_targets_are_parsed_before_replacing_the_existing_sections(
             &app,
             &session,
             "PUT",
-            "/api/v1/content/home-sections",
+            MANAGE,
             json!([{"title":"Section","kind":kind,"sort_id":sort_id,"priority":0,"enabled":true}]),
         )
         .await;
         assert_eq!(response.status(), StatusCode::BAD_REQUEST, "{kind}");
-        assert_eq!(public(&app, "/api/v1/home-sections").await, before);
+        assert_eq!(public(&app, PUBLIC).await, before);
     }
     let response = admin(
         &app,
         &session,
         "PUT",
-        "/api/v1/content/home-sections",
+        MANAGE,
         json!([
             {"title":" Latest ","kind":"latest","sort_id":null,"priority":0,"enabled":true},
-            {"title":"Recommended","kind":"recommended","sort_id":null,"priority":1,"enabled":true},
+            {"title":"Recommended","kind":"recommended","sort_id":null,"priority":1,"enabled":false},
             {"title":"Category","kind":"category","sort_id":1,"priority":2,"enabled":true},
         ]),
     )
@@ -334,6 +336,10 @@ async fn home_section_targets_are_parsed_before_replacing_the_existing_sections(
     assert_eq!(sections[1]["kind"], "recommended");
     assert_eq!(sections[2]["kind"], "category");
     assert_eq!(sections[2]["sort_id"], 1);
+    let response = admin(&app, &session, "GET", MANAGE, Value::Null).await;
+    assert_eq!(body_json(response).await, sections);
+    let visible = public(&app, PUBLIC).await;
+    assert_eq!(visible, json!([sections[0], sections[2]]));
 }
 
 #[tokio::test]

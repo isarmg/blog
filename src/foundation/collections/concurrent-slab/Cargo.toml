@@ -20,10 +20,5 @@ autotests = false
 autobenches = false
 autoexamples = false
 
-[dependencies.lazy_static]
-path = "../../sync/lazy-global"
-package = "blog-sync-lazy-global"
-
-
 [badges.maintenance]
 status = "experimental"

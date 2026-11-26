@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ApiResult, AppState, invalid};
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum HomeKind {
     Latest,
@@ -19,18 +19,11 @@ enum SectionKind {
 }
 
 impl SectionKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Latest => "latest",
-            Self::Recommended => "recommended",
-            Self::Category(_) => "category",
-        }
-    }
-
-    fn sort_id(&self) -> Option<i64> {
+    fn database_fields(&self) -> (&'static str, Option<i64>) {
         match *self {
-            Self::Latest | Self::Recommended => None,
-            Self::Category(id) => Some(id),
+            Self::Latest => ("latest", None),
+            Self::Recommended => ("recommended", None),
+            Self::Category(id) => ("category", Some(id)),
         }
     }
 }
@@ -106,13 +99,14 @@ async fn public_sections(State(state): State<AppState>) -> ApiResult<Vec<HomeSec
         .fetch_all(&state.pool).await?))
 }
 
+const READ_ALL_SECTIONS: &str =
+    "SELECT id,title,kind,sort_id,priority,enabled FROM home_sections ORDER BY priority,id";
+
 async fn admin_sections(State(state): State<AppState>) -> ApiResult<Vec<HomeSection>> {
     Ok(Json(
-        sqlx::query_as(
-            "SELECT id,title,kind,sort_id,priority,enabled FROM home_sections ORDER BY priority,id",
-        )
-        .fetch_all(&state.pool)
-        .await?,
+        sqlx::query_as(READ_ALL_SECTIONS)
+            .fetch_all(&state.pool)
+            .await?,
     ))
 }
 
@@ -144,22 +138,21 @@ async fn save_sections(
         .execute(&mut *tx)
         .await?;
     for item in sections {
+        let (kind, sort_id) = item.kind.database_fields();
         sqlx::query(
             "INSERT INTO home_sections(title,kind,sort_id,priority,enabled) VALUES(?,?,?,?,?)",
         )
         .bind(item.title)
-        .bind(item.kind.as_str())
-        .bind(item.kind.sort_id())
+        .bind(kind)
+        .bind(sort_id)
         .bind(item.priority)
         .bind(item.enabled)
         .execute(&mut *tx)
         .await?;
     }
-    let sections = sqlx::query_as(
-        "SELECT id,title,kind,sort_id,priority,enabled FROM home_sections ORDER BY priority,id",
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let sections = sqlx::query_as(READ_ALL_SECTIONS)
+        .fetch_all(&mut *tx)
+        .await?;
     tx.commit().await?;
     Ok(Json(sections))
 }
