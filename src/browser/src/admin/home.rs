@@ -1,9 +1,10 @@
-use crate::common::{Action, Data, Feedback, load_typed, t, tr};
+use crate::common::{Action, Data, Feedback, load_typed, t, tr, validation_message};
 use crate::models::{Category, HomeSection, HomeSource};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
+use blog_interface::html;
 use blog_interface::prelude::*;
-use serde_json::json;
+use serde_json::{Value, json};
 
 #[derive(Clone)]
 struct SectionRow {
@@ -40,23 +41,136 @@ impl SectionSource {
     }
 }
 
+impl From<HomeSection> for SectionForm {
+    fn from(section: HomeSection) -> Self {
+        Self {
+            title: section.title,
+            source: match section.source {
+                HomeSource::Latest => SectionSource::Latest,
+                HomeSource::Recommended => SectionSource::Recommended,
+                HomeSource::Category { sort_id } => SectionSource::Category {
+                    sort_id: Some(sort_id),
+                },
+            },
+            enabled: section.enabled,
+        }
+    }
+}
+
 impl From<HomeSection> for SectionRow {
     fn from(section: HomeSection) -> Self {
         Self {
             id: section.id,
-            form: ArcRwSignal::new(SectionForm {
-                title: section.title,
-                source: match section.source {
-                    HomeSource::Latest => SectionSource::Latest,
-                    HomeSource::Recommended => SectionSource::Recommended,
-                    HomeSource::Category { sort_id } => SectionSource::Category {
-                        sort_id: Some(sort_id),
-                    },
-                },
-                enabled: section.enabled,
-            }),
+            form: ArcRwSignal::new(section.into()),
         }
     }
+}
+
+impl SectionForm {
+    fn payload(&self, index: usize) -> Option<Value> {
+        let title = self.title.trim();
+        let sort_id = match self.source {
+            SectionSource::Category { sort_id } => Some(sort_id?),
+            SectionSource::Latest | SectionSource::Recommended => None,
+        };
+        (!title.is_empty()).then(|| {
+            json!({
+                "title": title,
+                "kind": self.source.kind(),
+                "sort_id": sort_id,
+                "priority": index * 10,
+                "enabled": self.enabled,
+            })
+        })
+    }
+}
+
+fn submit_sections(
+    sections: RwSignal<Vec<SectionRow>>,
+    loaded: RwSignal<bool>,
+    save: Action,
+    validation: RwSignal<String>,
+) {
+    if !loaded.get_untracked() || save.busy.get_untracked() {
+        return;
+    }
+    let payload = sections.with_untracked(|rows| {
+        rows.iter()
+            .enumerate()
+            .map(|(index, row)| row.form.with_untracked(|form| form.payload(index)))
+            .collect::<Option<Vec<_>>>()
+    });
+    let Some(payload) = payload else {
+        validation.set(t(
+            "请填写栏目标题并选择分类",
+            "Enter a section title and select a category",
+        ));
+        return;
+    };
+    validation.set(String::new());
+    save.run_typed(
+        "/api/v1/content/home-sections".into(),
+        "PUT",
+        Some(Value::Array(payload)),
+        move |result: Vec<HomeSection>| {
+            sections.update(|rows| {
+                *rows = result
+                    .into_iter()
+                    .map(|section| {
+                        if let Some(row) = rows.iter().find(|row| row.id == section.id) {
+                            row.form.set(section.into());
+                            row.clone()
+                        } else {
+                            section.into()
+                        }
+                    })
+                    .collect();
+            });
+            notify(t("首页栏目已保存", "Home sections saved"));
+        },
+    );
+}
+
+fn section_table(
+    sections: RwSignal<Vec<SectionRow>>,
+    categories: Data<Vec<Category>>,
+) -> impl IntoView {
+    let headings = [
+        t("顺序", "Order"),
+        t("标题", "Title"),
+        t("内容来源", "Content source"),
+        t("分类", "Category"),
+        t("显示", "Show"),
+        t("操作", "Actions"),
+    ]
+    .map(|title| html::th().child(title));
+    let rows = For(component_props_builder(&For)
+        .each(move || sections.get())
+        .key(|row| row.id)
+        .children(move |item| {
+            HomeRow(
+                component_props_builder(&HomeRow)
+                    .item(item)
+                    .sections(sections)
+                    .categories(categories)
+                    .build(),
+            )
+        })
+        .build());
+    html::div()
+        .class("blog-table-scroll")
+        .tabindex("0")
+        .role("region")
+        .aria_label(t("数据表格", "Data table"))
+        .child(
+            html::table()
+                .class("blog-table")
+                .aria_label(t("首页栏目列表", "Home section list"))
+                .child((
+                    html::thead().child(html::tr().child(headings)),
+                    html::tbody().child(rows),
+                )),
+        )
 }
 
 #[component]
@@ -70,76 +184,15 @@ pub(super) fn HomeSections() -> impl IntoView {
     let save = Action::new();
     let validation = RwSignal::new(String::new());
     Effect::new(move |_| {
-        if let Some(v) = data.current()
-            && !loaded.get_untracked()
+        if !loaded.get_untracked()
+            && let Some(v) = data.current()
         {
             sections.set(v.into_iter().map(SectionRow::from).collect());
             loaded.set(true);
         }
     });
-    let save_sections = Callback::new(move |()| {
-        if !loaded.get_untracked() || save.busy.get_untracked() {
-            return;
-        }
-        if sections.with_untracked(|rows| {
-            rows.iter().any(|row| {
-                row.form.with_untracked(|form| {
-                    form.title.trim().is_empty()
-                        || matches!(form.source, SectionSource::Category { sort_id: None })
-                })
-            })
-        }) {
-            validation.set(t(
-                "请填写栏目标题并选择分类",
-                "Enter a section title and select a category",
-            ));
-            return;
-        }
-        validation.set(String::new());
-        let payload: Vec<_> = sections.with_untracked(|rows| {
-            rows.iter()
-                .enumerate()
-                .map(|(index, row)| {
-                    row.form.with_untracked(|form| {
-                        let sort_id = match form.source {
-                            SectionSource::Category { sort_id } => sort_id,
-                            SectionSource::Latest | SectionSource::Recommended => None,
-                        };
-                        json!({
-                            "title": form.title.trim(),
-                            "kind": form.source.kind(),
-                            "sort_id": sort_id,
-                            "priority": index * 10,
-                            "enabled": form.enabled,
-                        })
-                    })
-                })
-                .collect()
-        });
-        save.run_typed(
-            "/api/v1/content/home-sections".into(),
-            "PUT",
-            Some(json!(payload)),
-            move |v: Vec<HomeSection>| {
-                sections.update(|rows| {
-                    *rows = v
-                        .into_iter()
-                        .map(|section| {
-                            let next = SectionRow::from(section);
-                            match rows.iter().find(|row| row.id == next.id) {
-                                Some(row) => {
-                                    row.form.set(next.form.get_untracked());
-                                    row.clone()
-                                }
-                                None => next,
-                            }
-                        })
-                        .collect();
-                });
-                notify(t("首页栏目已保存", "Home sections saved"));
-            },
-        );
-    });
+    let save_sections =
+        Callback::new(move |()| submit_sections(sections, loaded, save, validation));
     View::new(
         blog_interface::html::section()
             .aria_label(t("首页栏目", "Home sections"))
@@ -159,15 +212,7 @@ pub(super) fn HomeSections() -> impl IntoView {
                         .retry(Some(save_sections))
                         .build(),
                 ),
-                move || {
-                    (!validation.get().is_empty()).then(|| {
-                        View::new(
-                            blog_interface::html::p().class("blog-row blog-danger")
-                                .child(validation.get())
-                                .role("alert"),
-                        )
-                    })
-                },
+                validation_message(validation),
                 blog_interface::html::fieldset()
                     .child((
                         blog_interface::html::div()
@@ -175,7 +220,7 @@ pub(super) fn HomeSections() -> impl IntoView {
                                 blog_interface::html::button()
                                     .child(t("新增分类栏目", "Add category section"))
                                     .class("blog-button")
-                                    .disabled(move || sections.get().len() >= 12)
+                                    .disabled(move || sections.with(Vec::len) >= 12)
                                     .on(blog_interface::ev::click, move |_| {
                                         let id = next_id.get_untracked();
                                         next_id.update(|id| *id -= 1);
@@ -194,50 +239,7 @@ pub(super) fn HomeSections() -> impl IntoView {
                                     }),
                             )
                             .class("blog-actions blog-flow"),
-                        blog_interface::html::div()
-                            .child(
-                                blog_interface::html::table()
-                                    .child((
-                                        blog_interface::html::thead().child(
-                                            blog_interface::html::tr().child(
-                                                [
-                                                    t("顺序", "Order"),
-                                                    t("标题", "Title"),
-                                                    t("内容来源", "Content source"),
-                                                    t("分类", "Category"),
-                                                    t("显示", "Show"),
-                                                    t("操作", "Actions"),
-                                                ]
-                                                .into_iter()
-                                                .map(|l| {
-                                                    View::new(blog_interface::html::th().child(l))
-                                                })
-                                                .collect_view(),
-                                            ),
-                                        ),
-                                        blog_interface::html::tbody().child(For(
-                                            component_props_builder(&For)
-                                                .each(move || sections.get())
-                                                .key(|row| row.id)
-                                                .children(move |item| {
-                                                    View::new(HomeRow(
-                                                        component_props_builder(&HomeRow)
-                                                            .item(item)
-                                                            .sections(sections)
-                                                            .categories(categories)
-                                                            .build(),
-                                                    ))
-                                                })
-                                                .build(),
-                                        )),
-                                    ))
-                                    .class("blog-table")
-                                    .aria_label(t("首页栏目列表", "Home section list")),
-                            )
-                            .class("blog-table-scroll")
-                            .tabindex("0")
-                            .role("region")
-                            .aria_label(t("数据表格", "Data table")),
+                        section_table(sections, categories),
                     ))
                     .class("blog-fieldset blog-frame blog-frame--padded blog-stack")
                     .disabled(move || save.busy.get() || !loaded.get()),
@@ -260,6 +262,13 @@ fn HomeRow(
             .with(|rows| rows.iter().position(|row| row.id == id))
             .unwrap_or(0)
     });
+    let title_label = move || {
+        tr(
+            "栏目 {0} 标题",
+            "Section {0} title",
+            &[(index.get() + 1).to_string()],
+        )
+    };
     View::new(
         blog_interface::html::tr().child((
             blog_interface::html::td().child(move || index.get() + 1),
@@ -268,24 +277,10 @@ fn HomeRow(
                     .child((
                         blog_interface::html::span()
                             .class("blog-visually-hidden")
-                            .child(move || {
-                                format!(
-                                    "{} {} {}",
-                                    t("栏目", "Section"),
-                                    index.get() + 1,
-                                    t("标题", "title")
-                                )
-                            }),
+                            .child(title_label),
                         blog_interface::html::input()
                             .class("blog-input blog-input--compact")
-                            .aria_label(move || {
-                                format!(
-                                    "{} {} {}",
-                                    t("栏目", "Section"),
-                                    index.get() + 1,
-                                    t("标题", "title")
-                                )
-                            })
+                            .aria_label(title_label)
                             .maxlength("32")
                             .prop("value", move || current.with(|form| form.title.clone()))
                             .on(blog_interface::ev::input, move |ev| {
@@ -421,7 +416,7 @@ fn HomeRow(
                                     index.get() + 1
                                 )
                             })
-                            .disabled(move || index.get() + 1 >= sections.get().len())
+                            .disabled(move || index.get() + 1 >= sections.with(Vec::len))
                             .on(blog_interface::ev::click, move |_| {
                                 let i = index.get_untracked();
                                 sections.update(|r| {

@@ -346,7 +346,7 @@
 | --- | --- | --- | --- | --- |
 | blog-text-case-insensitive-text (`src/foundation/text/case-insensitive-text`) | case insensitive text | native, web-release, host-tools, domain-tests, workspace-tests | src/foundation/assets/markdown-parser, src/foundation/lookup/script-table-hashing, src/foundation/lookup/script-table-macros, src/foundation/network/media-detection | unicase@2.10.0 |
 | blog-text-compile-time-text (`src/foundation/text/compile-time-text`) | compile time text | host-tools, workspace-tests | src/foundation/assets/style-compiler | const-str@0.3.2 |
-| blog-text-compile-time-text-macros (`src/foundation/text/compile-time-text-macros`) | compile time text macros | host-tools, workspace-tests | src/foundation/text/compile-time-text | const-str-proc-macro@0.3.2 |
+| blog-text-compile-time-text-macros (`src/foundation/text/compile-time-text-macros`) | compile time text macros | 当前入口未选用 | src/foundation/text/compile-time-text | const-str-proc-macro@0.3.2 |
 | blog-text-inline-ascii (`src/foundation/text/inline-ascii`) | inline ascii | native, host-tools, domain-tests, workspace-tests | src/foundation/unicode/locale-identifiers, src/foundation/unicode/locale-selection | tinystr@0.8.4 |
 | blog-text-line-layout (`src/foundation/text/line-layout`) | line layout | host-tools, workspace-tests | src/foundation/assets/compiler | textwrap@0.16.4 |
 | blog-text-macro-identifier-case (`src/foundation/text/macro-identifier-case`) | macro identifier case | native, host-tools, workspace-tests | src/foundation/cli/argument-derive, src/foundation/storage/record-derive, src/foundation/wasm/module-transform-derive | heck@0.5.0 |

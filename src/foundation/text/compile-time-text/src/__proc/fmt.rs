@@ -1,5 +1,3 @@
-pub use const_str_proc_macro::format;
-
 /// Creates a string slice using interpolation of const expressions.
 ///
 /// The input type must be one of

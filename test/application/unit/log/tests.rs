@@ -1,15 +1,30 @@
 use super::*;
 
+pub(super) fn json_lines(bytes: &[u8]) -> Vec<Value> {
+    bytes
+        .split_inclusive(|byte| *byte == b'\n')
+        .map(|line| {
+            assert!(line.ends_with(b"\n") && line.len() <= MAX_RECORD_BYTES);
+            serde_json::from_slice(line).unwrap()
+        })
+        .collect()
+}
+
 #[test]
 fn public_templates_and_product_records_share_one_exact_contract() {
     for event in CommonEvent::ALL {
         let record = LogRecord::common("example", event).unwrap();
         let line = record.json_line().unwrap();
-        let parsed = query(&line[..], LogFilter::default(), QueryLimits::default()).unwrap();
-        assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed[0].event(), record.event());
-        assert_eq!(parsed[0].scope(), Scope::Server);
+        let (component, event, level, message) = event.definition();
+        assert_eq!(
+            json_lines(&line),
+            [json!({
+                "timestamp": record.timestamp(), "level": level, "service": "example",
+                "component": component, "event": event, "message": message, "scope": "server",
+            })]
+        );
         assert!(record.timestamp().ends_with('Z'));
+        assert!(chrono::DateTime::parse_from_rfc3339(record.timestamp()).is_ok());
     }
     assert!(
         LogRecord::server(
@@ -42,7 +57,7 @@ fn secrets_are_redacted_recursively_without_destroying_boolean_state_flags() {
                 "nested":[{"api_key":17,"url":"rtsp://user:credential@camera/stream"}], "token_configured":true,
             })).unwrap();
     let bytes = record.json_line().unwrap();
-    let text = String::from_utf8(bytes.clone()).unwrap();
+    let text = std::str::from_utf8(&bytes).unwrap();
     for secret in [
         "p-sensitive",
         "t-sensitive",
@@ -51,7 +66,7 @@ fn secrets_are_redacted_recursively_without_destroying_boolean_state_flags() {
     ] {
         assert!(!text.contains(secret));
     }
-    let value: Value = serde_json::from_slice(&bytes).unwrap();
+    let value = &json_lines(&bytes)[0];
     assert_eq!(value["attributes"]["status"]["token_configured"], true);
     assert_eq!(
         value["attributes"]["status"]["Password"]["configured"],
@@ -61,7 +76,7 @@ fn secrets_are_redacted_recursively_without_destroying_boolean_state_flags() {
 }
 
 #[test]
-fn query_filters_exact_instance_time_level_event_and_correlation_fields() {
+fn records_write_exact_instance_event_and_correlation_fields() {
     let first = LogRecord::instance(
         "example",
         "device",
@@ -86,68 +101,58 @@ fn query_filters_exact_instance_time_level_event_and_correlation_fields() {
     .unwrap();
     let mut bytes = first.json_line().unwrap();
     bytes.extend(second.json_line().unwrap());
-    let filter = LogFilter {
-        instance_id: Some("camera-1"),
-        since: Some("2000-01-01T00:00:00Z"),
-        until: Some("2100-01-01T00:00:00Z"),
-        minimum_level: Some(Level::Warn),
-        event: Some("example.device.failed"),
-        request_id: Some("request-1"),
-        task_id: Some("task-1"),
-        scope: Some(Scope::Instance),
-    };
-    let records = query(&bytes[..], filter, QueryLimits::default()).unwrap();
-    assert_eq!(records.len(), 1);
-    assert_eq!(records[0].instance_id(), Some("camera-1"));
-    assert!(matches!(
-        query(
-            &bytes[..],
-            LogFilter::default(),
-            QueryLimits {
-                max_records: 1,
-                ..QueryLimits::default()
-            }
-        ),
-        Err(LogError::QueryLimitExceeded)
-    ));
-    assert!(
-        query(
-            &bytes[..bytes.len() - 1],
-            LogFilter::default(),
-            QueryLimits::default()
-        )
-        .is_err()
-    );
+    let records = json_lines(&bytes);
+    assert_eq!(records.len(), 2);
+    let first = &records[0];
+    assert_eq!(first["instance_id"], "camera-1");
+    assert_eq!(first["scope"], "instance");
+    assert_eq!(first["level"], "WARN");
+    assert_eq!(first["event"], "example.device.failed");
+    assert_eq!(first["request_id"], "request-1");
+    assert_eq!(first["task_id"], "task-1");
+    assert_eq!(records[1]["instance_id"], "camera-10");
+    assert!(records[1].get("request_id").is_none());
+    assert!(records[1].get("task_id").is_none());
 }
 
 #[test]
-fn record_and_query_budgets_reject_unbounded_inputs_without_partial_output() {
+fn record_budget_rejects_unbounded_writes_without_partial_output() {
     let record = LogRecord::common("example", CommonEvent::RuntimeStarted).unwrap();
+    let overhead = record
+        .clone()
+        .with_attribute("data", "")
+        .unwrap()
+        .json_line()
+        .unwrap()
+        .len();
+    let capacity = MAX_RECORD_BYTES - overhead;
+    let exact = record
+        .clone()
+        .with_attribute("data", "x".repeat(capacity))
+        .unwrap();
+    let mut writer = Vec::new();
+    exact.write_to(&mut writer).unwrap();
+    assert_eq!(writer.len(), MAX_RECORD_BYTES);
+    assert_eq!(json_lines(&writer).len(), 1);
+    let excess = "x".repeat(capacity + 1);
     assert!(matches!(
-        record
-            .clone()
-            .with_attribute("data", "x".repeat(MAX_RECORD_BYTES)),
+        record.clone().with_attribute("data", excess.clone()),
         Err(LogError::RecordTooLarge)
     ));
-    let mut writer = Vec::new();
     let mut too_large = record;
     too_large
         .attributes
-        .insert("data".into(), Value::String("x".repeat(MAX_RECORD_BYTES)));
-    assert!(too_large.write_to(&mut writer).is_err());
-    assert_eq!(writer, [] as [u8; 0]);
+        .insert("data".into(), Value::String(excess));
+    writer.clear();
     assert!(matches!(
-        query(
-            &vec![b'x'; MAX_RECORD_BYTES + 1][..],
-            LogFilter::default(),
-            QueryLimits::default()
-        ),
+        too_large.write_to(&mut writer),
         Err(LogError::RecordTooLarge)
     ));
+    assert_eq!(writer, [] as [u8; 0]);
 }
 
 #[test]
-fn invalid_log_values_preserve_parse_sources_without_echoing_input() {
+fn invalid_log_fields_preserve_sources_without_echoing_input() {
     use std::error::Error as _;
     let record = LogRecord::common("example", CommonEvent::RuntimeStarted).unwrap();
     let request_id = record
@@ -169,26 +174,6 @@ fn invalid_log_values_preserve_parse_sources_without_echoing_input() {
             .is::<crate::error::InvalidErrorCode>()
     );
     assert!(!error_code.to_string().contains("sentinel"));
-
-    let decode = query(
-        &b"{\"review-sentinel\":}\n"[..],
-        LogFilter::default(),
-        QueryLimits::default(),
-    )
-    .unwrap_err();
-    assert!(decode.source().unwrap().is::<serde_json::Error>());
-    assert!(!decode.to_string().contains("sentinel"));
-    let timestamp = query(
-        &b""[..],
-        LogFilter {
-            since: Some("review-sentinelZ"),
-            ..LogFilter::default()
-        },
-        QueryLimits::default(),
-    )
-    .unwrap_err();
-    assert!(timestamp.source().unwrap().is::<chrono::ParseError>());
-    assert!(!timestamp.to_string().contains("sentinel"));
 }
 
 #[cfg(unix)]
@@ -296,13 +281,10 @@ fn file_rotation_has_bounded_capacity_one_writer_and_safe_path_failures() {
         {
             count += 1;
             assert!(entry.metadata().unwrap().len() <= retention.file_bytes);
-            let parsed = query(
-                std::io::BufReader::new(fs::File::open(entry.path()).unwrap()),
-                LogFilter::default(),
-                QueryLimits::default(),
-            )
-            .unwrap();
-            assert!(!parsed.is_empty());
+            assert_eq!(
+                json_lines(&fs::read(entry.path()).unwrap())[0]["event"],
+                "common.runtime.started"
+            );
         }
     }
     assert_eq!(count, 3);

@@ -1,5 +1,5 @@
 use super::*;
-use crate::log::{CommonEvent, LogFilter, QueryLimits, query};
+use crate::log::{CommonEvent, tests::json_lines};
 use std::{fs, os::unix::fs::PermissionsExt, process::Command};
 
 // Resource-limit failures are confined to a subprocess, never the parallel
@@ -60,7 +60,7 @@ fn fixture() -> (tempfile::TempDir, RotatingLogFile, LogRecord) {
 }
 
 #[test]
-fn partial_append_rolls_back_and_later_records_remain_queryable() {
+fn partial_append_rolls_back_and_later_records_remain_complete() {
     if !in_child() {
         return;
     }
@@ -75,12 +75,7 @@ fn partial_append_rolls_back_and_later_records_remain_queryable() {
     assert_eq!(fs::read(&active).unwrap(), before);
     sink.write(&record).unwrap();
     let bytes = fs::read(&active).unwrap();
-    assert_eq!(
-        query(&bytes[..], LogFilter::default(), QueryLimits::default())
-            .unwrap()
-            .len(),
-        2
-    );
+    assert_eq!(json_lines(&bytes).len(), 2);
 }
 
 #[test]
@@ -111,11 +106,7 @@ fn failed_replacement_creation_retries_without_rotating_archives_twice() {
     for name in ["events.jsonl", "events.1.jsonl", "events.2.jsonl"] {
         let bytes = fs::read(directory.path().join(name)).unwrap();
         assert!(bytes.len() <= MAX_RECORD_BYTES);
-        assert!(
-            !query(&bytes[..], LogFilter::default(), QueryLimits::default())
-                .unwrap()
-                .is_empty()
-        );
+        assert_eq!(json_lines(&bytes)[0]["event"], "common.runtime.started");
     }
 }
 
@@ -148,11 +139,7 @@ fn directory_rename_keeps_appends_and_rotation_on_the_held_directory() {
     for name in ["events.jsonl", "events.1.jsonl", "events.2.jsonl"] {
         let bytes = fs::read(moved.join(name)).unwrap();
         assert!(bytes.len() <= MAX_RECORD_BYTES);
-        assert!(
-            !query(&bytes[..], LogFilter::default(), QueryLimits::default())
-                .unwrap()
-                .is_empty()
-        );
+        assert_eq!(json_lines(&bytes)[0]["event"], "common.runtime.started");
     }
 }
 

@@ -29,8 +29,7 @@ default-features = true
 [dependencies.const_str]
 package = "blog-text-compile-time-text"
 path = "../../text/compile-time-text"
-features = []
-default-features = true
+default-features = false
 
 [dependencies.data_encoding]
 package = "blog-encoding-radix-codecs"

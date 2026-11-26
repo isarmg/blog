@@ -53,7 +53,22 @@ for _ in {1..20}; do
   if ! kill -0 "$server_pid" 2>/dev/null; then cat "$server_log"; exit 1; fi
   sleep .25
 done
-test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$smoke_port/api/v1/health)" = 200
+probe_id=smoke-health-receipt
+test "$(curl -s -o /dev/null -D "$scratch_dir/health.headers" -w '%{http_code}' \
+  -H "X-Request-ID: $probe_id" http://127.0.0.1:$smoke_port/api/v1/health)" = 200
+python3 - "$scratch_dir/health.headers" "$smoke_dir/logs/server.jsonl" "$probe_id" <<'LOG_RECEIPT'
+import json, sys
+from pathlib import Path
+headers, log = map(Path, sys.argv[1:3])
+request_id = sys.argv[3]
+fields = (line.partition(':') for line in headers.read_text().splitlines())
+assert [value.strip() for name, _, value in fields if name.lower() == 'x-request-id'] == [request_id]
+records = (json.loads(line) for line in log.read_bytes().splitlines())
+matches = [record for record in records
+           if record.get('request_id') == request_id and record['event'] == 'blog.http.completed']
+assert len(matches) == 1 and matches[0]['attributes']['status'] == 200
+assert matches[0]['timestamp'].endswith('Z')
+LOG_RECEIPT
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$smoke_port/api/v1/site)" = 200
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$smoke_port/api/v1/content/statistics)" = 401
 test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$smoke_port/api/v1/unknown)" = 404

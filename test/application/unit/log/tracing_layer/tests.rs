@@ -1,4 +1,5 @@
 use super::*;
+use crate::log::tests::json_lines;
 use tracing::collector::prelude::*;
 
 #[derive(Clone)]
@@ -43,17 +44,12 @@ fn tracing_events_inherit_scope_and_safe_fields_without_legacy_error_messages() 
     });
     assert_eq!(layer.rejected_count(), 0);
     let bytes = output.0.lock().unwrap().clone();
-    let records = crate::log::query(
-        &bytes[..],
-        crate::log::LogFilter::default(),
-        crate::log::QueryLimits::default(),
-    )
-    .unwrap();
+    let records = json_lines(&bytes);
     assert_eq!(records.len(), 2);
     assert!(
         records
             .iter()
-            .all(|record| record.instance_id() == Some("camera-1"))
+            .all(|record| record["instance_id"] == "camera-1")
     );
     let text = String::from_utf8(bytes).unwrap();
     for secret in ["span-password", "user:secret", "invisible-secret"] {
@@ -82,11 +78,7 @@ fn common_events_keep_registered_templates_and_reject_unknown_names() {
     });
     assert_eq!(layer.rejected_count(), 2);
     let bytes = output.0.lock().unwrap().clone();
-    let values: Vec<serde_json::Value> = std::str::from_utf8(&bytes)
-        .unwrap()
-        .lines()
-        .map(|line| serde_json::from_str(line).unwrap())
-        .collect();
+    let values = json_lines(&bytes);
     assert_eq!(values.len(), 2);
     assert_eq!(values[0]["component"], "runtime");
     assert_eq!(values[0]["level"], "INFO");
@@ -110,14 +102,9 @@ fn malformed_structured_fields_are_rejected_instead_of_becoming_missing_defaults
     });
     assert_eq!(layer.rejected_count(), 3);
     let bytes = output.0.lock().unwrap();
-    let records = crate::log::query(
-        &bytes[..],
-        crate::log::LogFilter::default(),
-        crate::log::QueryLimits::default(),
-    )
-    .unwrap();
+    let records = json_lines(&bytes);
     assert_eq!(records.len(), 1);
-    assert_eq!(records[0].event(), "example.diagnostic");
+    assert_eq!(records[0]["event"], "example.diagnostic");
 }
 
 #[cfg(unix)]

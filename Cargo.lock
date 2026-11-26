@@ -1263,18 +1263,6 @@ version = "0.0.0"
 [[package]]
 name = "blog-text-compile-time-text"
 version = "0.0.0"
-dependencies = [
- "blog-text-compile-time-text-macros",
-]
-
-[[package]]
-name = "blog-text-compile-time-text-macros"
-version = "0.0.0"
-dependencies = [
- "blog-syntax-rust-parser",
- "blog-syntax-token-stream",
- "blog-syntax-token-templates",
-]
 
 [[package]]
 name = "blog-text-inline-ascii"

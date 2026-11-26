@@ -12,10 +12,10 @@ mod tracing_layer;
 #[cfg(feature = "tracing")]
 pub use tracing_layer::BlogStructuredLayer;
 
-use chrono::{DateTime, SecondsFormat, Utc};
-use serde::{Deserialize, Serialize};
+use chrono::{SecondsFormat, Utc};
+use serde::Serialize;
 use serde_json::{Map, Value, json};
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, Write};
 
 pub const MAX_RECORD_BYTES: usize = 16 * 1024;
 pub const MAX_MESSAGE_BYTES: usize = 2048;
@@ -52,7 +52,7 @@ pub fn install_rotating_file(sink: RotatingLogFile) -> Result<(), LogError> {
         .map_err(|_| LogError::UnsafeStorage)
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum Level {
     Trace,
@@ -62,7 +62,7 @@ pub enum Level {
     Error,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Scope {
     Server,
@@ -93,6 +93,7 @@ impl CommonEvent {
             .into_iter()
             .find(|event| event.definition().1 == name)
     }
+    #[cfg(any(test, feature = "tracing"))]
     const ALL: [Self; 12] = [
         Self::ConfigLoaded,
         Self::InitializationCompleted,
@@ -537,196 +538,10 @@ fn sanitize_text(value: &str) -> String {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
-pub struct LogFilter<'a> {
-    pub instance_id: Option<&'a str>,
-    pub scope: Option<Scope>,
-    pub since: Option<&'a str>,
-    pub until: Option<&'a str>,
-    pub minimum_level: Option<Level>,
-    pub event: Option<&'a str>,
-    pub request_id: Option<&'a str>,
-    pub task_id: Option<&'a str>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct QueryLimits {
-    pub max_input_bytes: usize,
-    pub max_records: usize,
-}
-impl Default for QueryLimits {
-    fn default() -> Self {
-        Self {
-            max_input_bytes: 64 * 1024 * 1024,
-            max_records: 1000,
-        }
-    }
-}
-
-/// Query exact structured fields with byte and result-count bounds. An
-/// incomplete or malformed line is an error, never an empty success result.
-/// # Errors
-/// The limits, query input, or log data are invalid, a budget is exceeded, or reading fails.
-pub fn query(
-    mut reader: impl BufRead,
-    filter: LogFilter<'_>,
-    limits: QueryLimits,
-) -> Result<Vec<LogRecord>, LogError> {
-    if limits.max_input_bytes == 0 || limits.max_records == 0 {
-        return Err(LogError::InvalidLimits);
-    }
-    let since = filter.since.map(parse_time).transpose()?;
-    let until = filter.until.map(parse_time).transpose()?;
-    if since.zip(until).is_some_and(|(since, until)| since > until) {
-        return Err(LogError::InvalidLimits);
-    }
-    let mut result = Vec::new();
-    let mut total = 0usize;
-    loop {
-        let mut line = Vec::new();
-        (&mut reader)
-            .take(MAX_RECORD_BYTES as u64 + 1)
-            .read_until(b'\n', &mut line)?;
-        if line.is_empty() {
-            break;
-        }
-        total = total
-            .checked_add(line.len())
-            .ok_or(LogError::QueryLimitExceeded)?;
-        if total > limits.max_input_bytes {
-            return Err(LogError::QueryLimitExceeded);
-        }
-        if line.len() > MAX_RECORD_BYTES {
-            return Err(LogError::RecordTooLarge);
-        }
-        if line.last() != Some(&b'\n') {
-            return Err(LogError::InvalidRecord);
-        }
-        let (record, time) = parse_record(&line)?;
-        if filter
-            .instance_id
-            .is_none_or(|id| record.instance_id.as_deref() == Some(id))
-            && filter.scope.is_none_or(|scope| record.scope == scope)
-            && since.is_none_or(|since| time >= since)
-            && until.is_none_or(|until| time <= until)
-            && filter
-                .minimum_level
-                .is_none_or(|level| record.level >= level)
-            && filter.event.is_none_or(|event| record.event == event)
-            && filter.request_id.is_none_or(|id| {
-                record
-                    .request_id
-                    .as_ref()
-                    .map(crate::error::RequestId::as_str)
-                    == Some(id)
-            })
-            && filter
-                .task_id
-                .is_none_or(|id| record.task_id.as_deref() == Some(id))
-        {
-            if result.len() >= limits.max_records {
-                return Err(LogError::QueryLimitExceeded);
-            }
-            result.push(record);
-        }
-    }
-    Ok(result)
-}
-
-fn parse_time(timestamp: &str) -> Result<DateTime<Utc>, LogError> {
-    if !timestamp.ends_with('Z') {
-        return Err(LogError::InvalidRecord);
-    }
-    DateTime::parse_from_rfc3339(timestamp)
-        .map(|time| time.with_timezone(&Utc))
-        .map_err(LogError::Timestamp)
-}
-
-fn parse_record(line: &[u8]) -> Result<(LogRecord, DateTime<Utc>), LogError> {
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields)]
-    struct Raw {
-        timestamp: String,
-        level: Level,
-        service: String,
-        component: String,
-        event: String,
-        message: String,
-        scope: Scope,
-        instance_id: Option<String>,
-        instance_type: Option<String>,
-        request_id: Option<crate::error::RequestId>,
-        task_id: Option<String>,
-        error_code: Option<crate::error::ErrorCode>,
-        #[serde(default)]
-        attributes: Map<String, Value>,
-    }
-    let raw: Raw = serde_json::from_slice(line).map_err(LogError::DecodeRecord)?;
-    let timestamp = parse_time(&raw.timestamp)?;
-    if raw.event.starts_with("common.") {
-        let common = CommonEvent::ALL
-            .into_iter()
-            .find(|event| event.definition().1 == raw.event)
-            .ok_or(LogError::InvalidRecord)?;
-        let definition = common.definition();
-        if (raw.component.as_str(), raw.level, raw.message.as_str())
-            != (definition.0, definition.2, definition.3)
-            || (raw.scope == Scope::Instance
-                && !matches!(
-                    common,
-                    CommonEvent::DependencyUnavailable | CommonEvent::TaskFailed
-                ))
-        {
-            return Err(LogError::InvalidRecord);
-        }
-    } else {
-        product_event(&raw.service, &raw.event)?;
-    }
-    if (raw.scope == Scope::Instance) != raw.instance_id.is_some()
-        || (raw.scope == Scope::Server && raw.instance_type.is_some())
-    {
-        return Err(LogError::InvalidRecord);
-    }
-    if let Some(id) = &raw.instance_id {
-        identifier(id)?;
-    }
-    if let Some(kind) = &raw.instance_type {
-        identifier(kind)?;
-    }
-    if let Some(id) = &raw.task_id {
-        identifier(id)?;
-    }
-    let mut record = LogRecord::build(
-        &raw.service,
-        &raw.component,
-        &raw.event,
-        &raw.message,
-        raw.level,
-        raw.instance_id,
-    )?;
-    record.timestamp = raw.timestamp;
-    record.scope = raw.scope;
-    record.instance_type = raw.instance_type;
-    record.request_id = raw.request_id;
-    record.task_id = raw.task_id;
-    record.error_code = raw.error_code;
-    let mut attributes = Value::Object(raw.attributes);
-    redact(&mut attributes);
-    let Value::Object(attributes) = attributes else {
-        unreachable!("invariant: parsed attributes are constructed as a JSON object");
-    };
-    record.attributes = attributes;
-    Ok((record, timestamp))
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum LogError {
     #[error("structured log record does not satisfy the current contract")]
     InvalidRecord,
-    #[error("structured log record could not be decoded")]
-    DecodeRecord(#[source] serde_json::Error),
-    #[error("structured log timestamp is invalid")]
-    Timestamp(#[source] chrono::ParseError),
     #[error("structured log request ID is invalid")]
     RequestId(#[source] crate::error::InvalidRequestId),
     #[error("structured log error code is invalid")]
@@ -735,8 +550,6 @@ pub enum LogError {
     ArchiveIndex(#[source] std::num::ParseIntError),
     #[error("structured log record exceeds its byte budget")]
     RecordTooLarge,
-    #[error("structured log query exceeds its byte or record budget")]
-    QueryLimitExceeded,
     #[error("structured log limits are invalid")]
     InvalidLimits,
     #[error("log storage must be a private directory with private regular files and one writer")]

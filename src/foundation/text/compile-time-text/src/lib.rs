@@ -43,15 +43,13 @@ mod str;
 mod utf16;
 mod utf8;
 
+#[cfg(feature = "const-str-proc-macro")]
 #[doc(hidden)]
 pub mod __proc {
     mod case;
-
     mod fmt;
-    pub use self::fmt::*;
-
     mod str;
-    pub use self::str::*;
+    pub use const_str_proc_macro::{format, from_utf8};
 
     #[cfg(feature = "verify-regex")]
     item_group! {

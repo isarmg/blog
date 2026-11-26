@@ -1,7 +1,3 @@
-pub use const_str_proc_macro::from_utf8;
-
-// -----------------------------------------------------------------------------
-
 /// Converts a byte string literal to a string literal
 ///
 /// # Examples

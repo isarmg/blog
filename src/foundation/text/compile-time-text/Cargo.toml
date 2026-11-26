@@ -22,9 +22,9 @@ autoexamples = false
 [dependencies.const-str-proc-macro]
 path = "../compile-time-text-macros"
 package = "blog-text-compile-time-text-macros"
-
+optional = true
 
 [features]
-default = []
+default = ["const-str-proc-macro"]
 std = []
 verify-regex = ["const-str-proc-macro/regex"]
