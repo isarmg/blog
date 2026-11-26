@@ -32,16 +32,16 @@
 //!
 //! Many of the types defined in this crate have 'additional capabilities' when compared to `std::sync`:
 //!
-//! - Because spinning does not depend on the thread-driven model of `std::sync`, guards ([`MutexGuard`],
-//!   [`RwLockReadGuard`], [`RwLockWriteGuard`], etc.) may be sent and shared between threads.
+//! - Because spinning does not depend on the thread-driven model of `std::sync`, guards (`MutexGuard`,
+//!   `RwLockReadGuard`, `RwLockWriteGuard`, etc.) may be sent and shared between threads.
 //!
-//! - [`RwLockUpgradableGuard`] supports being upgraded into a [`RwLockWriteGuard`].
+//! - `RwLockUpgradableGuard` supports being upgraded into a `RwLockWriteGuard`.
 //!
 //! - Guards support [leaking](https://doc.rust-lang.org/nomicon/leaking.html).
 //!
-//! - [`Once`] owns the value returned by its `call_once` initializer.
+//! - `Once` owns the value returned by its `call_once` initializer.
 //!
-//! - [`RwLock`] supports counting readers and writers.
+//! - `RwLock` supports counting readers and writers.
 //!
 //! Conversely, the types in this crate do not have some of the features `std::sync` has:
 //!

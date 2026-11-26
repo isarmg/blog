@@ -26,7 +26,7 @@ pub(super) fn Chrome(
 ) -> impl IntoView {
     let site = site_data();
     Effect::new(move |_| {
-        let name = site_name(site);
+        let name = site.with_current(|site| site_name(site).to_owned());
         let page = title.get();
         let title = if page.trim().is_empty() || page == name {
             name
@@ -135,9 +135,12 @@ pub(super) fn Chrome(
             (
                     html::header()
                     .child((html::a()
-                    .child(move || match site_media_url(site, |site| site.media.logo.as_deref()) {
-                        Some(url) => View::new(html::img().src(url).alt(site_name(site))).into_any(),
-                        None => View::new(html::span().child(site_name(site))).into_any(),
+                    .child(move || {
+                        let name = site.with_current(|site| site_name(site).to_owned());
+                        match site_media_url(site, |site| site.media.logo.as_deref()) {
+                            Some(url) => html::img().src(url).alt(name).into_any(),
+                            None => html::span().child(name).into_any(),
+                        }
                     }).class("brand")
                     .href(href("/"))
                     .aria_label(t("blog 首页",

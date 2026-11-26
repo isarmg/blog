@@ -34,42 +34,35 @@ pub(super) fn background_style(url: Option<String>) -> String {
 }
 
 pub(super) fn site_media_url(site: Data<Site>, field: fn(&Site) -> Option<&str>) -> Option<String> {
-    site.current()
-        .and_then(|site| field(&site).and_then(|url| safe_url(url.trim(), false)))
+    site.with_current(|site| {
+        site.and_then(field)
+            .and_then(|url| safe_url(url.trim(), false))
+    })
 }
 
-pub(super) fn site_name(site: Data<Site>) -> String {
-    site.current()
-        .and_then(|site| site.web_name.filter(|name| !name.trim().is_empty()))
-        .unwrap_or_else(|| "blog".into())
+pub(super) fn site_name(site: Option<&Site>) -> &str {
+    site.and_then(|site| site.web_name.as_deref())
+        .filter(|name| !name.trim().is_empty())
+        .unwrap_or("blog")
 }
 
-#[component]
-pub(super) fn Avatar(
-    name: String,
-    src: String,
-    #[prop(default = "love-avatar")] class: &'static str,
-    #[prop(default = String::new())] alt: String,
-) -> impl IntoView {
+pub(super) fn avatar(
+    name: &str,
+    src: &str,
+    class: &'static str,
+    alt: String,
+) -> impl IntoView + use<> {
     let image = safe_url(src.trim(), true);
-    let fallback_label = (image.is_none() && !alt.is_empty()).then_some(alt.clone());
-    View::new(
-        html::span()
-            .class(class)
-            .attr("role", fallback_label.as_ref().map(|_| "img"))
-            .aria_label(fallback_label)
-            .child(match image {
-                Some(url) => View::new(html::img().src(url).alt(alt)).into_any(),
-                None => View::new(
-                    html::span()
-                        .child(
-                            name.chars()
-                                .find(|character| !character.is_whitespace())
-                                .unwrap_or('•'),
-                        )
-                        .aria_hidden("true"),
-                )
+    let fallback_label = (image.is_none() && !alt.is_empty()).then(|| alt.clone());
+    html::span()
+        .class(class)
+        .attr("role", fallback_label.as_ref().map(|_| "img"))
+        .aria_label(fallback_label)
+        .child(match image {
+            Some(url) => html::img().src(url).alt(alt).into_any(),
+            None => html::span()
+                .child(name.trim_start().chars().next().unwrap_or('•'))
+                .aria_hidden("true")
                 .into_any(),
-            }),
-    )
+        })
 }

@@ -1,8 +1,8 @@
 //! Homepage aggregation and configured article sections.
-use super::appearance::{Avatar, site_name};
+use super::appearance::{avatar, site_name};
 use super::articles::Card;
 use super::shell::{Chrome, notices, site_data};
-use crate::common::{href, list, load, load_typed, query, safe_url, t, text};
+use crate::common::{Data, href, list, load, load_typed, query, safe_url, t, text};
 use crate::models::{
     ArticleSummary, Category, HomeSection as HomeSectionModel, HomeSource, Label, Page, SiteStats,
 };
@@ -15,6 +15,50 @@ use blog_interface::prelude::*;
 use serde_json::{Value, json};
 
 const RECENT_MESSAGES: usize = 9;
+
+fn recommendations(data: Data<Page<ArticleSummary>>) -> impl IntoView {
+    move || {
+        data.with_current(|value| {
+            let page = value.filter(|page| !page.items.is_empty())?;
+            let featured = page.items.iter().take(2).map(|article| {
+                recommendation(article, html::strong().child(article.article_title.clone()))
+            });
+            let all = page.items.iter().map(|article| {
+                let stamp =
+                    crate::dates::format(article.create_time.as_deref().unwrap_or_default());
+                recommendation(
+                    article,
+                    html::span().child((
+                        article.article_title.clone(),
+                        html::small().child(format!("◷ {stamp}")),
+                    )),
+                )
+            });
+            Some((
+                html::section()
+                    .child((
+                        html::h2().child(t("✧ 推荐位", "✧ Featured")),
+                        featured.collect_view(),
+                    ))
+                    .class("aside-featured"),
+                html::section()
+                    .child((
+                        html::h2().child(t("🔥 推荐文章", "🔥 Recommended articles")),
+                        all.collect_view(),
+                    ))
+                    .class("aside-recommended"),
+            ))
+        })
+    }
+}
+
+fn recommendation<V: IntoView>(article: &ArticleSummary, caption: V) -> impl IntoView + use<V> {
+    let cover = safe_url(article.article_cover.as_deref().unwrap_or_default(), false)
+        .map(|url| html::img().src(url).alt("").loading("lazy"));
+    html::a()
+        .child((cover, caption))
+        .href(href(&format!("/article/{}", article.id)))
+}
 
 #[component]
 pub(super) fn Home() -> impl IntoView {
@@ -91,18 +135,17 @@ pub(super) fn Home() -> impl IntoView {
                                         .child((
                                             html::div()
                                                 .child(move || {
-                                                    Avatar(
-                                                        component_props_builder(&Avatar)
-                                                            .name(site_name(site))
-                                                            .src(
-                                                                site.current()
-                                                                    .and_then(|site| site.avatar)
-                                                                    .unwrap_or_default(),
-                                                            )
-                                                            .class("aside-avatar")
-                                                            .alt(t("站长头像", "Site owner avatar"))
-                                                            .build(),
-                                                    )
+                                                    site.with_current(|site| {
+                                                        avatar(
+                                                            site_name(site),
+                                                            site.and_then(|site| {
+                                                                site.avatar.as_deref()
+                                                            })
+                                                            .unwrap_or_default(),
+                                                            "aside-avatar",
+                                                            t("站长头像", "Site owner avatar"),
+                                                        )
+                                                    })
                                                 })
                                                 .class("aside-avatar-wrap"),
                                             html::h2().child(move || {
@@ -170,78 +213,7 @@ pub(super) fn Home() -> impl IntoView {
                                         .class("aside-search")
                                         .action("/search")
                                         .method("get"),
-                                    move || {
-                                        recommended.current().filter(|v| !v.items.is_empty()).map(
-                                            |v| {
-                                                View::new((
-                                                    html::section()
-                                                        .child((
-                                                            html::h2()
-                                                                .child(t("✧ 推荐位", "✧ Featured")),
-                                                            v.items
-                                                                .iter()
-                                                                .take(2)
-                                                                .map(|a| {
-                                                                    View::new(
-    html::a()
-        .child(
-            (
-                    safe_url(& a.article_cover.clone().unwrap_or_default(), false)
-                    .map(| u | View::new(
-    html::img()
-        .src(u)
-        .alt("")
-        .loading("lazy"),
-)),
-                    html::strong()
-                    .child( a.article_title
-                    .clone())
-                ,),
-        )
-        .href(href(&format!("/article/{}", a.id))),
-)
-                                                                })
-                                                                .collect_view(),
-                                                        ))
-                                                        .class("aside-featured"),
-                                                    html::section()
-                                                        .child((
-                                                            html::h2().child(t(
-                                                                "🔥 推荐文章",
-                                                                "🔥 Recommended articles",
-                                                            )),
-                                                            v.items
-                                                                .into_iter()
-                                                                .map(|a| {
-                                                                    View::new(
-    html::a()
-        .child(
-            (
-                    safe_url(& a.article_cover.clone().unwrap_or_default(), false)
-                    .map(| u | View::new(
-    html::img()
-        .src(u)
-        .alt("")
-        .loading("lazy"),
-)),
-                    html::span()
-                    .child((a.article_title.clone(),
-                    html::small()
-                    .child( format!("◷ {}",
-                    crate ::dates::format(& a.create_time.clone()
-                    .unwrap_or_default()))),))
-                ,),
-        )
-        .href(href(&format!("/article/{}", a.id))),
-)
-                                                                })
-                                                                .collect_view(),
-                                                        ))
-                                                        .class("aside-recommended"),
-                                                ))
-                                            },
-                                        )
-                                    },
+                                    recommendations(recommended),
                                     html::section()
                                         .child((
                                             html::h2().child(t("🏷 标签", "🏷 Tags")),

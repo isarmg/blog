@@ -1,8 +1,8 @@
 //! Chronological articles and short journal notes.
 use super::shell::{Chrome, site_data};
 use crate::common::{
-    BrowsePager, Lightbox, Petals, Sliding, href, load, num, page_items, page_number, safe_url,
-    search_signal, t, text,
+    BrowsePager, Data, Lightbox, Petals, Sliding, href, load, num, page_items, page_number,
+    safe_url, search_signal, t, text,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -140,20 +140,7 @@ pub(super) fn Journal() -> impl IntoView {
                             html::div()
                                 .child((
                                     data.public_feedback(None),
-                                    move || {
-                                        data.current_items()
-                                            .unwrap_or_default()
-                                            .into_iter()
-                                            .map(|item| {
-                                                View::new(NoteCard(
-                                                    component_props_builder(&NoteCard)
-                                                        .item(item)
-                                                        .lightbox(lightbox)
-                                                        .build(),
-                                                ))
-                                            })
-                                            .collect_view()
-                                    },
+                                    note_cards(data, lightbox, false),
                                     move || {
                                         data.with_current(|v| {
                                             v.is_some_and(|v| page_items(v).is_empty())
@@ -193,53 +180,62 @@ pub(super) fn Journal() -> impl IntoView {
     ))
 }
 
-#[component]
-pub(super) fn NoteCard(
-    item: Value,
+pub(super) fn note_cards(
+    data: Data,
     lightbox: RwSignal<Option<String>>,
-    #[prop(default = false)] love: bool,
+    love: bool,
 ) -> impl IntoView {
-    View::new(
-        html::article()
-            .child((
-                html::small().child((
-                    {
-                        let n = text(&item, "username");
-                        if n.is_empty() {
-                            t("站长", "Site owner")
-                        } else {
-                            n
-                        }
-                    },
-                    " · ",
-                    crate::dates::format(&text(&item, "create_time")),
-                )),
-                html::p().child(text(&item, "content")),
-                safe_url(&text(&item, "image_path"), true).map(|u| {
-                    let click = u.clone();
-                    View::new(
-                        html::button()
-                            .child(
-                                html::img()
-                                    .src(u)
-                                    .alt(if love {
-                                        t("随笔图片", "Note image")
-                                    } else {
-                                        t("动态图片", "Post image")
-                                    })
-                                    .loading("lazy"),
-                            )
-                            .class("wall-photo-button")
-                            .r#type("button")
-                            .aria_label(t("放大图片", "Enlarge image"))
-                            .on(ev::click, move |_| lightbox.set(Some(click.clone()))),
-                    )
-                }),
-            ))
-            .class(if love {
-                "love-moment-card"
-            } else {
-                "wall-card"
-            }),
-    )
+    move || {
+        data.with_current(|v| {
+            v.map_or_else(Vec::new, |page| {
+                page_items(page)
+                    .iter()
+                    .map(|item| note_card(item, lightbox, love))
+                    .collect_view()
+            })
+        })
+    }
+}
+
+fn note_card(
+    item: &Value,
+    lightbox: RwSignal<Option<String>>,
+    love: bool,
+) -> impl IntoView + use<> {
+    let field = |key: &str| item[key].as_str().unwrap_or_default();
+    let name = field("username");
+    let author = if name.is_empty() {
+        t("站长", "Site owner")
+    } else {
+        name.to_owned()
+    };
+    let image = safe_url(field("image_path"), true).map(|url| {
+        let click = url.clone();
+        html::button()
+            .child(
+                html::img()
+                    .src(url)
+                    .alt(if love {
+                        t("随笔图片", "Note image")
+                    } else {
+                        t("动态图片", "Post image")
+                    })
+                    .loading("lazy"),
+            )
+            .class("wall-photo-button")
+            .r#type("button")
+            .aria_label(t("放大图片", "Enlarge image"))
+            .on(ev::click, move |_| lightbox.set(Some(click.clone())))
+    });
+    html::article()
+        .child((
+            html::small().child((author, " · ", crate::dates::format(field("create_time")))),
+            html::p().child(field("content").to_owned()),
+            image,
+        ))
+        .class(if love {
+            "love-moment-card"
+        } else {
+            "wall-card"
+        })
 }

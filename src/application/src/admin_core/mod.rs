@@ -580,6 +580,28 @@ where
         })
     }
 
+    async fn active_session(
+        &self,
+        session_token: &str,
+        now_micros: u64,
+    ) -> Result<SessionAndAdministrator, ServiceError<Store::StoreError>> {
+        let found = self
+            .store
+            .session_by_token_hash(crate::admin_auth::token_hash(session_token))
+            .await
+            .map_err(ServiceError::Store)?
+            .ok_or(ServiceError::InvalidSession)?;
+        if found.session.status(&found.administrator, now_micros) != SessionStatus::Active
+            || !crate::admin_auth::token_matches_hash(
+                &crate::admin_auth::derive_csrf_token(session_token)?,
+                &found.session.csrf_hash,
+            )
+        {
+            return Err(ServiceError::InvalidSession);
+        }
+        Ok(found)
+    }
+
     /// # Errors
     /// The token or session is invalid, its administrator is ineligible, or the store fails.
     pub async fn authenticate_session(
@@ -591,22 +613,7 @@ where
             return Err(ServiceError::InvalidSession);
         }
         require_persistable_time(now_micros)?;
-        let Some(mut found) = self
-            .store
-            .session_by_token_hash(crate::admin_auth::token_hash(session_token))
-            .await
-            .map_err(ServiceError::Store)?
-        else {
-            return Err(ServiceError::InvalidSession);
-        };
-        if found.session.status(&found.administrator, now_micros) != SessionStatus::Active
-            || !crate::admin_auth::token_matches_hash(
-                &crate::admin_auth::derive_csrf_token(session_token)?,
-                &found.session.csrf_hash,
-            )
-        {
-            return Err(ServiceError::InvalidSession);
-        }
+        let mut found = self.active_session(session_token, now_micros).await?;
         if found.session.should_write_last_seen(now_micros) {
             let idle_expires = now_micros
                 .checked_add(SESSION_IDLE_MICROS)
@@ -625,20 +632,7 @@ where
             if !updated {
                 // Recheck the current session after an activity update race instead of
                 // treating a failed activity write as proof of logout.
-                found = self
-                    .store
-                    .session_by_token_hash(crate::admin_auth::token_hash(session_token))
-                    .await
-                    .map_err(ServiceError::Store)?
-                    .ok_or(ServiceError::InvalidSession)?;
-                if found.session.status(&found.administrator, now_micros) != SessionStatus::Active
-                    || !crate::admin_auth::token_matches_hash(
-                        &crate::admin_auth::derive_csrf_token(session_token)?,
-                        &found.session.csrf_hash,
-                    )
-                {
-                    return Err(ServiceError::InvalidSession);
-                }
+                found = self.active_session(session_token, now_micros).await?;
             }
         }
         Ok(AuthenticatedIdentity {
@@ -661,22 +655,7 @@ where
             return Err(ServiceError::InvalidSession);
         }
         require_persistable_time(now_micros)?;
-        let Some(found) = self
-            .store
-            .session_by_token_hash(crate::admin_auth::token_hash(session_token))
-            .await
-            .map_err(ServiceError::Store)?
-        else {
-            return Err(ServiceError::InvalidSession);
-        };
-        if found.session.status(&found.administrator, now_micros) != SessionStatus::Active
-            || !crate::admin_auth::token_matches_hash(
-                &crate::admin_auth::derive_csrf_token(session_token)?,
-                &found.session.csrf_hash,
-            )
-        {
-            return Err(ServiceError::InvalidSession);
-        }
+        let found = self.active_session(session_token, now_micros).await?;
         self.store
             .revoke_session(
                 &found.session.session_id,
@@ -709,22 +688,7 @@ where
         if !crate::admin_auth::is_token_shape(session_token) {
             return Err(ServiceError::InvalidSession);
         }
-        let Some(found) = self
-            .store
-            .session_by_token_hash(crate::admin_auth::token_hash(session_token))
-            .await
-            .map_err(ServiceError::Store)?
-        else {
-            return Err(ServiceError::InvalidSession);
-        };
-        if found.session.status(&found.administrator, now_micros) != SessionStatus::Active
-            || !crate::admin_auth::token_matches_hash(
-                &crate::admin_auth::derive_csrf_token(session_token)?,
-                &found.session.csrf_hash,
-            )
-        {
-            return Err(ServiceError::InvalidSession);
-        }
+        let found = self.active_session(session_token, now_micros).await?;
         crate::admin_auth::require_csrf_token_matches_hash(
             csrf_header_values,
             &found.session.csrf_hash,

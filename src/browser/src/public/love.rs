@@ -1,6 +1,6 @@
 //! Couple journal, shared photo and note panels, and letter interactions.
-use super::appearance::{Avatar, background_style, site_media_url};
-use super::journal::NoteCard;
+use super::appearance::{avatar, background_style, site_media_url};
+use super::journal::note_cards;
 use super::photos::Collection;
 use super::shell::{Chrome, site_data};
 use crate::comments::{CommentKind, Comments};
@@ -13,6 +13,22 @@ use blog_interface::prelude::*;
 use blog_interface::svg;
 use blog_interface::thread_bound::SendWrapper;
 use serde_json::Value;
+
+fn portrait(name: Signal<String>, family: Signal<Value>, key: &'static str) -> impl IntoView {
+    html::div().child((
+        move || {
+            family.with(|value| {
+                avatar(
+                    &name.get(),
+                    value[key].as_str().unwrap_or_default(),
+                    "love-avatar",
+                    String::new(),
+                )
+            })
+        },
+        html::strong().child(move || name.get()),
+    ))
+}
 
 fn cover_art(source: Option<String>, placeholder: &'static str) -> AnyView {
     match source {
@@ -171,23 +187,11 @@ pub(super) fn Love() -> impl IntoView {
                             .child((html::div()
                             .child( html::div()
                             .child((html::div()
-                            .child((html::div()
-                            .child((move | | View::new(Avatar(component_props_builder(&Avatar)
-                .name( his.get())
-                .src( text(&current.get(), "man_cover"))
-                .build())),
-                            html::strong()
-                            .child( move | | his.get()),)),
+                            .child((portrait(his, current, "man_cover"),
                             svg::svg()
                             .class("love-heart").attr("viewBox", "0 0 24 24").attr("aria-hidden", "true")
                             .child(svg::path().attr("d", "M12 21 3.6 12.6A5.5 5.5 0 0 1 11.4 4.8L12 5.4l.6-.6a5.5 5.5 0 0 1 7.8 7.8Z")),
-                            html::div()
-                            .child((move | | View::new(Avatar(component_props_builder(&Avatar)
-                .name( her.get())
-                .src( text(&current.get(), "woman_cover"))
-                .build())),
-                            html::strong()
-                            .child( move | | her.get()),)),)).class("love-pair"),
+                            portrait(her, current, "woman_cover"),)).class("love-pair"),
                             html::p()
                             .child( move | | if crate ::dates::parse(& text(& current.get(),
                             "timing")).is_some() { format!("{}{}", t("故事开始于 ",
@@ -390,12 +394,7 @@ pub(super) fn Love() -> impl IntoView {
         .role("status"),
 )),
                             html::div()
-                            .child((move | | notes.current_items()
-                            .unwrap_or_default().into_iter().map(| item | View::new(NoteCard(component_props_builder(&NoteCard)
-                .item( item)
-                .lightbox( lightbox)
-                .love( true)
-                .build()))).collect_view(),
+                            .child((note_cards(notes, lightbox, true),
                             move | | notes.with_current(| v | v.is_some_and(| v | page_items(v).is_empty())).then(| | View::new(
     html::div()
         .child(
