@@ -32,12 +32,6 @@ path = "../../encoding/integer-format"
 features = []
 default-features = true
 
-[dependencies.log]
-package = "blog-diagnostics-event-facade"
-path = "../../diagnostics/event-facade"
-features = []
-default-features = true
-
 [dependencies.rustc_hash]
 package = "blog-collections-compiler-hash"
 path = "../../collections/compiler-hash"

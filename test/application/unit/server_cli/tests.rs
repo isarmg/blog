@@ -112,31 +112,3 @@ fn machine_errors_emit_one_contract_record_and_no_human_output() {
             .contains("contract_violation")
     );
 }
-
-#[test]
-fn runtime_log_validation_never_creates_or_repairs_a_directory() {
-    use std::os::unix::fs::{PermissionsExt, symlink};
-    let parent = tempfile::tempdir().unwrap();
-    let state = parent.path().join("state");
-    std::fs::create_dir(&state).unwrap();
-    std::fs::set_permissions(&state, std::fs::Permissions::from_mode(0o700)).unwrap();
-    assert!(validate_runtime_log_directory(&state).is_err());
-    assert!(!state.join("logs").exists());
-    std::fs::create_dir(state.join("logs")).unwrap();
-    std::fs::set_permissions(state.join("logs"), std::fs::Permissions::from_mode(0o700)).unwrap();
-    validate_runtime_log_directory(&state).unwrap();
-    std::fs::set_permissions(state.join("logs"), std::fs::Permissions::from_mode(0o755)).unwrap();
-    assert!(validate_runtime_log_directory(&state).is_err());
-    assert_eq!(
-        std::fs::metadata(state.join("logs"))
-            .unwrap()
-            .permissions()
-            .mode()
-            & 0o777,
-        0o755
-    );
-    std::fs::remove_dir(state.join("logs")).unwrap();
-    symlink(parent.path(), state.join("logs")).unwrap();
-    assert!(validate_runtime_log_directory(&state).is_err());
-    assert!(validate_runtime_log_directory(&state).is_err());
-}

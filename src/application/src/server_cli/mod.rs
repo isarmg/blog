@@ -12,7 +12,6 @@ use axum::{
 };
 use std::{
     io::{self, Write},
-    path::Path,
     process::ExitCode,
 };
 
@@ -212,25 +211,6 @@ fn write_error(
         writeln!(diagnostics, "{}: {}", error.code, error.message)?;
         diagnostics.flush()
     }
-}
-
-/// # Errors
-/// The runtime log directory is missing, inaccessible, or not private.
-pub fn validate_runtime_log_directory(data_dir: &Path) -> Result<(), ErrorEnvelope> {
-    crate::fs_safety::PrivateDirectory::open_existing(data_dir).map_err(|_| {
-        failure(
-            "unsafe_state_directory",
-            "The data directory must be private and current.",
-        )
-    })?;
-    crate::fs_safety::PrivateDirectory::open_existing(data_dir.join("logs"))
-        .map(|_| ())
-        .map_err(|_| {
-            failure(
-                "unsafe_log_directory",
-                "An existing private runtime log directory is required.",
-            )
-        })
 }
 
 #[path = "../../../../test/application/unit/server_cli/tests.rs"]

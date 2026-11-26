@@ -101,7 +101,6 @@ dependencies = [
  "blog-collections-hash-table",
  "blog-collections-inline-string",
  "blog-collections-inline-vector",
- "blog-diagnostics-event-facade",
  "blog-encoding-byte-search",
  "blog-encoding-integer-format",
  "blog-encoding-script-float-format",

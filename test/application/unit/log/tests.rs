@@ -178,6 +178,36 @@ fn invalid_log_fields_preserve_sources_without_echoing_input() {
 
 #[cfg(unix)]
 #[test]
+fn rotating_log_opens_only_a_preexisting_private_directory() {
+    use std::{
+        fs,
+        os::unix::fs::{PermissionsExt, symlink},
+    };
+    let root = tempfile::tempdir().unwrap();
+    let logs = root.path().join("logs");
+    let open = || RotatingLogFile::open(&logs, "server", LogRetention::default());
+    assert!(open().is_err());
+    assert!(!logs.exists());
+
+    fs::create_dir(&logs).unwrap();
+    fs::set_permissions(&logs, fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(matches!(open(), Err(LogError::UnsafeStorage)));
+    assert_eq!(logs.metadata().unwrap().permissions().mode() & 0o777, 0o755);
+    fs::remove_dir(&logs).unwrap();
+
+    symlink(root.path(), &logs).unwrap();
+    assert!(open().is_err());
+    assert!(!root.path().join("server.jsonl").exists());
+    fs::remove_file(&logs).unwrap();
+
+    fs::create_dir(&logs).unwrap();
+    fs::set_permissions(&logs, fs::Permissions::from_mode(0o700)).unwrap();
+    drop(open().unwrap());
+    assert!(logs.join("server.jsonl").is_file());
+}
+
+#[cfg(unix)]
+#[test]
 fn malformed_archive_index_retains_the_parse_error() {
     use std::{error::Error as _, fs, os::unix::fs::PermissionsExt};
     let directory = tempfile::tempdir().unwrap();
