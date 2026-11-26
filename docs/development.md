@@ -16,7 +16,7 @@ rustup toolchain install 1.100.0 --profile minimal --component rustfmt,clippy --
 
 开发构建使用 Cargo 默认的增量编译。磁盘受限的验证环境可设置 `CARGO_INCREMENTAL=0`；测试和发行构建使用各自的 profile。产品、应用、浏览器与组件门面继承 workspace 的 `unused_must_use`、`unnecessary_wraps` 和 unsafe 规则，构建器与界面库另外禁止 unsafe。DOM 基础实现保留其独立的 cfg 和 unsafe 边界，通过维护库与实际消费者验证。
 
-workspace 还检查丢弃必须处理的结果、无说明的 `unwrap`、可简化的控制流、冗余克隆及有限枚举的通配分支。CI 将警告视为错误，并对原生默认成员的所有目标和特性启用 `clippy::pedantic`；测试函数可按 `clippy.toml` 使用 `unwrap`，外部非穷尽枚举的语言要求通过局部且注明原因的 `#[expect]` 表达。
+workspace 还检查丢弃必须处理的结果、无说明的 `unwrap`、可简化的控制流、冗余克隆及有限枚举的通配分支。CI 将警告视为错误，并对原生默认成员和浏览器组件宏的所有目标和特性启用 `clippy::pedantic`；测试函数可按 `clippy.toml` 使用 `unwrap`，外部非穷尽枚举的语言要求通过局部且注明原因的 `#[expect]` 表达。
 
 先生成静态资源，再编译原生服务和离线工具：[服务端构建脚本](../src/server/build.rs) 会读取并嵌入前端产物。
 
@@ -98,6 +98,7 @@ CI 还会生成原生与 WASM 的完整 API 文档，并将文档警告作为错
 ```sh
 cargo +1.100.0 fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check
 cargo +1.100.0 clippy --locked --offline --all-targets --all-features -- -D clippy::pedantic -D warnings
+cargo +1.100.0 clippy --locked --offline -p blog-component-macros --all-targets --all-features -- -D clippy::pedantic -D warnings
 cargo +1.100.0 clippy --locked --offline -p blog-assets -p blog-browser-domain-tests --all-targets -- -D warnings
 cargo +1.100.0 clippy --locked --offline -p blog-browser --target wasm32-unknown-unknown -- -D warnings
 cargo +1.100.0 test --locked --offline

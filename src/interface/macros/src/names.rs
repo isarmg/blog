@@ -1,4 +1,4 @@
-//! Component symbol names; default identifier boundaries from convert_case.
+//! Component symbol names; default identifier boundaries from `convert_case`.
 use unicode_segmentation::UnicodeSegmentation;
 fn upper(s: &str) -> bool {
     s.to_uppercase() != s.to_lowercase() && s == s.to_uppercase()
@@ -48,12 +48,9 @@ pub(crate) fn pascal(s: &str) -> String {
         .iter()
         .map(|word| {
             let mut chars = word.chars();
-            chars
-                .next()
-                .map(|first| {
-                    first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
-                })
-                .unwrap_or_default()
+            chars.next().map_or_default(|first| {
+                first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+            })
         })
         .collect()
 }

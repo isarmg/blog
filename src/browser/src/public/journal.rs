@@ -1,8 +1,8 @@
 //! Chronological articles and short journal notes.
 use super::shell::{Chrome, site_data};
 use crate::common::{
-    BrowsePager, Feedback, Lightbox, Petals, Sliding, href, load, num, page_items, page_number,
-    safe_url, search_signal, t, text,
+    BrowsePager, Lightbox, Petals, Sliding, href, load, num, page_items, page_number, safe_url,
+    search_signal, t, text,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -36,13 +36,7 @@ pub(super) fn Journey() -> impl IntoView {
                                 html::strong().child(t("时间线", "Timeline")),
                                 html::small().child(t("灵魂在路上", "The soul is walking")),
                             )),
-                            Feedback(
-                                component_props_builder(&Feedback)
-                                    .error(data.error)
-                                    .public(true)
-                                    .retry(Some(Callback::new(move |()| data.reload())))
-                                    .build(),
-                            ),
+                            data.public_feedback(None),
                             html::div()
                                 .child(move || {
                                     data.with_current(|value| {
@@ -186,13 +180,7 @@ pub(super) fn Journal() -> impl IntoView {
                         .child(
                             html::div()
                                 .child((
-                                    Feedback(
-                                        component_props_builder(&Feedback)
-                                            .error(data.error)
-                                            .public(true)
-                                            .retry(Some(Callback::new(move |()| data.reload())))
-                                            .build(),
-                                    ),
+                                    data.public_feedback(None),
                                     move || {
                                         data.current_items()
                                             .unwrap_or_default()

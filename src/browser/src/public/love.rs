@@ -4,9 +4,7 @@ use super::journal::NoteCard;
 use super::photos::Collection;
 use super::shell::{Chrome, site_data};
 use crate::comments::{CommentKind, Comments};
-use crate::common::{
-    Feedback, Lightbox, Pager, Petals, href, list, load, page_items, safe_url, t, text,
-};
+use crate::common::{Lightbox, Pager, Petals, href, list, load, page_items, safe_url, t, text};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
 use blog_interface::ev;
@@ -49,14 +47,7 @@ pub(super) fn Letter() -> impl IntoView {
                             .child("✿　❀　✿　❀　✿")
                             .class("letter-sakura")
                             .aria_hidden("true"),
-                        Feedback(
-                            component_props_builder(&Feedback)
-                                .error(data.error)
-                                .public(true)
-                                .fallback(t("信笺加载失败", "Unable to load the letter"))
-                                .retry(Some(Callback::new(move |()| data.reload())))
-                                .build(),
-                        ),
+                        data.public_feedback(Some(t("信笺加载失败", "Unable to load the letter"))),
                         move || {
                             data.current().map(|letter| {
                                 if letter.is_null() {
@@ -221,13 +212,8 @@ pub(super) fn Love() -> impl IntoView {
                             background_style(safe_url(text(&current.get(), "bg_cover").trim(), true)))
                             .class("love-hero"),
                             html::div()
-                            .child((Feedback(component_props_builder(& Feedback)
-                            .error( family.error)
-                            .public( true)
-                            .fallback( t("故事加载失败",
-                            "Unable to load our story")).retry(
-                            Some(Callback::new(move | () | family.reload())))
-                            .build()),
+                            .child((family.public_feedback(Some(t("故事加载失败",
+                            "Unable to load our story"))),
                             html::section()
                             .child((html::h1()
                             .child( t("这是我们一起走过的", "Our journey together")),
@@ -238,8 +224,8 @@ pub(super) fn Love() -> impl IntoView {
                     html::span()
                     .child( t("第",
                     "Together for")).class("love-clock-prefix"),
-                    [("years", e.years as i64, t("年", if e.years == 1 { "year" }
-                    else { "years" })), ("months", e.months as i64, t("月", if e
+                    [("years", i64::from(e.years), t("年", if e.years == 1 { "year" }
+                    else { "years" })), ("months", i64::from(e.months), t("月", if e
                     .months == 1 { "month" } else { "months" })), ("days", e.days,
                     t("日", if e.days == 1 { "day" } else { "days" })), ("hours", e
                     .hours, t("时", if e.hours == 1 { "hour" } else { "hours" })),
@@ -393,11 +379,7 @@ pub(super) fn Love() -> impl IntoView {
                             .aria_hidden("true"),))
                             .href(href("/jotting")),))
                             .class("love-section-heading"),
-                            Feedback(component_props_builder(& Feedback)
-                            .error( notes.error)
-                            .public( true)
-                            .retry( Some(Callback::new(move |
-                            () | notes.reload()))).build()),
+                            notes.public_feedback(None),
                             move | | notes.busy.get().then(| | View::new(
     html::p()
         .child(

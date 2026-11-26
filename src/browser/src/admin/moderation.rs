@@ -1,5 +1,5 @@
 use crate::common::{
-    Action, Feedback, FilePicker, Lightbox, ListState, Pager, load, nullable_num, num, safe_url, t,
+    Action, FilePicker, Lightbox, ListState, Pager, load, nullable_num, num, safe_url, t,
     table_time, text, tr,
 };
 use blog_interface::component::component_props_builder;
@@ -180,7 +180,7 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
                     | | action.busy.get() || upload.busy.get() || (kind ==
                     ModerationKind::Files && path2.is_empty()))
                     .on(blog_interface::ev::click, move | _ | { if !
-                    web_sys::window().expect("invariant: the application is mounted in a browser window").confirm_with_message(& match kind {
+                    window().confirm_with_message(& match kind {
                     ModerationKind::Comments =>
                     t("删除这条评论？如果是顶层评论，会同时删除该楼层的全部回复。",
                     "Delete this comment? If it is a top-level comment, all replies in its thread will also be deleted."),
@@ -200,13 +200,8 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
         .aria_label(title)
         .child(
             (
-                    Feedback(component_props_builder(& Feedback)
-                    .error( data.error)
-                    .retry( Some(Callback::new(move | () |
-                    data.reload()))).build()),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( action.error).build()), Feedback(component_props_builder(& Feedback)
-                    .error( upload.error).build()),
+                    data.admin_feedback(None),
+                    action.feedback(), upload.feedback(),
                     blog_interface::html::div()
                     .class("blog-stack blog-stack--spaced")
                     .child((
@@ -234,7 +229,7 @@ pub(super) fn Moderation(kind: ModerationKind) -> impl IntoView {
             .upload(blog_interface::thread_bound::SendWrapper::new(file), move | path | { uploaded
             .set(path); filename.set(String::new()); chosen
             .set_value(blog_interface::thread_bound::SendWrapper::new(None)); data.reload();
-            notify(t("图片已上传", "Image uploaded")); }) } }))
+            notify(t("图片已上传", "Image uploaded")); }); } }))
             .class("blog-fieldset blog-stack")
             .disabled(move
             | | upload.busy.get() || action.busy.get()),

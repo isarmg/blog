@@ -79,7 +79,7 @@ pub(crate) fn Pager<T: PageMetadata + Send + Sync + 'static>(
                                         || page.get() <= 1
                                 })
                                 .on(blog_interface::ev::click, move |_| {
-                                    page.update(|p| *p = p.saturating_sub(1).max(1))
+                                    page.update(|p| *p = p.saturating_sub(1).max(1));
                                 }),
                             blog_interface::html::span().child(tr(
                                 "第 {0} 页 · 共 {1} 条",
@@ -155,7 +155,7 @@ pub(crate) fn BrowsePager<T: PageMetadata + Send + Sync + 'static>(
                                     browse(
                                         state,
                                         &[("page", Some((page_number(state) + 1).to_string()))],
-                                    )
+                                    );
                                 }),
                         ))
                         .class("pager")

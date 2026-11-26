@@ -42,13 +42,7 @@ pub(super) fn Articles() -> impl IntoView {
                     "管理公开文章与草稿。",
                     "Manage published articles and drafts.",
                 )),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .fallback(t("文章加载失败", "Unable to load articles"))
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
+                data.admin_feedback(Some(t("文章加载失败", "Unable to load articles"))),
                 Feedback(
                     component_props_builder(&Feedback)
                         .error(action.error)
@@ -119,7 +113,7 @@ pub(super) fn Articles() -> impl IntoView {
                     "Delete")).class("blog-button blog-danger")
                     .disabled(move
                     | | action.busy.get()).on(blog_interface::ev::click,
-                    move | _ | if web_sys::window().expect("invariant: the application is mounted in a browser window").confirm_with_message(&
+                    move | _ | if window().confirm_with_message(&
                     t("确定删除这篇文章？", "Delete this article?"))
                     .unwrap_or(false) { action
                     .run(format!("/api/v1/content/articles/{id}"), "DELETE", None,

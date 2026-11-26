@@ -1,4 +1,6 @@
-use crate::common::*;
+use crate::common::{
+    Pager, RequestOptions, load, num, page_items, public_error, request, safe_url, t, text,
+};
 use blog_interface::component::component_props_builder;
 use blog_interface::prelude::*;
 use blog_interface::thread_bound::SendWrapper;
@@ -168,12 +170,7 @@ pub(crate) fn Comments(
     };
     let pending = RwSignal::new(restored);
     let storage_failure = RwSignal::new(unavailable);
-    let draft = RwSignal::new(
-        pending
-            .get_untracked()
-            .map(|v| v.content)
-            .unwrap_or_default(),
-    );
+    let draft = RwSignal::new(pending.get_untracked().map_or_default(|v| v.content));
     let reply = RwSignal::new(None::<Value>);
     let failure = RwSignal::new(String::new());
     let feedback = RwSignal::new(String::new());
@@ -195,9 +192,9 @@ pub(crate) fn Comments(
     on_cleanup(move || {
         controller.update_value(|c| {
             if let Some(c) = (**c).take() {
-                c.abort()
+                c.abort();
             }
-        })
+        });
     });
     let key = StoredValue::new(key);
     let choose = Callback::new(move |v: Value| {
@@ -205,7 +202,7 @@ pub(crate) fn Comments(
             && pending.get_untracked().is_none()
             && !storage_failure.get_untracked()
         {
-            reply.set(Some(v))
+            reply.set(Some(v));
         }
     });
     View::new(
@@ -231,14 +228,7 @@ pub(crate) fn Comments(
                         View::new(blog_interface::html::p().child(failure.get()).role("alert"))
                     })
                 },
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .fallback(t("评论加载失败", "Unable to load comments"))
-                        .public(true)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
+                data.public_feedback(Some(t("评论加载失败", "Unable to load comments"))),
                 move || {
                     data.busy.get().then(|| {
                         View::new(
@@ -335,7 +325,7 @@ pub(crate) fn Comments(
                             .maxlength("2048")
                             .prop("value", move || draft.get())
                             .on(blog_interface::ev::input, move |ev| {
-                                draft.set(event_target_value(&ev))
+                                draft.set(event_target_value(&ev));
                             })
                             .placeholder(t("写下你的想法", "Write your thoughts")),
                         blog_interface::html::button()
@@ -362,7 +352,7 @@ pub(crate) fn Comments(
                                         .r#type("button")
                                         .disabled(move || busy.get())
                                         .on(blog_interface::ev::click, move |_| {
-                                            if !web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                            if !window()
                                                 .confirm_with_message(&t("这条评论可能已经发表。请先检查评论列表；确定放弃确认原提交并清空草稿？", "This comment may already be posted. Check the comments first. Stop confirming this submission and clear its draft?"))
                                                 .unwrap_or(false)
                                             {
@@ -398,28 +388,25 @@ pub(crate) fn Comments(
                         if busy.get_untracked() || storage_failure.get_untracked() {
                             return;
                         }
-                        let (submission, retry) = match pending.get_untracked() {
-                            Some(submission) => (submission, true),
-                            None => {
-                                let content = draft.get_untracked().trim().to_owned();
-                                if content.is_empty() {
-                                    return;
-                                }
-                                if content.chars().count() > 1024 {
-                                    failure.set(t(
-                                        "评论正文须为 1–1024 个字符",
-                                        "Comment content must contain 1–1024 characters",
-                                    ));
-                                    return;
-                                }
-                                let submission = PendingSubmission {
-                                    request_id: web_sys::window().expect("invariant: the application is mounted in a browser window").crypto().expect("invariant: the application window exposes browser crypto").random_uuid(),
-                                    content,
-                                    parent_comment_id: reply.get_untracked().map(|v| num(&v, "id")),
-                                    article_id: target,
-                                };
-                                (submission, false)
+                        let (submission, retry) = if let Some(submission) = pending.get_untracked() { (submission, true) } else {
+                            let content = draft.get_untracked().trim().to_owned();
+                            if content.is_empty() {
+                                return;
                             }
+                            if content.chars().count() > 1024 {
+                                failure.set(t(
+                                    "评论正文须为 1–1024 个字符",
+                                    "Comment content must contain 1–1024 characters",
+                                ));
+                                return;
+                            }
+                            let submission = PendingSubmission {
+                                request_id: window().crypto().expect("invariant: the application window exposes browser crypto").random_uuid(),
+                                content,
+                                parent_comment_id: reply.get_untracked().map(|v| num(&v, "id")),
+                                article_id: target,
+                            };
+                            (submission, false)
                         };
                         if storage()
                             .and_then(|s| {
@@ -522,7 +509,7 @@ fn CommentEntry(item: Value, reply: Callback<Value>) -> impl IntoView {
                             .child(t("回复", "Reply"))
                             .r#type("button")
                             .on(blog_interface::ev::click, move |_| {
-                                reply.run(target.clone())
+                                reply.run(target.clone());
                             }),
                     )
                     .class("comment-actions"),
@@ -565,7 +552,7 @@ fn Replies(
                 } else {
                     for n in next {
                         if !current.iter().any(|v| v["id"] == n["id"]) {
-                            current.push(n)
+                            current.push(n);
                         }
                     }
                 }
@@ -575,13 +562,7 @@ fn Replies(
     View::new(
         blog_interface::html::div()
             .child((
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .public(true)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
+                data.public_feedback(None),
                 move || {
                     items
                         .get()
@@ -635,7 +616,7 @@ fn Replies(
                                             })
                                         })
                                     {
-                                        page.update(|p| *p += 1)
+                                        page.update(|p| *p += 1);
                                     }
                                 }),
                         )

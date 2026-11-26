@@ -66,7 +66,8 @@ impl<T: Send + Sync + 'static> Data<T> {
     where
         T: Clone,
     {
-        self.with_current(|value| value.cloned())
+        self.response
+            .with(|value| value.as_ref()?.current().cloned())
     }
 
     pub fn with_current<R>(self, read: impl FnOnce(Option<&T>) -> R) -> R {
@@ -93,7 +94,7 @@ impl<T: Send + Sync + 'static> Data<T> {
     }
 
     pub fn reload(self) {
-        self.revision.update(|v| *v += 1)
+        self.revision.update(|v| *v += 1);
     }
 }
 

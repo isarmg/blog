@@ -138,7 +138,7 @@ pub(super) fn HomeSections() -> impl IntoView {
                 });
                 notify(t("首页栏目已保存", "Home sections saved"));
             },
-        )
+        );
     });
     View::new(
         blog_interface::html::section()
@@ -150,20 +150,8 @@ pub(super) fn HomeSections() -> impl IntoView {
                     .class("blog-button")
                     .disabled(move || save.busy.get() || !loaded.get())
                     .on(blog_interface::ev::click, move |_| save_sections.run(())),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .fallback(t("首页栏目加载失败", "Unable to load home sections"))
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(categories.error)
-                        .fallback(t("分类加载失败", "Unable to load categories"))
-                        .retry(Some(Callback::new(move |()| categories.reload())))
-                        .build(),
-                ),
+                data.admin_feedback(Some(t("首页栏目加载失败", "Unable to load home sections"))),
+                categories.admin_feedback(Some(t("分类加载失败", "Unable to load categories"))),
                 Feedback(
                     component_props_builder(&Feedback)
                         .error(save.error)
@@ -201,8 +189,8 @@ pub(super) fn HomeSections() -> impl IntoView {
                                                     },
                                                     enabled: true,
                                                 }),
-                                            })
-                                        })
+                                            });
+                                        });
                                     }),
                             )
                             .class("blog-actions blog-flow"),
@@ -301,7 +289,7 @@ fn HomeRow(
                             .maxlength("32")
                             .prop("value", move || current.with(|form| form.title.clone()))
                             .on(blog_interface::ev::input, move |ev| {
-                                current.update(|form| form.title = event_target_value(&ev))
+                                current.update(|form| form.title = event_target_value(&ev));
                             }),
                     ))
                     .class("blog-form-field blog-stack"),
@@ -367,7 +355,7 @@ fn HomeRow(
                             }))
                             .options(Signal::derive(move || {
                                 categories.with_current(|value| {
-                                    let items = value.map(Vec::as_slice).unwrap_or_default();
+                                    let items = value.map_or_default(Vec::as_slice);
                                     std::iter::once((
                                         "0".to_string(),
                                         t("选择分类", "Select a category"),
@@ -400,7 +388,7 @@ fn HomeRow(
                             .r#type("checkbox")
                             .prop("checked", move || current.with(|form| form.enabled))
                             .on(blog_interface::ev::change, move |ev| {
-                                current.update(|form| form.enabled = event_target_checked(&ev))
+                                current.update(|form| form.enabled = event_target_checked(&ev));
                             }),
                         t(" 启用", " Enable"),
                     )),
@@ -419,9 +407,9 @@ fn HomeRow(
                                 let i = index.get_untracked();
                                 sections.update(|r| {
                                     if i > 0 {
-                                        r.swap(i, i - 1)
+                                        r.swap(i, i - 1);
                                     }
-                                })
+                                });
                             }),
                         blog_interface::html::button()
                             .child("↓")
@@ -438,15 +426,15 @@ fn HomeRow(
                                 let i = index.get_untracked();
                                 sections.update(|r| {
                                     if i + 1 < r.len() {
-                                        r.swap(i, i + 1)
+                                        r.swap(i, i + 1);
                                     }
-                                })
+                                });
                             }),
                         blog_interface::html::button()
                             .child(t("删除", "Delete"))
                             .class("blog-button blog-danger")
                             .on(blog_interface::ev::click, move |_| {
-                                sections.update(|r| r.retain(|row| row.id != id))
+                                sections.update(|r| r.retain(|row| row.id != id));
                             }),
                     ))
                     .class("blog-actions blog-flow"),

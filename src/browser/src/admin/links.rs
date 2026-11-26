@@ -1,6 +1,4 @@
-use crate::common::{
-    Action, Check, Feedback, Field, ListState, Pager, enc, flag, load, num, t, text,
-};
+use crate::common::{Action, Check, Field, ListState, Pager, enc, flag, load, num, t, text};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -38,7 +36,7 @@ pub(super) fn Links() -> impl IntoView {
     let removing = RwSignal::new(None::<i64>);
     let reset = Callback::new(move |()| {
         form.set(empty_link());
-        editing.set(None)
+        editing.set(None);
     });
     let options = || {
         vec![
@@ -112,12 +110,12 @@ pub(super) fn Links() -> impl IntoView {
                                                     move |_| {
                                                         if editing.get_untracked() == Some(id) {
                                                             form.update(|form| {
-                                                                form["status"] = json!(true)
+                                                                form["status"] = json!(true);
                                                             });
                                                         }
                                                         data.reload();
                                                     },
-                                                )
+                                                );
                                             }),
                                     )
                                 }),
@@ -129,7 +127,7 @@ pub(super) fn Links() -> impl IntoView {
                                     if save.busy.get_untracked() || remove.busy.get_untracked() {
                                         return;
                                     }
-                                    if web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                    if window()
                                         .confirm_with_message(&t(
                                             "确定删除这条资源？",
                                             "Delete this resource?",
@@ -164,18 +162,9 @@ pub(super) fn Links() -> impl IntoView {
                     "维护友链、收藏、照片和音乐条目。",
                     "Manage friend links, favorites, photos, and music.",
                 )),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
-                Feedback(component_props_builder(&Feedback).error(save.error).build()),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(remove.error)
-                        .build(),
-                ),
+                data.admin_feedback(None),
+                save.feedback(),
+                remove.feedback(),
                 blog_interface::html::div()
                     .class("blog-stack blog-stack--spaced")
                     .child((
@@ -301,8 +290,8 @@ pub(super) fn Links() -> impl IntoView {
                                                                         move |v: String| {
                                                                             form.update(|f| {
                                                                                 f["link_type"] =
-                                                                                    json!(v)
-                                                                            })
+                                                                                    json!(v);
+                                                                            });
                                                                         },
                                                                     ))
                                                                     .build(),
@@ -409,8 +398,9 @@ pub(super) fn Links() -> impl IntoView {
                                         }
                                         let path = editing
                                             .get_untracked()
-                                            .map(|id| format!("/api/v1/content/links/{id}"))
-                                            .unwrap_or("/api/v1/content/links".into());
+                                            .map_or("/api/v1/content/links".into(), |id| {
+                                                format!("/api/v1/content/links/{id}")
+                                            });
                                         save.run(
                                             path,
                                             if editing.get_untracked().is_some() {

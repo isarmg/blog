@@ -7,7 +7,7 @@ use blog_interface::prelude::*;
 pub(crate) fn Lightbox(src: RwSignal<Option<String>>) -> impl IntoView {
     View::new(For(component_props_builder(&For)
         .each(move || src.get().into_iter().collect::<Vec<_>>())
-        .key(|s| s.clone())
+        .key(std::clone::Clone::clone)
         .children(move |url| {
             View::new(LightboxDialog(
                 component_props_builder(&LightboxDialog)

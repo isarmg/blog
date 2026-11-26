@@ -128,7 +128,7 @@ fn typed_pages_reject_wrong_page_and_unsafe_integers() {
         decode::<SiteStats>(
             "/api/v1/site/stats",
             "GET",
-            json!({"article_count":9007199254740992u64,"view_count":0})
+            json!({"article_count":9_007_199_254_740_992_u64,"view_count":0})
         )
         .is_err()
     );
@@ -222,7 +222,7 @@ fn home_source_carries_its_required_category_id() {
         json!(0),
         json!(-1),
         json!("42"),
-        json!(9007199254740992u64),
+        json!(9_007_199_254_740_992_u64),
     ] {
         assert!(
             decode::<Vec<HomeSection>>(

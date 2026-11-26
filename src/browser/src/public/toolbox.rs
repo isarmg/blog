@@ -2,8 +2,7 @@
 use super::appearance::{background_style, site_media_url};
 use super::shell::{Chrome, site_data};
 use crate::common::{
-    BrowsePager, Feedback, browse, load, page_items, page_number, param, safe_url, search_signal,
-    t, text,
+    BrowsePager, browse, load, page_items, page_number, param, safe_url, search_signal, t, text,
 };
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -129,7 +128,7 @@ pub(super) fn Toolbox() -> impl IntoView {
                                                                         ("tab", Some(id.into())),
                                                                         ("page", None),
                                                                     ],
-                                                                )
+                                                                );
                                                             }),
                                                     )
                                                 })
@@ -147,14 +146,10 @@ pub(super) fn Toolbox() -> impl IntoView {
                             .class("favorite-banner"),
                         html::div()
                             .child((
-                                Feedback(
-                                    component_props_builder(&Feedback)
-                                        .error(data.error)
-                                        .public(true)
-                                        .fallback(t("内容加载失败", "Unable to load links"))
-                                        .retry(Some(Callback::new(move |()| data.reload())))
-                                        .build(),
-                                ),
+                                data.public_feedback(Some(t(
+                                    "内容加载失败",
+                                    "Unable to load links",
+                                ))),
                                 move || {
                                     if tab.get() == "music" {
                                         data.current_items()
@@ -209,14 +204,13 @@ pub(super) fn Toolbox() -> impl IntoView {
                     "Site name")),
                     html::span()
                     .child( site.current()
-                    .map(| v | v.web_name.unwrap_or_default())
-                    .unwrap_or("blog".into())),)),
+                    .map_or("blog".into(), | v | v.web_name.unwrap_or_default())),)),
                     html::p()
                     .child((html::b()
                     .child( t("网址", "URL")),
                     html::a()
-                    .child( web_sys::window().expect("invariant: the application is mounted in a browser window").location().origin().unwrap_or_default())
-                    .href(web_sys::window().expect("invariant: the application is mounted in a browser window").location().origin().unwrap_or_default()),)),
+                    .child( window().location().origin().unwrap_or_default())
+                    .href(window().location().origin().unwrap_or_default()),)),
                     site.current().and_then(| v | safe_url(& v.avatar
                     .unwrap_or_default(), false)).map(| u | View::new(
     html::p()
@@ -239,9 +233,8 @@ pub(super) fn Toolbox() -> impl IntoView {
                     "Description")),
                     html::span()
                     .child( site.current()
-                    .map(| v | v.web_title.unwrap_or_default())
-                    .unwrap_or(t("有诗意地记录生活",
-                    "Record life through poetry"))),)),)),))
+                    .map_or(t("有诗意地记录生活",
+                    "Record life through poetry"), | v | v.web_title.unwrap_or_default())),)),)),))
                     .class("friend-site-info"),
                     order.into_iter().map(| name | { let items = grouped.remove(&
                     name).unwrap_or_default(); View::new(FavoriteGroup(component_props_builder(
@@ -395,8 +388,8 @@ fn Music(items: Vec<Value>) -> impl IntoView {
                                         .on(ev::ended, move |_| {
                                             selected.update(|i| {
                                                 *i = (*i + 1)
-                                                    .min(items.get_value().len().saturating_sub(1))
-                                            })
+                                                    .min(items.get_value().len().saturating_sub(1));
+                                            });
                                         }),
                                 ))
                             })

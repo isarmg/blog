@@ -129,7 +129,7 @@ pub fn observe_sliding(viewport: &web_sys::Element) -> Option<SlidingObserver> {
             if !active.get() {
                 return;
             }
-            let distance = (label.scroll_width() - viewport.client_width()).max(0) as f64;
+            let distance = f64::from((label.scroll_width() - viewport.client_width()).max(0));
             viewport
                 .style()
                 .set_property("--title-travel", &format!("{distance}px"))

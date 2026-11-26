@@ -17,14 +17,13 @@ pub fn parse(value: &str) -> Option<DateTime<Utc>> {
         })
 }
 pub fn format(value: &str) -> String {
-    parse(value)
-        .map(|d| d.format("%Y-%m-%d %H:%M:%S UTC").to_string())
-        .unwrap_or_else(|| value.into())
+    parse(value).map_or_else(
+        || value.into(),
+        |d| d.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+    )
 }
 pub fn input(value: &str) -> String {
-    parse(value)
-        .map(|d| d.format("%Y-%m-%dT%H:%M:%S").to_string())
-        .unwrap_or_default()
+    parse(value).map_or_default(|d| d.format("%Y-%m-%dT%H:%M:%S").to_string())
 }
 pub fn iso(value: &str) -> Option<String> {
     parse(value).map(|d| d.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))

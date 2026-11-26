@@ -4,21 +4,15 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 use syn::{
     AngleBracketedGenericArguments, Attribute, FnArg, GenericArgument, GenericParam, Item, ItemFn,
-    LitStr, Meta, Pat, PatIdent, Path, PathArguments, ReturnType, Signature, Stmt, Type,
-    TypeImplTrait, TypeParam, TypePath, Visibility, parse::Parse, parse_quote, spanned::Spanned,
-    token::Colon, visit_mut::VisitMut,
+    LitStr, Meta, Pat, PatIdent, Path, PathArguments, Signature, Stmt, Type, TypeImplTrait,
+    TypeParam, TypePath, Visibility, parse::Parse, spanned::Spanned, token::Colon,
+    visit_mut::VisitMut,
 };
 
 pub struct Model {
-    validation_error: Option<syn::Error>,
-    is_transparent: bool,
-    docs: Docs,
-    unknown_attrs: UnknownAttrs,
-    vis: Visibility,
+    signature: syn::Result<(Docs, Vec<Prop>)>,
     name: Ident,
-    props: Vec<Prop>,
     body: ItemFn,
-    ret: ReturnType,
 }
 
 impl Parse for Model {
@@ -27,81 +21,25 @@ impl Parse for Model {
 
         convert_impl_trait_to_generic(&mut item.sig);
 
-        let (docs, mut validation_error) = match Docs::new(&item.attrs) {
-            Ok(docs) => (docs, None),
-            Err(error) => (Docs(Vec::new()), Some(error)),
-        };
-        let unknown_attrs = UnknownAttrs::new(&item.attrs);
-
-        let props = if validation_error.is_none() {
-            match item
-                .sig
-                .inputs
-                .clone()
+        let signature = Docs::new(&item.attrs).and_then(|docs| {
+            let props = std::mem::take(&mut item.sig.inputs)
                 .into_iter()
                 .map(Prop::new)
-                .collect::<syn::Result<Vec<_>>>()
-            {
-                Ok(props) => props,
-                Err(error) => {
-                    validation_error = Some(error);
-                    Vec::new()
-                }
-            }
-        } else {
-            Vec::new()
-        };
-
-        // We need to remove the `#[doc = ""]` and `#[builder(_)]`
-        // attrs from the function signature
-        drain_filter(&mut item.attrs, |attr| match &attr.meta {
-            Meta::NameValue(attr) => attr.path == parse_quote!(doc),
-            Meta::List(attr) => attr.path == parse_quote!(prop),
-            _ => false,
+                .collect::<syn::Result<_>>()?;
+            Ok((docs, props))
         });
-        item.sig.inputs.iter_mut().for_each(|arg| {
-            if let FnArg::Typed(ty) = arg {
-                drain_filter(&mut ty.attrs, |attr| match &attr.meta {
-                    Meta::NameValue(attr) => attr.path == parse_quote!(doc),
-                    Meta::List(attr) => attr.path == parse_quote!(prop),
-                    _ => false,
-                });
-            }
-        });
-
         Ok(Self {
-            validation_error,
-            is_transparent: false,
-            docs,
-            unknown_attrs,
-            vis: item.vis.clone(),
+            signature,
             name: convert_from_snake_case(&item.sig.ident)?,
-            props,
-            ret: item.sig.output.clone(),
             body: item,
         })
-    }
-}
-
-// implemented manually because Vec::drain_filter is nightly only
-// follows std recommended parallel
-pub fn drain_filter<T>(vec: &mut Vec<T>, mut some_predicate: impl FnMut(&mut T) -> bool) {
-    let mut i = 0;
-    while i < vec.len() {
-        if some_predicate(&mut vec[i]) {
-            _ = vec.remove(i);
-        } else {
-            i += 1;
-        }
     }
 }
 
 fn convert_from_snake_case(name: &Ident) -> syn::Result<Ident> {
     let name_str = name.to_string();
     let name_str = name_str.strip_prefix("r#").unwrap_or(&name_str);
-    if name_str != snake(name_str) {
-        Ok(name.clone())
-    } else {
+    if name_str == snake(name_str) {
         let mut converted = syn::parse_str::<Ident>(&pascal(name_str)).map_err(|_| {
             syn::Error::new(
                 name.span(),
@@ -110,25 +48,29 @@ fn convert_from_snake_case(name: &Ident) -> syn::Result<Ident> {
         })?;
         converted.set_span(name.span());
         Ok(converted)
+    } else {
+        Ok(name.clone())
     }
 }
 
 impl Model {
-    pub(crate) fn expand(mut self, errors: &mut Errors) -> syn::Result<TokenStream> {
-        if let Some(error) = self.validation_error.take() {
-            return Err(error);
-        }
+    pub(crate) fn expand(
+        self,
+        is_transparent: bool,
+        errors: &mut Errors,
+    ) -> syn::Result<TokenStream> {
         let Self {
-            validation_error: _,
-            is_transparent,
-            docs,
-            unknown_attrs,
-            vis,
+            signature,
             name,
-            props,
             body,
-            ret,
-        } = &self;
+        } = self;
+        let (docs, props) = signature?;
+        let unknown_attrs = body.attrs.iter().filter(|attr| {
+            !is_lint_attr(attr)
+                && !matches!(&attr.meta, Meta::NameValue(value) if value.path.is_ident("doc"))
+        });
+        let vis = &body.vis;
+        let ret = &body.sig.output;
         if !is_transparent {
             let ends_semi = body.block.stmts.last().and_then(|stmt| match stmt {
                 Stmt::Item(Item::Macro(mac)) => mac.semi_token.as_ref(),
@@ -144,13 +86,13 @@ impl Model {
         let (impl_generics, generics, where_clause) = body.sig.generics.split_for_impl();
         let props_name = format_ident!("{name}Props");
         let props_builder_name = format_ident!("{name}PropsBuilder");
-        let prop_builder_fields = prop_builder_fields(vis, props)?;
-        let prop_names = prop_names(props);
+        let prop_builder_fields = prop_builder_fields(vis, &props)?;
+        let prop_names = prop_names(&props);
         let builder_name_doc = LitStr::new(
             &format!(" Props for the [`{name}`] component."),
             name.span(),
         );
-        let component_fn_prop_docs = generate_component_fn_prop_docs(props)?;
+        let component_fn_prop_docs = generate_component_fn_prop_docs(&props)?;
         let docs_and_prop_docs = if component_fn_prop_docs.is_empty() {
             quote! { #docs }
         } else {
@@ -158,7 +100,7 @@ impl Model {
         };
         let body_name = unmodified_fn_name_from_fn_name(&body.sig.ident);
         let body_expr = quote! { #body_name(#prop_names) };
-        let component = if *is_transparent {
+        let component = if is_transparent {
             body_expr
         } else {
             quote! {
@@ -189,7 +131,7 @@ impl Model {
                 type Builder = #props_builder_name #generics;
                 fn builder() -> Self::Builder { #props_name::builder() }
             }
-            #unknown_attrs
+            #(#unknown_attrs)*
             #docs_and_prop_docs
             #[allow(non_snake_case, clippy::too_many_arguments)]
             #[allow(clippy::needless_lifetimes)]
@@ -198,12 +140,6 @@ impl Model {
                 #component
             }
         })
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    pub fn is_transparent(mut self, is_transparent: bool) -> Self {
-        self.is_transparent = is_transparent;
-        self
     }
 }
 
@@ -222,12 +158,24 @@ impl Parse for DummyModel {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut attrs = input.call(Attribute::parse_outer)?;
         // Drop unknown attributes like #[deprecated]
-        drain_filter(&mut attrs, |attr| {
-            !is_lint_attr(attr) && !attr.path().is_ident("doc")
-        });
+        attrs.retain(|attr| is_lint_attr(attr) || attr.path().is_ident("doc"));
 
         let vis: Visibility = input.parse()?;
-        let sig: Signature = input.parse()?;
+        let mut sig: Signature = input.parse()?;
+        for arg in &mut sig.inputs {
+            if let FnArg::Typed(ty) = arg {
+                ty.attrs.retain(|attr| {
+                    let (path, hidden) = match &attr.meta {
+                        Meta::List(list) => (&list.path, "prop"),
+                        Meta::NameValue(value) => (&value.path, "doc"),
+                        Meta::Path(_) => return true,
+                    };
+                    path.segments
+                        .first()
+                        .is_none_or(|segment| segment.ident != hidden)
+                });
+            }
+        }
 
         // The body is left untouched, so it will not cause an error
         // even if the syntax is invalid.
@@ -251,45 +199,18 @@ impl ToTokens for DummyModel {
             body,
         } = self;
 
-        // Strip attributes like documentation comments and #[prop]
-        // from the signature, so as to not confuse the user with incorrect
-        // error messages.
-        let sig = {
-            let mut sig = sig.clone();
-            sig.inputs.iter_mut().for_each(|arg| {
-                if let FnArg::Typed(ty) = arg {
-                    ty.attrs.retain(|attr| match &attr.meta {
-                        Meta::List(list) => list
-                            .path
-                            .segments
-                            .first()
-                            .map(|n| n.ident != "prop")
-                            .unwrap_or(true),
-                        Meta::NameValue(name_value) => name_value
-                            .path
-                            .segments
-                            .first()
-                            .map(|n| n.ident != "doc")
-                            .unwrap_or(true),
-                        _ => true,
-                    });
-                }
-            });
-            sig
-        };
-
         let output = quote! {
             #(#attrs)*
             #vis #sig #body
         };
 
-        tokens.append_all(output)
+        tokens.append_all(output);
     }
 }
 
 struct Prop {
     docs: Docs,
-    prop_opts: PropOpt,
+    options: PropOpt,
     name: PatIdent,
     ty: Type,
 }
@@ -321,7 +242,7 @@ impl Prop {
             return Err(syn::Error::new_spanned(arg, "receiver not allowed in `fn`"));
         };
 
-        let prop_opts = PropOpt::from_attributes(&typed.attrs)?;
+        let options = PropOpt::from_attributes(&typed.attrs)?;
 
         #[expect(
             clippy::wildcard_enum_match_arm,
@@ -329,7 +250,7 @@ impl Prop {
         )]
         let name = match *typed.pat {
             Pat::Ident(i) => {
-                if let Some((name, span)) = &prop_opts.name {
+                if let Some((name, span)) = &options.name {
                     PatIdent {
                         attrs: vec![],
                         by_ref: None,
@@ -342,7 +263,7 @@ impl Prop {
                 }
             }
             pat @ (Pat::Struct(_) | Pat::Tuple(_) | Pat::TupleStruct(_)) => {
-                let Some((name, span)) = prop_opts.name.as_ref() else {
+                let Some((name, span)) = options.name.as_ref() else {
                     return Err(syn::Error::new_spanned(
                         pat,
                         "destructured props must be given a name e.g. \
@@ -368,14 +289,13 @@ impl Prop {
 
         Ok(Self {
             docs: Docs::new(&typed.attrs)?,
-            prop_opts,
+            options,
             name,
             ty: *typed.ty,
         })
     }
 }
 
-#[derive(Clone)]
 pub struct Docs(Vec<(String, Span)>);
 
 impl ToTokens for Docs {
@@ -442,7 +362,7 @@ impl Docs {
             .collect::<Vec<_>>()
             .join("\n");
 
-        if doc_str.chars().filter(|c| *c != '\n').count() != 0 {
+        if doc_str.chars().any(|c| c != '\n') {
             format!("\n\n{doc_str}")
         } else {
             String::new()
@@ -459,51 +379,23 @@ fn is_lint_attr(attr: &Attribute) -> bool {
         || path.is_ident("forbid")
 }
 
-pub struct UnknownAttrs(Vec<(TokenStream, Span)>);
-
-impl UnknownAttrs {
-    pub fn new(attrs: &[Attribute]) -> Self {
-        let attrs = attrs
-            .iter()
-            .filter_map(|attr| {
-                if attr.path().is_ident("doc")
-                    && let Meta::NameValue(_) = &attr.meta
-                {
-                    return None;
-                }
-
-                if is_lint_attr(attr) {
-                    return None;
-                }
-
-                Some((attr.into_token_stream(), attr.span()))
-            })
-            .collect::<Vec<_>>();
-        Self(attrs)
-    }
-}
-
-impl ToTokens for UnknownAttrs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let s = self
-            .0
-            .iter()
-            .map(|(attr, span)| quote_spanned!(*span=> #attr))
-            .collect::<TokenStream>();
-        tokens.append_all(s);
-    }
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 struct PropOpt {
-    optional: bool,
-    optional_no_strip: bool,
-    strip_option: bool,
+    mode: PropMode,
     default: Option<syn::Expr>,
     into: bool,
     attrs: bool,
     name: Option<(String, Span)>,
     marker: bool,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum PropMode {
+    #[default]
+    Required,
+    Optional,
+    OptionalNoStrip,
+    StripOption,
 }
 
 impl PropOpt {
@@ -520,153 +412,106 @@ impl PropOpt {
                     .get_ident()
                     .ok_or_else(|| meta.error("expected a prop option"))?;
                 let key = ident.to_string();
-                if seen.insert(key.clone(), ident.span()).is_some() {
+                let std::collections::hash_map::Entry::Vacant(entry) = seen.entry(key.clone())
+                else {
                     return Err(meta.error(format!("duplicate prop option `{key}`")));
-                }
-                let flag = |meta: &syn::meta::ParseNestedMeta<'_>| -> syn::Result<bool> {
-                    if meta.input.peek(syn::Token![=]) {
-                        Ok(meta.value()?.parse::<syn::LitBool>()?.value)
-                    } else {
-                        Ok(true)
-                    }
                 };
-                match key.as_str() {
-                    "optional" => result.optional = flag(&meta)?,
-                    "optional_no_strip" => result.optional_no_strip = flag(&meta)?,
-                    "strip_option" => result.strip_option = flag(&meta)?,
-                    "into" => result.into = flag(&meta)?,
-                    "attrs" => result.attrs = flag(&meta)?,
-                    "marker" => result.marker = flag(&meta)?,
-                    "default" => result.default = Some(meta.value()?.parse()?),
+                let enabled = match key.as_str() {
+                    "optional" | "optional_no_strip" | "strip_option" | "into" | "attrs"
+                    | "marker" => {
+                        if meta.input.peek(syn::Token![=]) {
+                            meta.value()?.parse::<syn::LitBool>()?.value
+                        } else {
+                            true
+                        }
+                    }
+                    "default" => {
+                        result.default = Some(meta.value()?.parse()?);
+                        true
+                    }
                     "name" => {
                         let value = meta.value()?.parse::<LitStr>()?;
                         result.name = Some((value.value(), value.span()));
+                        true
                     }
                     _ => return Err(meta.error(format!("unknown prop option `{key}`"))),
-                }
+                };
+                entry.insert((ident.span(), enabled));
                 Ok(())
             })?;
         }
-        for keys in [
-            &["optional", "optional_no_strip", "strip_option"][..],
-            &[
-                "marker",
-                "optional",
-                "optional_no_strip",
-                "strip_option",
-                "default",
-                "into",
-                "attrs",
-                "name",
-            ][..],
-        ] {
-            let active = |key: &str| match key {
-                "optional" => result.optional,
-                "optional_no_strip" => result.optional_no_strip,
-                "strip_option" => result.strip_option,
-                "marker" => result.marker,
-                "default" => result.default.is_some(),
-                "into" => result.into,
-                "attrs" => result.attrs,
-                "name" => result.name.is_some(),
-                _ => false,
-            };
-            let conflict = if keys[0] == "marker" {
-                result.marker && keys[1..].iter().any(|key| active(key))
-            } else {
-                keys.iter().filter(|key| active(key)).count() > 1
-            };
-            if conflict {
-                let key = keys
-                    .iter()
-                    .find(|key| active(key))
-                    .expect("conflicting prop options");
-                return Err(syn::Error::new(seen[*key], "conflicting prop options"));
+        let enabled = |key: &str| seen.get(key).is_some_and(|&(_, active)| active);
+        let mut modes = [
+            ("optional", PropMode::Optional),
+            ("optional_no_strip", PropMode::OptionalNoStrip),
+            ("strip_option", PropMode::StripOption),
+        ]
+        .into_iter()
+        .filter(|&(key, _)| enabled(key));
+        if let Some((key, mode)) = modes.next() {
+            if modes.next().is_some() {
+                return Err(syn::Error::new(seen[key].0, "conflicting prop options"));
             }
+            result.mode = mode;
         }
+        result.marker = enabled("marker");
+        if result.marker
+            && seen
+                .iter()
+                .any(|(key, &(_, active))| key != "marker" && active)
+        {
+            return Err(syn::Error::new(
+                seen["marker"].0,
+                "conflicting prop options",
+            ));
+        }
+        result.into = enabled("into");
+        result.attrs = enabled("attrs");
         Ok(result)
     }
-}
 
-struct TypedBuilderOpts<'a> {
-    marker: bool,
-    default: bool,
-    default_with_value: Option<syn::Expr>,
-    strip_option: bool,
-    into: bool,
-    ty: &'a Type,
-}
-
-impl<'a> TypedBuilderOpts<'a> {
-    fn from_opts(opts: &PropOpt, ty: &'a Type) -> Self {
-        Self {
-            marker: opts.marker,
-            default: opts.optional || opts.optional_no_strip || opts.attrs,
-            default_with_value: opts.default.clone(),
-            strip_option: opts.strip_option || opts.optional && is_option(ty),
-            into: opts.into,
-            ty,
-        }
+    fn optional(&self) -> bool {
+        matches!(self.mode, PropMode::Optional | PropMode::OptionalNoStrip)
     }
-}
 
-impl TypedBuilderOpts<'_> {
-    fn expand(&self) -> syn::Result<TokenStream> {
+    fn builder_attribute(&self, ty: &Type) -> syn::Result<TokenStream> {
         if self.marker {
-            return Ok(quote! {
-                #[builder(default, setter(skip))]
-            });
+            return Ok(quote! { #[builder(default, setter(skip))] });
         }
-
-        let default = if let Some(v) = &self.default_with_value {
-            let v = v.to_token_stream().to_string();
-            quote! { default_code=#v, }
-        } else if self.default {
+        let default = if let Some(expr) = &self.default {
+            let code = expr.to_token_stream().to_string();
+            quote! { default_code=#code, }
+        } else if self.optional() || self.attrs {
             quote! { default, }
         } else {
             quote! {}
         };
-
-        // If self.strip_option && self.into, then the strip_option will be represented as part of the transform closure.
-        let strip_option = if self.strip_option && !self.into {
-            quote! { strip_option, }
-        } else {
-            quote! {}
-        };
-
-        let into = if self.into {
-            if !self.strip_option {
-                let ty = &self.ty;
-                quote! {
-                    fn transform<__IntoReactiveValueMarker>(value: impl ::blog_interface::prelude::IntoReactiveValue<#ty, __IntoReactiveValueMarker>) -> #ty {
-                        value.into_reactive_value()
-                    },
-                }
-            } else {
-                let ty = unwrap_option(self.ty)?;
-                quote! {
-                    fn transform<__IntoReactiveValueMarker>(value: impl ::blog_interface::prelude::IntoReactiveValue<#ty, __IntoReactiveValueMarker>) -> Option<#ty> {
-                        Some(value.into_reactive_value())
-                    },
-                }
+        let strip =
+            self.mode == PropMode::StripOption || self.mode == PropMode::Optional && is_option(ty);
+        let setter = match (self.into, strip) {
+            (true, strip_option) => {
+                let (parameter, result, body) = if strip_option {
+                    let inner = unwrap_option(ty)?;
+                    (
+                        inner,
+                        quote!(Option<#inner>),
+                        quote!(Some(value.into_reactive_value())),
+                    )
+                } else {
+                    (ty, quote!(#ty), quote!(value.into_reactive_value()))
+                };
+                quote! { setter(fn transform<__IntoReactiveValueMarker>(
+                    value: impl ::blog_interface::prelude::IntoReactiveValue<#parameter, __IntoReactiveValueMarker>
+                ) -> #result { #body },) }
             }
-        } else {
-            quote! {}
+            (false, true) => quote!(setter(strip_option,)),
+            (false, false) => quote!(),
         };
-
-        let setter = if !strip_option.is_empty() || !into.is_empty() {
-            quote! { setter(#strip_option #into) }
-        } else {
+        Ok(if default.is_empty() && setter.is_empty() {
             quote! {}
-        };
-
-        let output = if !default.is_empty() || !setter.is_empty() {
+        } else {
             quote! { #[builder(#default #setter)] }
-        } else {
-            quote! {}
-        };
-
-        Ok(output)
+        })
     }
 }
 
@@ -677,18 +522,18 @@ fn prop_builder_fields(vis: &Visibility, props: &[Prop]) -> syn::Result<TokenStr
             let Prop {
                 docs,
                 name,
-                prop_opts,
+                options,
                 ty,
             } = prop;
 
             let PatIdent { ident, by_ref, .. } = &name;
 
-            let builder_attrs = TypedBuilderOpts::from_opts(prop_opts, ty).expand()?;
+            let builder_attrs = options.builder_attribute(ty)?;
 
             let builder_docs = prop_to_doc(prop, PropDocStyle::Inline)?;
 
             // Children and markers won't need documentation in many cases
-            let allow_missing_docs = if prop_opts.marker || ident == "children" {
+            let allow_missing_docs = if options.marker || ident == "children" {
                 quote!(#[allow(missing_docs)])
             } else {
                 quote!()
@@ -717,81 +562,50 @@ fn prop_names(props: &[Prop]) -> TokenStream {
 }
 
 fn generate_component_fn_prop_docs(props: &[Prop]) -> syn::Result<TokenStream> {
-    let required_prop_docs = props
-        .iter()
-        .filter(|Prop { prop_opts, .. }| {
-            !(prop_opts.optional || prop_opts.optional_no_strip || prop_opts.default.is_some())
+    let section = |optional, title| -> syn::Result<TokenStream> {
+        let fields = props
+            .iter()
+            .filter(|p| {
+                !p.options.marker
+                    && (p.options.optional() || p.options.default.is_some()) == optional
+            })
+            .map(|p| prop_to_doc(p, PropDocStyle::List))
+            .collect::<syn::Result<TokenStream>>()?;
+        Ok(if fields.is_empty() {
+            fields
+        } else {
+            quote! { #[doc = #title] #fields }
         })
-        .filter(|prop| !prop.prop_opts.marker)
-        .map(|p| prop_to_doc(p, PropDocStyle::List))
-        .collect::<syn::Result<TokenStream>>()?;
-
-    let optional_prop_docs = props
-        .iter()
-        .filter(|Prop { prop_opts, .. }| {
-            prop_opts.optional || prop_opts.optional_no_strip || prop_opts.default.is_some()
-        })
-        .filter(|prop| !prop.prop_opts.marker)
-        .map(|p| prop_to_doc(p, PropDocStyle::List))
-        .collect::<syn::Result<TokenStream>>()?;
-
-    let required_prop_docs = if !required_prop_docs.is_empty() {
-        quote! {
-            #[doc = " # Required Props"]
-            #required_prop_docs
-        }
-    } else {
-        quote! {}
     };
-
-    let optional_prop_docs = if !optional_prop_docs.is_empty() {
-        quote! {
-            #[doc = " # Optional Props"]
-            #optional_prop_docs
-        }
-    } else {
-        quote! {}
-    };
-
-    Ok(quote! {
-        #required_prop_docs
-        #optional_prop_docs
-    })
+    let required = section(false, " # Required Props")?;
+    let optional = section(true, " # Optional Props")?;
+    Ok(quote! { #required #optional })
 }
 
 pub fn is_option(ty: &Type) -> bool {
-    if let Type::Path(TypePath {
-        path: Path { segments, .. },
-        ..
-    }) = ty
-    {
-        if let [first] = &segments.iter().collect::<Vec<_>>()[..] {
-            first.ident == "Option"
-        } else {
-            false
-        }
-    } else {
-        false
-    }
+    option_segment(ty).is_some()
 }
 
-pub fn unwrap_option(ty: &Type) -> syn::Result<Type> {
+fn option_segment(ty: &Type) -> Option<&syn::PathSegment> {
+    let Type::Path(path) = ty else { return None };
+    let segments = &path.path.segments;
+    segments
+        .first()
+        .filter(|segment| segments.len() == 1 && segment.ident == "Option")
+}
+
+pub fn unwrap_option(ty: &Type) -> syn::Result<&Type> {
     const STD_OPTION_MSG: &str = "make sure you're not shadowing the `std::option::Option` type that \
          is automatically imported from the standard prelude";
 
-    if let Type::Path(TypePath {
-        path: Path { segments, .. },
-        ..
-    }) = ty
-        && let [first] = &segments.iter().collect::<Vec<_>>()[..]
-        && first.ident == "Option"
+    if let Some(segment) = option_segment(ty)
         && let PathArguments::AngleBracketed(AngleBracketedGenericArguments { args, .. }) =
-            &first.arguments
-        && let [GenericArgument::Type(ty)] = &args.iter().collect::<Vec<_>>()[..]
+            &segment.arguments
+        && args.len() == 1
+        && let Some(GenericArgument::Type(inner)) = args.first()
     {
-        return Ok(ty.clone());
+        return Ok(inner);
     }
-
     Err(syn::Error::new_spanned(
         ty,
         message_with_help("`Option` must be `std::option::Option`", STD_OPTION_MSG),
@@ -809,14 +623,15 @@ fn prop_to_doc(
         docs,
         name,
         ty,
-        prop_opts,
+        options,
     }: &Prop,
     style: PropDocStyle,
 ) -> syn::Result<TokenStream> {
-    let ty = if (prop_opts.optional || prop_opts.strip_option) && is_option(ty) {
+    let ty = if matches!(options.mode, PropMode::Optional | PropMode::StripOption) && is_option(ty)
+    {
         unwrap_option(ty)?
     } else {
-        ty.to_owned()
+        ty
     };
 
     // Documentation displays this already-parsed type; a second full Rust
@@ -826,13 +641,13 @@ fn prop_to_doc(
     match style {
         PropDocStyle::List => {
             let arg_ty_doc = LitStr::new(
-                &if !prop_opts.into {
-                    format!(" - **{}**: [`{pretty_ty}`]", quote!(#name))
-                } else {
+                &if options.into {
                     format!(
                         " - **{}**: [`impl Into<{pretty_ty}>`]({pretty_ty})",
                         quote!(#name),
                     )
+                } else {
+                    format!(" - **{}**: [`{pretty_ty}`]", quote!(#name))
                 },
                 name.ident.span(),
             );
@@ -846,16 +661,16 @@ fn prop_to_doc(
         }
         PropDocStyle::Inline => {
             let arg_ty_doc = LitStr::new(
-                &if !prop_opts.into {
+                &if options.into {
                     format!(
-                        "**{}**: [`{}`]{}",
+                        "**{}**: `impl`[`Into<{}>`]{}",
                         quote!(#name),
                         pretty_ty,
                         docs.typed_builder()
                     )
                 } else {
                     format!(
-                        "**{}**: `impl`[`Into<{}>`]{}",
+                        "**{}**: [`{}`]{}",
                         quote!(#name),
                         pretty_ty,
                         docs.typed_builder()
@@ -908,7 +723,7 @@ fn convert_impl_trait_to_generic(sig: &mut Signature) {
         fn visit_pat_mut(&mut self, _: &mut Pat) {}
     }
     let mut visitor = RemoveImplTrait::default();
-    for fn_arg in sig.inputs.iter_mut() {
+    for fn_arg in &mut sig.inputs {
         visitor.visit_fn_arg_mut(fn_arg);
     }
     let RemoveImplTrait(impl_traits) = visitor;

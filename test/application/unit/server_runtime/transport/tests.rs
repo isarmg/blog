@@ -1,8 +1,19 @@
 use super::*;
-use crate::server_runtime::ProductDescriptor;
+use crate::server_runtime::{ProductDescriptor, ServerRuntimeBuilder};
 use axum::{Router, routing::get};
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+fn runtime_builder() -> ServerRuntimeBuilder {
+    ServerRuntime::builder(ProductDescriptor {
+        id: "fixture".into(),
+        version: "1.0.0".into(),
+        core_source_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            .into(),
+        profile: "server-filesystem".into(),
+        capabilities: vec![],
+    })
+}
 
 fn launch(
     limits: Http1Limits,
@@ -20,16 +31,7 @@ fn launch(
     let address = listeners.addresses()[0];
     let mut server = HttpServer::new(listeners, ProcessSignals::install().unwrap());
     server.limits = limits;
-    let runtime = ServerRuntime::builder(ProductDescriptor {
-        id: "fixture".into(),
-        version: "1.0.0".into(),
-        core_source_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-            .into(),
-        profile: "server-filesystem".into(),
-        capabilities: vec![],
-    })
-    .build()
-    .unwrap();
+    let runtime = runtime_builder().build().unwrap();
     let handle = runtime.handle();
     (address, handle, tokio::spawn(runtime.serve(server, router)))
 }
@@ -84,16 +86,7 @@ async fn shutdown_reports_the_original_state_close_failure() {
     let state = PrivateStateDirectory::open(directory.path()).unwrap();
     state.create_file("cleanup-state").unwrap();
     std::fs::remove_file(directory.path().join("cleanup-state")).unwrap();
-    let runtime = ServerRuntime::builder(ProductDescriptor {
-        id: "fixture".into(),
-        version: "1.0.0".into(),
-        core_source_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-            .into(),
-        profile: "server-filesystem".into(),
-        capabilities: vec![],
-    })
-    .build()
-    .unwrap();
+    let runtime = runtime_builder().build().unwrap();
     runtime.handle().shutdown();
     let mut server = HttpServer::new(
         BoundListeners::bind(["127.0.0.1:0".parse().unwrap()]).unwrap(),
@@ -124,34 +117,27 @@ async fn shutdown_polls_a_paused_health_probe_while_draining_product_requests() 
     let checking = scope.clone();
     let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let (entered, mut entry) = tokio::sync::mpsc::channel(1);
-    let runtime = ServerRuntime::builder(ProductDescriptor {
-        id: "fixture".into(),
-        version: "1.0.0".into(),
-        core_source_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-            .into(),
-        profile: "server-filesystem".into(),
-        capabilities: vec![],
-    })
-    .register_health_check(
-        "scoped",
-        crate::server_runtime::health_check(move || {
-            let scope = checking.clone();
-            let calls = calls.clone();
-            let entered = entered.clone();
-            async move {
-                let Some(_request) = scope.enter_request().await else {
-                    return false;
-                };
-                if calls.fetch_add(1, Ordering::SeqCst) > 0 {
-                    entered.send(()).await.unwrap();
-                    scope.shutdown.cancelled().await;
+    let runtime = runtime_builder()
+        .register_health_check(
+            "scoped",
+            crate::server_runtime::health_check(move || {
+                let scope = checking.clone();
+                let calls = calls.clone();
+                let entered = entered.clone();
+                async move {
+                    let Some(_request) = scope.enter_request().await else {
+                        return false;
+                    };
+                    if calls.fetch_add(1, Ordering::SeqCst) > 0 {
+                        entered.send(()).await.unwrap();
+                        scope.shutdown.cancelled().await;
+                    }
+                    true
                 }
-                true
-            }
-        }),
-    )
-    .build()
-    .unwrap();
+            }),
+        )
+        .build()
+        .unwrap();
     let handle = runtime.handle();
     let listeners = BoundListeners::bind(["127.0.0.1:0".parse().unwrap()]).unwrap();
     let mut server = HttpServer::new(listeners, ProcessSignals::install().unwrap());
@@ -183,16 +169,7 @@ async fn stalled_commit_report_does_not_count_the_socket_drain_barrier() {
             .await
             .expect("fixture retains the commit release sender");
     });
-    let runtime = ServerRuntime::builder(ProductDescriptor {
-        id: "fixture".into(),
-        version: "1.0.0".into(),
-        core_source_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-            .into(),
-        profile: "server-filesystem".into(),
-        capabilities: vec![],
-    })
-    .build()
-    .unwrap();
+    let runtime = runtime_builder().build().unwrap();
     runtime.handle().shutdown();
     let listeners = BoundListeners::bind(["127.0.0.1:0".parse().unwrap()]).unwrap();
     let mut server = HttpServer::new(listeners, ProcessSignals::install().unwrap());

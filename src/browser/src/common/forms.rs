@@ -27,9 +27,36 @@ pub(crate) fn Field(
     #[prop(default = 32768)]
     max: u32,
 ) -> impl IntoView {
+    ControlledField(
+        ControlledFieldProps::builder()
+            .label(label)
+            .value(Signal::derive(move || form.with(|f| text(f, key))))
+            .change(Callback::new(move |value| {
+                form.update(|f| f[key] = Value::String(value));
+            }))
+            .name(key)
+            .textarea(textarea)
+            .required(required)
+            .max(max)
+            .build(),
+    )
+}
+
+#[component]
+pub(crate) fn ControlledField(
+    label: String,
+    value: Signal<String>,
+    change: Callback<String>,
+    #[prop(optional)] name: Option<&'static str>,
+    #[prop(default = false)] textarea: bool,
+    #[prop(default = false)] required: bool,
+    /// Maximum Unicode scalar count; native maxlength uses a UTF-16 budget.
+    #[prop(default = 32768)]
+    max: u32,
+) -> impl IntoView {
     let input = NodeRef::<blog_interface::html::Input>::new();
     let area = NodeRef::<blog_interface::html::Textarea>::new();
-    let error = Memo::new(move |_| form.with(|form| scalar_error(&text(form, key), max)));
+    let error = Memo::new(move |_| scalar_error(&value.get(), max));
     Effect::new(move |_| {
         let message = error.get();
         if let Some(input) = input.get() {
@@ -51,11 +78,11 @@ pub(crate) fn Field(
                             .node_ref(area)
                             .aria_label(label)
                             .class("blog-input")
-                            .name(key)
+                            .name(name)
                             .required(required)
                             .maxlength(max * 2)
                             .aria_invalid(move || (!error.get().is_empty()).to_string())
-                            .prop("value", move || form.with(|form| text(form, key)))
+                            .prop("value", move || value.get())
                             .on(blog_interface::ev::change, move |ev| {
                                 let node = event_target::<web_sys::HtmlTextAreaElement>(&ev);
                                 node.set_custom_validity(&scalar_error(&node.value(), max));
@@ -64,7 +91,7 @@ pub(crate) fn Field(
                                 let value = event_target_value(&ev);
                                 event_target::<web_sys::HtmlTextAreaElement>(&ev)
                                     .set_custom_validity(&scalar_error(&value, max));
-                                form.update(|f| f[key] = Value::String(value))
+                                change.run(value);
                             }),
                     )
                     .into_any()
@@ -74,12 +101,12 @@ pub(crate) fn Field(
                             .node_ref(input)
                             .aria_label(label)
                             .class("blog-input")
-                            .name(key)
+                            .name(name)
                             .r#type("text")
                             .required(required)
                             .maxlength(max * 2)
                             .aria_invalid(move || (!error.get().is_empty()).to_string())
-                            .prop("value", move || form.with(|form| text(form, key)))
+                            .prop("value", move || value.get())
                             .on(blog_interface::ev::change, move |ev| {
                                 let node = event_target::<web_sys::HtmlInputElement>(&ev);
                                 node.set_custom_validity(&scalar_error(&node.value(), max));
@@ -88,67 +115,11 @@ pub(crate) fn Field(
                                 let value = event_target_value(&ev);
                                 event_target::<web_sys::HtmlInputElement>(&ev)
                                     .set_custom_validity(&scalar_error(&value, max));
-                                form.update(|f| f[key] = Value::String(value))
+                                change.run(value);
                             }),
                     )
                     .into_any()
                 },
-                move || {
-                    (!error.get().is_empty()).then(|| {
-                        blog_interface::html::span()
-                            .role("alert")
-                            .class("blog-row blog-danger")
-                            .child(error.get())
-                    })
-                },
-            ))
-            .class("blog-form-field blog-stack"),
-    )
-}
-
-#[component]
-pub(crate) fn ControlledField(
-    label: String,
-    value: Signal<String>,
-    change: Callback<String>,
-    #[prop(default = false)] required: bool,
-    /// Maximum Unicode scalar count; native maxlength uses a UTF-16 budget.
-    #[prop(default = 32768)]
-    max: u32,
-) -> impl IntoView {
-    let input = NodeRef::<blog_interface::html::Input>::new();
-    let error = Memo::new(move |_| scalar_error(&value.get(), max));
-    Effect::new(move |_| {
-        let message = error.get();
-        if let Some(input) = input.get() {
-            input.set_custom_validity(&message);
-        }
-    });
-    View::new(
-        blog_interface::html::label()
-            .child((
-                blog_interface::html::span()
-                    .child(label.clone())
-                    .class("blog-field-label blog-row"),
-                blog_interface::html::input()
-                    .node_ref(input)
-                    .aria_label(label)
-                    .class("blog-input")
-                    .r#type("text")
-                    .required(required)
-                    .maxlength(max * 2)
-                    .aria_invalid(move || (!error.get().is_empty()).to_string())
-                    .prop("value", move || value.get())
-                    .on(blog_interface::ev::change, move |ev| {
-                        let node = event_target::<web_sys::HtmlInputElement>(&ev);
-                        node.set_custom_validity(&scalar_error(&node.value(), max));
-                    })
-                    .on(blog_interface::ev::input, move |ev| {
-                        let value = event_target_value(&ev);
-                        event_target::<web_sys::HtmlInputElement>(&ev)
-                            .set_custom_validity(&scalar_error(&value, max));
-                        change.run(value)
-                    }),
                 move || {
                     (!error.get().is_empty()).then(|| {
                         blog_interface::html::span()
@@ -176,7 +147,7 @@ pub(crate) fn ControlledCheck(
                     .r#type("checkbox")
                     .prop("checked", move || value.get())
                     .on(blog_interface::ev::change, move |ev| {
-                        change.run(event_target_checked(&ev))
+                        change.run(event_target_checked(&ev));
                     }),
                 label,
             )),
@@ -185,18 +156,14 @@ pub(crate) fn ControlledCheck(
 
 #[component]
 pub(crate) fn Check(label: String, key: &'static str, form: RwSignal<Value>) -> impl IntoView {
-    View::new(
-        blog_interface::html::label()
-            .class("blog-row blog-flow blog-check")
-            .child((
-                blog_interface::html::input()
-                    .r#type("checkbox")
-                    .prop("checked", move || form.with(|form| flag(form, key)))
-                    .on(blog_interface::ev::change, move |ev| {
-                        form.update(|f| f[key] = Value::Bool(event_target_checked(&ev)))
-                    }),
-                label,
-            )),
+    ControlledCheck(
+        ControlledCheckProps::builder()
+            .label(label)
+            .value(Signal::derive(move || form.with(|f| flag(f, key))))
+            .change(Callback::new(move |value| {
+                form.update(|f| f[key] = Value::Bool(value));
+            }))
+            .build(),
     )
 }
 
@@ -211,18 +178,18 @@ pub(crate) fn FilePicker(
     let input = NodeRef::<blog_interface::html::Input>::new();
     let id = format!(
         "blog-file-{}",
-        web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
+        window()
             .crypto()
             .expect("invariant: the application window exposes browser crypto")
             .random_uuid()
     );
+    let choose_label = format!("{}{}", t("选择文件：", "Choose file: "), label);
     View::new(
         blog_interface::html::div()
             .child((
                 blog_interface::html::label()
                     .class("blog-row")
-                    .child(label.clone())
+                    .child(label)
                     .r#for(id.clone()),
                 blog_interface::html::div()
                     .child((
@@ -246,7 +213,7 @@ pub(crate) fn FilePicker(
                             .class("blog-button")
                             .r#type("button")
                             .disabled(move || disabled.get())
-                            .aria_label(format!("{}{}", t("选择文件：", "Choose file: "), label))
+                            .aria_label(choose_label)
                             .aria_describedby(format!("{id}-filename"))
                             .on(blog_interface::ev::click, move |_| {
                                 if let Some(input) = input.get() {

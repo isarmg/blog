@@ -155,10 +155,9 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
             let first = v
                 .as_array()
                 .and_then(|a| a.first())
-                .map(|v| text(v, "classify"))
-                .unwrap_or_default();
+                .map_or_default(|v| text(v, "classify"));
             if selected.get_untracked().is_empty() && !first.is_empty() {
-                selected.set(first)
+                selected.set(first);
             }
         }
     });
@@ -211,11 +210,11 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
             loaded.set(response_page);
             items.update(|items| {
                 if response_page == 1 {
-                    *items = next
+                    *items = next;
                 } else {
                     for n in next {
                         if !items.iter().any(|v| v["id"] == n["id"]) {
-                            items.push(n)
+                            items.push(n);
                         }
                     }
                 }
@@ -236,7 +235,7 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
                                 },
                                 " ",
                                 html::small().child(move || {
-                                    all_total.get().map(|n| n.to_string()).unwrap_or_default()
+                                    all_total.get().map_or_default(|n| n.to_string())
                                 }),
                             ))
                             .class(move || {
@@ -287,14 +286,10 @@ pub(super) fn Collection(love: bool, active: Signal<bool>) -> impl IntoView {
                         "original-tag-panel"
                     })
                     .aria_label(t("相册分类", "Photo categories")),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(classes.error)
-                        .public(true)
-                        .fallback(t("相册分类加载失败", "Unable to load photo categories"))
-                        .retry(Some(Callback::new(move |()| classes.reload())))
-                        .build(),
-                ),
+                classes.public_feedback(Some(t(
+                    "相册分类加载失败",
+                    "Unable to load photo categories",
+                ))),
                 html::div()
                     .child((
                         html::div().child((

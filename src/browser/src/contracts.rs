@@ -196,7 +196,7 @@ impl UploadKind {
         }
     }
 
-    fn max_bytes(self) -> u64 {
+    fn max_bytes(self) -> u32 {
         match self {
             Self::Image => 10 * 1024 * 1024,
             Self::Video => 50 * 1024 * 1024,
@@ -205,7 +205,7 @@ impl UploadKind {
 
     pub(crate) fn accepts(self, size: f64, mime: &str) -> bool {
         size > 0.
-            && size <= self.max_bytes() as f64
+            && size <= f64::from(self.max_bytes())
             && self.types().iter().any(|(_, allowed)| *allowed == mime)
     }
 
@@ -214,7 +214,7 @@ impl UploadKind {
         let (hash, extension) = path.strip_prefix("/media/")?.split_once('.')?;
         let mime = v["mime_type"].as_str()?;
         (id(&v["id"])
-            && (1..=self.max_bytes()).contains(&v["size"].as_u64()?)
+            && (1..=u64::from(self.max_bytes())).contains(&v["size"].as_u64()?)
             && hash.len() == 64
             && hash
                 .bytes()
@@ -234,7 +234,7 @@ fn page(v: &Value, query: &str, max_size: u64, test: impl Fn(&Value) -> bool) ->
     };
     if !(1..=MAX_PAGE).contains(&page)
         || !(1..=max_size).contains(&size)
-        || items.len() > size as usize
+        || usize::try_from(size).is_ok_and(|size| items.len() > size)
         || !count(&v["total"])
     {
         return false;

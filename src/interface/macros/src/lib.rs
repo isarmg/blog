@@ -33,7 +33,9 @@ fn component_impl(
     args: proc_macro::TokenStream,
     s: TokenStream,
 ) -> syn::Result<proc_macro2::TokenStream> {
-    let is_transparent = if !args.is_empty() {
+    let is_transparent = if args.is_empty() {
+        false
+    } else {
         let transparent = syn::parse::<syn::Ident>(args)?;
 
         if transparent != "transparent" {
@@ -47,8 +49,6 @@ fn component_impl(
         }
 
         true
-    } else {
-        false
     };
 
     component_macro(s, is_transparent)
@@ -73,11 +73,11 @@ fn component_macro(s: TokenStream, is_transparent: bool) -> syn::Result<proc_mac
     };
     let mut unexpanded = dummy?;
     let mut errors = diagnostics::Errors::default();
-    let expanded = model.is_transparent(is_transparent).expand(&mut errors);
+    let expanded = model.expand(is_transparent, &mut errors);
     if !matches!(unexpanded.vis, Visibility::Public(_)) {
         unexpanded.vis = Visibility::Public(Pub {
             span: unexpanded.vis.span(),
-        })
+        });
     }
     unexpanded.sig.ident = unmodified_fn_name_from_fn_name(&unexpanded.sig.ident);
 

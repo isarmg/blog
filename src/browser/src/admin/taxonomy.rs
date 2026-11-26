@@ -1,4 +1,4 @@
-use crate::common::{Action, Feedback, Field, list, load, nullable_num, num, t, text};
+use crate::common::{Action, Field, list, load, nullable_num, num, t, text};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -183,7 +183,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                 .disabled(move || deletion.busy.get())
                                 .on(blog_interface::ev::click, move |_| {
                                     if save.busy.get_untracked()
-                                        || !web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                        || !window()
                                             .confirm_with_message(&if labels {
                                                 t("确定删除这个标签？", "Delete this tag?")
                                             } else {
@@ -200,7 +200,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                         None,
                                         move |_| {
                                             if editing.get_untracked() == Some(id) {
-                                                reset.run(())
+                                                reset.run(());
                                             }
                                             data.update_latest(|value| {
                                                 value
@@ -231,25 +231,10 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                 t("分类管理", "Categories")
             })
             .child((
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(categories.error)
-                        .fallback(t("分类加载失败", "Unable to load categories"))
-                        .retry(Some(Callback::new(move |()| categories.reload())))
-                        .build(),
-                ),
-                Feedback(component_props_builder(&Feedback).error(save.error).build()),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(deletion.error)
-                        .build(),
-                ),
+                data.admin_feedback(None),
+                categories.admin_feedback(Some(t("分类加载失败", "Unable to load categories"))),
+                save.feedback(),
+                deletion.feedback(),
                 move || {
                     (!validation.get().is_empty()).then(|| {
                         blog_interface::html::p()
@@ -324,8 +309,8 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                                             form.update(|f| {
                                                                 f["sort_id"] = json!(
                                                                     v.parse::<i64>().expect("invariant: category selector options are integer IDs")
-                                                                )
-                                                            })
+                                                                );
+                                                            });
                                                         }))
                                                         .required(true)
                                                         .disabled(Signal::derive(move || {
@@ -387,7 +372,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                                 .class("blog-button")
                                                 .r#type("button")
                                                 .on(blog_interface::ev::click, move |_| {
-                                                    reset.run(())
+                                                    reset.run(());
                                                 }),
                                         )
                                     })
@@ -396,7 +381,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                             .class("inline-form blog-frame blog-frame--padded blog-flow blog-form-flow")
                             .on(blog_interface::ev::submit, submit),
                         move || {
-                            data.with_latest(|value| value.cloned()).map(|v| {
+                            data.with_latest(|value| value.and_then(Value::as_array).cloned()).map(|rows| {
                                 View::new(
                                     blog_interface::html::div()
                                         .child(
@@ -431,10 +416,7 @@ pub(super) fn Taxonomy(kind: TaxonomyKind) -> impl IntoView {
                                                         )),
                                                     ),
                                                     blog_interface::html::tbody().child(
-                                                        v.as_array()
-                                                            .cloned()
-                                                            .unwrap_or_default()
-                                                            .into_iter()
+                                                        rows.into_iter()
                                                             .map(render_row)
                                                             .collect_view(),
                                                     ),

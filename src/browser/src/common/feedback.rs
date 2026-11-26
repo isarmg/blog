@@ -1,5 +1,5 @@
 //! Visible read, empty and error states with product-specific message policy.
-use super::{ApiError, ApiErrorCode, Data, LocalErrorCode, page_items, t};
+use super::{Action, ApiError, ApiErrorCode, Data, LocalErrorCode, page_items, t};
 use blog_interface::prelude::*;
 
 pub(crate) fn public_error(e: &ApiError, fallback: &str) -> String {
@@ -56,10 +56,41 @@ pub(crate) fn public_error(e: &ApiError, fallback: &str) -> String {
     }
 }
 
+fn default_fallback() -> String {
+    t("请求失败，请重试。", "Request failed. Please retry.")
+}
+
+impl Action {
+    pub(crate) fn feedback(self) -> impl IntoView {
+        Feedback(FeedbackProps::builder().error(self.error).build())
+    }
+}
+
+impl<T: Send + Sync + 'static> Data<T> {
+    pub(crate) fn admin_feedback(self, fallback: Option<String>) -> impl IntoView {
+        self.load_feedback(false, fallback)
+    }
+
+    pub(crate) fn public_feedback(self, fallback: Option<String>) -> impl IntoView {
+        self.load_feedback(true, fallback)
+    }
+
+    fn load_feedback(self, public: bool, fallback: Option<String>) -> impl IntoView {
+        Feedback(
+            FeedbackProps::builder()
+                .error(self.error)
+                .fallback(fallback.unwrap_or_else(default_fallback))
+                .retry(Some(Callback::new(move |()| self.reload())))
+                .public(public)
+                .build(),
+        )
+    }
+}
+
 #[component]
 pub(crate) fn Feedback(
     error: RwSignal<Option<ApiError>>,
-    #[prop(default=t("请求失败，请重试。","Request failed. Please retry."))] fallback: String,
+    #[prop(default=default_fallback())] fallback: String,
     #[prop(optional_no_strip)] retry: Option<Callback<()>>,
     #[prop(default = false)] public: bool,
 ) -> impl IntoView {

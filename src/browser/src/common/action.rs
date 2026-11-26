@@ -40,7 +40,7 @@ impl Action {
         body: Option<Value>,
         done: impl FnOnce(Value) + 'static,
     ) {
-        self.run_options(path, method, body, RequestOptions::default(), done)
+        self.run_options(path, method, body, RequestOptions::default(), done);
     }
 
     pub fn run_typed<T: DeserializeOwned + 'static>(
@@ -50,7 +50,7 @@ impl Action {
         body: Option<Value>,
         done: impl FnOnce(T) + 'static,
     ) {
-        self.run_typed_options(path, method, body, RequestOptions::default(), done)
+        self.run_typed_options(path, method, body, RequestOptions::default(), done);
     }
 
     pub fn run_typed_options<T: DeserializeOwned + 'static>(
@@ -68,7 +68,7 @@ impl Action {
             options,
             blog_interface::api::decode_response,
             done,
-        )
+        );
     }
 
     pub fn run_options(
@@ -79,7 +79,7 @@ impl Action {
         options: RequestOptions,
         done: impl FnOnce(Value) + 'static,
     ) {
-        self.run_decoded(path, method, body, options, Ok, done)
+        self.run_decoded(path, method, body, options, Ok, done);
     }
 
     fn run_decoded<T>(

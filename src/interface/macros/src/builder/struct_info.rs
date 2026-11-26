@@ -8,8 +8,8 @@ use crate::builder::{
     field_info::FieldInfo,
     mutator::Mutator,
     util::{
-        empty_type, empty_type_tuple, first_visibility, modify_types_generics_hack,
-        phantom_data_for_generics, public_visibility, strip_raw_ident_prefix, type_tuple,
+        empty_type, empty_type_tuple, first_visibility, ident_to_type, phantom_data_for_generics,
+        public_visibility, strip_raw_ident_prefix, type_tuple,
     },
 };
 
@@ -40,21 +40,23 @@ impl<'a> StructInfo<'a> {
             .params
             .iter()
             .map(|generic_param| match generic_param {
-                syn::GenericParam::Type(type_param) => {
-                    let ident = type_param.ident.to_token_stream();
-                    syn::parse2(ident)
-                        .expect("invariant: a parsed generic identifier is a valid argument")
+                syn::GenericParam::Type(param) => {
+                    GenericArgument::Type(ident_to_type(param.ident.clone()))
                 }
-                syn::GenericParam::Lifetime(lifetime_def) => {
-                    syn::GenericArgument::Lifetime(lifetime_def.lifetime.clone())
+                syn::GenericParam::Lifetime(param) => {
+                    GenericArgument::Lifetime(param.lifetime.clone())
                 }
-                syn::GenericParam::Const(const_param) => {
-                    let ident = const_param.ident.to_token_stream();
-                    syn::parse2(ident)
-                        .expect("invariant: a parsed generic identifier is a valid argument")
+                syn::GenericParam::Const(param) => {
+                    GenericArgument::Type(ident_to_type(param.ident.clone()))
                 }
             })
             .collect()
+    }
+
+    fn builder_args(&self, fields: syn::TypeTuple) -> TokenStream {
+        let mut args = self.generic_arguments();
+        args.push(GenericArgument::Type(fields.into()));
+        quote!(<#args>)
     }
 
     pub fn new(
@@ -79,13 +81,25 @@ impl<'a> StructInfo<'a> {
         })
     }
 
+    fn builder_method_doc(&self) -> TokenStream {
+        self.builder_attr.builder_method.get_doc_or(|| {
+            let setters = self.setter_fields().map(|field| {
+                let optional = if field.builder_attr.default.is_some() { "(optional)" } else { "" };
+                format!("`.{}(...)`{optional}", field.name)
+            }).collect::<Vec<_>>().join(", ");
+            let name = self.name;
+            let build = self.build_method_name();
+            format!("Create a builder for building `{name}`.\nOn the builder, call {setters} to set the values of the fields.\nFinally, call `.{build}()` to create the instance of `{name}`.")
+        })
+    }
+
     fn builder_creation_impl(&self) -> syn::Result<TokenStream> {
-        let StructInfo {
+        let Self {
             vis,
-            ref name,
-            ref builder_name,
+            name,
+            builder_name,
             ..
-        } = *self;
+        } = self;
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
         let init_fields_type = type_tuple(self.included_fields().map(|f| {
             if f.builder_attr.via_mutators.is_some() {
@@ -103,20 +117,12 @@ impl<'a> StructInfo<'a> {
                 },
             )
         });
-        let mut all_fields_param_type: syn::TypeParam =
-            syn::Ident::new("TypedBuilderFields", proc_macro2::Span::call_site()).into();
-        let all_fields_param = syn::GenericParam::Type(all_fields_param_type.clone());
-        all_fields_param_type.default = Some(syn::Type::Tuple(init_fields_type.clone()));
-        let b_generics = {
-            let mut generics = self.generics.clone();
-            generics
-                .params
-                .push(syn::GenericParam::Type(all_fields_param_type));
-            generics
-        };
-        let generics_with_empty = modify_types_generics_hack(&ty_generics, |args| {
-            args.push(syn::GenericArgument::Type(init_fields_type.clone().into()));
-        });
+        let all_fields_param = format_ident!("TypedBuilderFields");
+        let mut b_generics = self.generics.clone();
+        b_generics
+            .params
+            .push(parse_quote!(#all_fields_param = #init_fields_type));
+        let generics_with_empty = self.builder_args(init_fields_type);
         let phantom_data = phantom_data_for_generics(self.generics);
 
         let builder_method_name = self
@@ -129,36 +135,7 @@ impl<'a> StructInfo<'a> {
             self.builder_attr.builder_type.common.vis.as_ref(),
             Some(vis),
         ]);
-        let builder_method_doc = self.builder_attr.builder_method.get_doc_or(|| {
-            format!(
-                "
-                Create a builder for building `{name}`.
-                On the builder, call {setters} to set the values of the fields.
-                Finally, call `.{build_method_name}()` to create the instance of `{name}`.
-                ",
-                name = self.name,
-                build_method_name = self.build_method_name(),
-                setters = {
-                    let mut result = String::new();
-                    let mut is_first = true;
-                    for field in self.setter_fields() {
-                        use std::fmt::Write;
-                        if is_first {
-                            is_first = false;
-                        } else {
-                            result.push_str(", ");
-                        }
-                        write!(&mut result, "`.{}(...)`", field.name)
-                            .expect("invariant: formatting into a String cannot fail");
-                        if field.builder_attr.default.is_some() {
-                            result.push_str("(optional)");
-                        }
-                    }
-                    result
-                }
-            )
-        });
-
+        let builder_method_doc = self.builder_method_doc();
         let builder_type_visibility = first_visibility(&[
             self.builder_attr.builder_type.common.vis.as_ref(),
             Some(vis),
@@ -170,9 +147,7 @@ impl<'a> StructInfo<'a> {
                     Builder for [`{name}`] instances.
 
                     See [`{name}::{builder_method_name}()`] for more info.
-                    ",
-                    name = name,
-                    builder_method_name = builder_method_name
+                    "
                 )
             })
         } else {
@@ -227,10 +202,29 @@ impl<'a> StructInfo<'a> {
         })
     }
 
+    fn setter_states(&self, field: &FieldInfo) -> (syn::Generics, TokenStream, TokenStream) {
+        let mut generics = self.generics.clone();
+        let (before, after): (Vec<_>, Vec<_>) = self
+            .included_fields()
+            .map(|f| {
+                if f.ordinal == field.ordinal {
+                    (empty_type(), f.tuplized_type_ty_param())
+                } else {
+                    generics.params.push(f.generic_ty_param());
+                    let ty = f.type_ident();
+                    (ty.clone(), ty)
+                }
+            })
+            .unzip();
+        (
+            generics,
+            self.builder_args(type_tuple(before.into_iter())),
+            self.builder_args(type_tuple(after.into_iter())),
+        )
+    }
+
     fn field_impl(&self, field: &FieldInfo) -> syn::Result<TokenStream> {
-        let StructInfo {
-            ref builder_name, ..
-        } = *self;
+        let builder_name = &self.builder_name;
 
         let destructuring = self
             .included_fields()
@@ -250,237 +244,58 @@ impl<'a> StructInfo<'a> {
             ty: field_type,
             ..
         } = field;
-        let mut ty_generics = self.generic_arguments();
-        let mut target_generics_tuple = empty_type_tuple();
-        let mut ty_generics_tuple = empty_type_tuple();
-        let generics = {
-            let mut generics = self.generics.clone();
-            for f in self.included_fields() {
-                if f.ordinal == field.ordinal {
-                    ty_generics_tuple.elems.push_value(empty_type());
-                    target_generics_tuple
-                        .elems
-                        .push_value(f.tuplized_type_ty_param());
-                } else {
-                    generics.params.push(f.generic_ty_param());
-                    let generic_argument: syn::Type = f.type_ident();
-                    ty_generics_tuple.elems.push_value(generic_argument.clone());
-                    target_generics_tuple.elems.push_value(generic_argument);
-                }
-                ty_generics_tuple.elems.push_punct(Default::default());
-                target_generics_tuple.elems.push_punct(Default::default());
-            }
-            generics
-        };
-        let mut target_generics = ty_generics.clone();
-        target_generics.push(syn::GenericArgument::Type(target_generics_tuple.into()));
-        ty_generics.push(syn::GenericArgument::Type(ty_generics_tuple.into()));
+        let (generics, ty_generics, target_generics) = self.setter_states(field);
         let (impl_generics, _, where_clause) = generics.split_for_impl();
-        let doc = if let Some(doc) = field.builder_attr.setter.doc.as_ref() {
-            Some(quote!(#[doc = #doc]))
-        } else if !field.builder_attr.doc_comments.is_empty() {
-            Some(
-                field
-                    .builder_attr
-                    .doc_comments
-                    .iter()
-                    .map(|&line| quote!(#[doc = #line]))
-                    .collect(),
-            )
-        } else {
-            None
-        };
-
+        let doc = field.builder_attr.setter_doc();
         let deprecated = &field.builder_attr.deprecated;
 
-        let option_was_stripped;
-        let arg_type = if field.builder_attr.setter.strip_option.is_some()
-            && field.builder_attr.setter.transform.is_none()
-        {
-            if let Some(inner_type) = field.type_from_inside_option() {
-                option_was_stripped = true;
-                inner_type
-            } else if field
-                .builder_attr
-                .setter
-                .strip_option
-                .as_ref()
-                .is_some_and(|s| s.ignore_invalid)
-            {
-                option_was_stripped = false;
-                field_type
-            } else {
-                return Err(Error::new_spanned(
-                    field_type,
-                    "can't `strip_option` - field is not `Option<...>`",
-                ));
-            }
-        } else {
-            option_was_stripped = false;
-            field_type
-        };
-        let (arg_type, arg_expr) = if field.builder_attr.setter.auto_into.is_some() {
-            (
-                quote!(impl ::core::convert::Into<#arg_type>),
-                quote!(#field_name.into()),
-            )
-        } else {
-            (arg_type.to_token_stream(), field_name.to_token_stream())
-        };
-
-        let strip_bool_fallback = field
-            .builder_attr
-            .setter
-            .strip_bool
-            .as_ref()
-            .and_then(|strip_bool| strip_bool.fallback.as_ref())
-            .map(|fallback| {
-                (
-                    fallback.clone(),
-                    quote!(#field_name: #field_type),
-                    quote!(#arg_expr),
-                )
-            });
-
-        let strip_option_fallback = if let Some(strip) = &field.builder_attr.setter.strip_option {
-            let name = if let Some(name) = &strip.fallback {
-                Some(name.clone())
-            } else if strip.fallback_prefix.is_some() || strip.fallback_suffix.is_some() {
-                let method = strip_raw_ident_prefix(field_name.to_string());
-                let prefix = strip.fallback_prefix.as_deref().unwrap_or_default();
-                let suffix = strip.fallback_suffix.as_deref().unwrap_or_default();
-                let mut identifier = syn::parse_str::<syn::Ident>(&format!(
-                    "{prefix}{method}{suffix}"
-                ))
-                .map_err(|_| {
-                    Error::new(
-                        field_name.span(),
-                        "fallback setter name must be a valid Rust identifier",
-                    )
-                })?;
-                identifier.set_span(field_name.span());
-                Some(identifier)
-            } else {
-                None
-            };
-            name.map(|name| (name, quote!(#field_name: #field_type), quote!(#arg_expr)))
-        } else {
-            None
-        };
-
-        let (method_generics, param_list, arg_expr, method_where_clause) =
-            if field.builder_attr.setter.strip_bool.is_some() {
-                (quote!(), quote!(), quote!(true), quote!())
-            } else if let Some(transform) = &field.builder_attr.setter.transform {
-                let params = transform.params.iter().map(|(pat, ty)| quote!(#pat: #ty));
-                let body = &transform.body;
-                let method_generics = transform
-                    .generics
-                    .as_ref()
-                    .map_or(quote!(), |g| g.to_token_stream());
-                let method_where_clause = transform
-                    .generics
-                    .as_ref()
-                    .and_then(|g| g.where_clause.as_ref())
-                    .map_or(quote!(), |w| w.to_token_stream());
-
-                let body = match &transform.return_type {
-                    syn::ReturnType::Default => quote!({ #body }),
-                    syn::ReturnType::Type(_, ty) => quote!({
-                        let value: #ty = { #body };
-                        value
-                    }),
-                };
-
-                (
-                    method_generics,
-                    quote!(#(#params),*),
-                    body,
-                    method_where_clause,
-                )
-            } else if option_was_stripped {
-                (
-                    quote!(),
-                    quote!(#field_name: #arg_type),
-                    quote!(Some(#arg_expr)),
-                    quote!(),
-                )
-            } else {
-                (quote!(), quote!(#field_name: #arg_type), arg_expr, quote!())
-            };
-
+        let fallback_param = quote!(#field_name: #field_type);
+        let SetterArgs {
+            generics: method_generics,
+            params,
+            value,
+            input_value: fallback_value,
+            where_clause: method_where_clause,
+        } = SetterArgs::for_field(field)?;
+        let fallbacks = field.setter_fallback_names()?;
         let repeated_fields_error_type_name = format_ident!(
             "{}_Error_Repeated_field_{}",
             builder_name,
             strip_raw_ident_prefix(field_name.to_string())
         );
-        let repeated_fields_error_message = format!("Repeated field {}", field_name);
+        let repeated_fields_error_message = format!("Repeated field {field_name}");
 
         let method_name = field.setter_method_name()?;
 
-        let strip_option_fallback_method = if let Some((method_name, param_list, arg_expr)) =
-            strip_option_fallback
-        {
-            Some(quote! {
-                #deprecated
-                #doc
-                #[allow(clippy::used_underscore_binding, clippy::no_effect_underscore_binding)]
-                pub fn #method_name #method_generics (self, #param_list) -> #builder_name <#target_generics>
-                #method_where_clause
-                {
-                    let #field_name = (#arg_expr,);
-                    let ( #(#destructuring,)* ) = self.fields;
-                    #builder_name {
-                        fields: ( #(#reconstructing,)* ),
-                        phantom: self.phantom,
+        let methods = std::iter::once((method_name.clone(), params, value))
+            .chain(
+                fallbacks
+                    .into_iter()
+                    .flatten()
+                    .map(|name| (name, fallback_param.clone(), fallback_value.clone())),
+            )
+            .map(|(name, params, value)| {
+                quote! {
+                    #deprecated
+                    #doc
+                    #[allow(clippy::used_underscore_binding, clippy::no_effect_underscore_binding)]
+                    pub fn #name #method_generics (self, #params) -> #builder_name #target_generics
+                    #method_where_clause
+                    {
+                        let #field_name = (#value,);
+                        let ( #(#destructuring,)* ) = self.fields;
+                        #builder_name {
+                            fields: ( #(#reconstructing,)* ),
+                            phantom: self.phantom,
+                        }
                     }
                 }
-            })
-        } else {
-            None
-        };
-
-        let strip_bool_fallback_method = if let Some((method_name, param_list, arg_expr)) =
-            strip_bool_fallback
-        {
-            Some(quote! {
-                #deprecated
-                #doc
-                #[allow(clippy::used_underscore_binding, clippy::no_effect_underscore_binding)]
-                pub fn #method_name #method_generics (self, #param_list) -> #builder_name <#target_generics>
-                #method_where_clause
-                {
-                    let #field_name = (#arg_expr,);
-                    let ( #(#destructuring,)* ) = self.fields;
-                    #builder_name {
-                        fields: ( #(#reconstructing,)* ),
-                        phantom: self.phantom,
-                    }
-                }
-            })
-        } else {
-            None
-        };
-
+            });
         Ok(quote! {
             #[allow(dead_code, non_camel_case_types, missing_docs)]
             #[automatically_derived]
-            impl #impl_generics #builder_name <#ty_generics> #where_clause {
-                #deprecated
-                #doc
-                #[allow(clippy::used_underscore_binding, clippy::no_effect_underscore_binding)]
-                pub fn #method_name #method_generics (self, #param_list) -> #builder_name <#target_generics>
-                #method_where_clause
-                {
-                    let #field_name = (#arg_expr,);
-                    let ( #(#destructuring,)* ) = self.fields;
-                    #builder_name {
-                        fields: ( #(#reconstructing,)* ),
-                        phantom: self.phantom,
-                    }
-                }
-                #strip_option_fallback_method
-                #strip_bool_fallback_method
+            impl #impl_generics #builder_name #ty_generics #where_clause {
+                #(#methods)*
             }
             #[doc(hidden)]
             #[allow(dead_code, non_camel_case_types, non_snake_case)]
@@ -489,12 +304,12 @@ impl<'a> StructInfo<'a> {
             #[doc(hidden)]
             #[allow(dead_code, non_camel_case_types, missing_docs)]
             #[automatically_derived]
-            impl #impl_generics #builder_name <#target_generics> #where_clause {
+            impl #impl_generics #builder_name #target_generics #where_clause {
                 #[deprecated(
                     note = #repeated_fields_error_message
                 )]
                 #doc
-                pub fn #method_name #method_generics (self, _: #repeated_fields_error_type_name) -> #builder_name <#target_generics>
+                pub fn #method_name #method_generics (self, _: #repeated_fields_error_type_name) -> #builder_name #target_generics
                 #method_where_clause
                 {
                     self
@@ -509,26 +324,6 @@ impl<'a> StructInfo<'a> {
         let FieldInfo {
             name: field_name, ..
         } = field;
-        let mut builder_generics: Vec<syn::GenericArgument> = self
-            .generics
-            .params
-            .iter()
-            .map(|generic_param| match generic_param {
-                syn::GenericParam::Type(type_param) => {
-                    let ident = type_param.ident.to_token_stream();
-                    syn::parse2(ident)
-                        .expect("invariant: a parsed generic identifier is a valid argument")
-                }
-                syn::GenericParam::Lifetime(lifetime_def) => {
-                    syn::GenericArgument::Lifetime(lifetime_def.lifetime.clone())
-                }
-                syn::GenericParam::Const(const_param) => {
-                    let ident = const_param.ident.to_token_stream();
-                    syn::parse2(ident)
-                        .expect("invariant: a parsed generic identifier is a valid argument")
-                }
-            })
-            .collect();
         let mut builder_generics_tuple = empty_type_tuple();
         let generics = {
             let mut generics = self.generics.clone();
@@ -559,12 +354,14 @@ impl<'a> StructInfo<'a> {
                     builder_generics_tuple.elems.push_value(f.type_ident());
                 }
 
-                builder_generics_tuple.elems.push_punct(Default::default());
+                builder_generics_tuple
+                    .elems
+                    .push_punct(syn::token::Comma::default());
             }
             generics
         };
 
-        builder_generics.push(syn::GenericArgument::Type(builder_generics_tuple.into()));
+        let builder_generics = self.builder_args(builder_generics_tuple);
         let (impl_generics, _, where_clause) = generics.split_for_impl();
 
         let early_build_error_type_name = format_ident!(
@@ -572,7 +369,7 @@ impl<'a> StructInfo<'a> {
             builder_name,
             strip_raw_ident_prefix(field_name.to_string())
         );
-        let early_build_error_message = format!("Missing required field {}", field_name);
+        let early_build_error_message = format!("Missing required field {field_name}");
 
         let build_method_name = self.build_method_name();
         let build_method_visibility = self.build_method_visibility();
@@ -585,7 +382,7 @@ impl<'a> StructInfo<'a> {
             #[doc(hidden)]
             #[allow(dead_code, non_camel_case_types, missing_docs, clippy::panic)]
             #[automatically_derived]
-            impl #impl_generics #builder_name < #( #builder_generics ),* > #where_clause {
+            impl #impl_generics #builder_name #builder_generics #where_clause {
                 #[deprecated(
                     note = #early_build_error_message
                 )]
@@ -603,9 +400,7 @@ impl<'a> StructInfo<'a> {
             required_fields,
         }: &Mutator,
     ) -> TokenStream {
-        let StructInfo {
-            ref builder_name, ..
-        } = *self;
+        let builder_name = &self.builder_name;
 
         let mut required_fields = required_fields.clone();
 
@@ -703,85 +498,10 @@ impl<'a> StructInfo<'a> {
         ])
     }
 
-    fn build_method_impl(&self) -> TokenStream {
-        let StructInfo {
-            ref name,
-            ref builder_name,
-            ..
-        } = *self;
-
-        let generics = {
-            let mut generics = self.generics.clone();
-            for field in self.included_fields() {
-                if field.builder_attr.default.is_some() {
-                    let generic_param: syn::TypeParam = field.generic_ident.clone().into();
-                    generics.params.push(generic_param.into());
-                }
-            }
-            generics
-        };
-        let (impl_generics, _, _) = generics.split_for_impl();
-
-        let (_, ty_generics, where_clause) = self.generics.split_for_impl();
-
-        let name_with_generics = quote!(#name #ty_generics);
-
-        let modified_ty_generics = modify_types_generics_hack(&ty_generics, |args| {
-            args.push(syn::GenericArgument::Type(
-                type_tuple(self.included_fields().map(|field| {
-                    if field.builder_attr.default.is_some() {
-                        field.type_ident()
-                    } else {
-                        field.tuplized_type_ty_param()
-                    }
-                }))
-                .into(),
-            ));
-        });
-
-        let destructuring = self.included_fields().map(|f| f.name);
-
+    fn field_assignments(&self, name_with_generics: &TokenStream) -> TokenStream {
         let crate_module_path = &self.builder_attr.crate_module_path;
-
-        let where_predicates_for_defaults: Vec<syn::WherePredicate> = self.fields.iter().enumerate()
-            .filter(|(_, field)| field.builder_attr.default.is_some() && field.builder_attr.setter.skip.is_none())
-            .map(|(field_index, field)| {
-                let types = self.fields.iter().take(field_index).map(|dep_field| {
-                    let dep_type = dep_field.ty;
-                    let dep_mut = dep_field.maybe_mut();
-                    quote!(&'__typed_builder_lifetime_for_default #dep_mut #dep_type)
-                }).chain(core::iter::once({
-                    let generic_argument: syn::Type = field.type_ident();
-                    quote!(#generic_argument)
-                }));
-                let field_type = field.ty;
-                parse_quote!{
-                    #name_with_generics: for<'__typed_builder_lifetime_for_default> #crate_module_path::NextFieldDefault<(#(#types,)*), Output = #field_type>
-                }
-
-            }).collect::<Vec<_>>();
-        let where_clause_storage;
-        let where_clause = if where_predicates_for_defaults.is_empty() {
-            where_clause
-        } else {
-            let mut predicates: Punctuated<_, _> = Default::default();
-            if let Some(where_clause) = where_clause {
-                predicates.extend(where_clause.predicates.iter().cloned());
-            }
-            predicates.extend(where_predicates_for_defaults);
-            where_clause_storage = syn::WhereClause {
-                where_token: Default::default(),
-                predicates,
-            };
-            Some(&where_clause_storage)
-        };
-
-        // The default of a field can refer to earlier-defined fields, which we handle by
-        // writing out a bunch of `let` statements first, which can each refer to earlier ones.
-        // This means that field ordering may actually be significant, which isn't ideal. We could
-        // relax that restriction by calculating a DAG of field default dependencies and
-        // reordering based on that, but for now this much simpler thing is a reasonable approach.
-        let assignments = self
+        // Field defaults can refer to earlier fields; resolve them in declaration order.
+        self
             .fields
             .iter()
             .enumerate()
@@ -833,7 +553,53 @@ impl<'a> StructInfo<'a> {
                     quote!(let #maybe_mut #name = #name.0;)
                 }
             })
-            .collect::<Vec<_>>();
+            .collect()
+    }
+
+    fn default_predicate(&self, field: &FieldInfo, owner: &TokenStream) -> syn::WherePredicate {
+        let module = &self.builder_attr.crate_module_path;
+        let refs = self.fields[..field.ordinal].iter().map(|dep| {
+            let ty = dep.ty;
+            let mutable = dep.maybe_mut();
+            quote!(&'__typed_builder_lifetime_for_default #mutable #ty)
+        });
+        let argument = field.type_ident();
+        let output = field.ty;
+        parse_quote!(#owner: for<'__typed_builder_lifetime_for_default> #module::NextFieldDefault<(#(#refs,)* #argument,), Output = #output>)
+    }
+
+    fn build_method_impl(&self) -> TokenStream {
+        let StructInfo {
+            ref name,
+            ref builder_name,
+            ..
+        } = *self;
+
+        let (_, ty_generics, _) = self.generics.split_for_impl();
+        let name_with_generics = quote!(#name #ty_generics);
+        let mut generics = self.generics.clone();
+        for field in self
+            .included_fields()
+            .filter(|f| f.builder_attr.default.is_some())
+        {
+            generics.params.push(field.generic_ty_param());
+            generics
+                .make_where_clause()
+                .predicates
+                .push(self.default_predicate(field, &name_with_generics));
+        }
+        let (impl_generics, _, where_clause) = generics.split_for_impl();
+        let modified_ty_generics =
+            self.builder_args(type_tuple(self.included_fields().map(|field| {
+                if field.builder_attr.default.is_some() {
+                    field.type_ident()
+                } else {
+                    field.tuplized_type_ty_param()
+                }
+            })));
+        let destructuring = self.included_fields().map(|f| f.name);
+
+        let assignments = self.field_assignments(&name_with_generics);
         let field_names = self.fields.iter().map(|field| field.name);
 
         let build_method_name = self.build_method_name();
@@ -842,7 +608,7 @@ impl<'a> StructInfo<'a> {
             self.builder_attr
                 .build_method
                 .common
-                .get_doc_or(|| format!("Finalise the builder and create its [`{}`] instance", name))
+                .get_doc_or(|| format!("Finalise the builder and create its [`{name}`] instance"))
         } else {
             quote!()
         };
@@ -873,7 +639,7 @@ impl<'a> StructInfo<'a> {
                 #[allow(clippy::default_trait_access, clippy::used_underscore_binding, clippy::no_effect_underscore_binding)]
                 #build_method_visibility fn #build_method_name #build_method_generic (self) -> #output_type #build_method_where_clause {
                     let ( #(#destructuring,)* ) = self.fields;
-                    #( #assignments )*
+                    #assignments
 
                     #[allow(deprecated)]
                     #type_constructor {
@@ -921,5 +687,76 @@ impl<'a> StructInfo<'a> {
             #mutators
             #build_method
         })
+    }
+}
+
+/// Parameter list and invocation for one generated field setter.
+struct SetterArgs {
+    generics: TokenStream,
+    params: TokenStream,
+    where_clause: TokenStream,
+    value: TokenStream,
+    input_value: TokenStream,
+}
+
+impl SetterArgs {
+    fn for_field(field: &FieldInfo) -> syn::Result<Self> {
+        let setter = &field.builder_attr.setter;
+        let field_name = field.name;
+        let stripped = if let Some(strip) = &setter.strip_option
+            && setter.transform.is_none()
+        {
+            match field.type_from_inside_option() {
+                Some(inner) => Some(inner),
+                None if strip.ignore_invalid => None,
+                None => {
+                    return Err(Error::new_spanned(
+                        field.ty,
+                        "can't `strip_option` - field is not `Option<...>`",
+                    ));
+                }
+            }
+        } else {
+            None
+        };
+        let ty = stripped.unwrap_or(field.ty);
+        let (ty, input_value) = if setter.auto_into.is_some() {
+            (
+                quote!(impl ::core::convert::Into<#ty>),
+                quote!(#field_name.into()),
+            )
+        } else {
+            (ty.to_token_stream(), field_name.to_token_stream())
+        };
+        let mut args = Self {
+            generics: TokenStream::new(),
+            where_clause: TokenStream::new(),
+            params: quote!(#field_name: #ty),
+            value: if stripped.is_some() {
+                quote!(Some(#input_value))
+            } else {
+                input_value.clone()
+            },
+            input_value,
+        };
+        if setter.strip_bool.is_some() {
+            args.params = TokenStream::new();
+            args.value = quote!(true);
+        } else if let Some(transform) = &setter.transform {
+            let params = transform.params.iter().map(|(pat, ty)| quote!(#pat: #ty));
+            let body = &transform.body;
+            args.generics = transform.generics.to_token_stream();
+            args.where_clause = transform
+                .generics
+                .as_ref()
+                .and_then(|g| g.where_clause.as_ref())
+                .to_token_stream();
+            args.params = quote!(#(#params),*);
+            args.value = match &transform.return_type {
+                syn::ReturnType::Default => quote!({ #body }),
+                syn::ReturnType::Type(_, ty) => quote!({ let value: #ty = { #body }; value }),
+            };
+        }
+        Ok(args)
     }
 }

@@ -1,4 +1,4 @@
-use crate::common::{Action, Check, Feedback, Field, href, load, t, text};
+use crate::common::{Action, Check, Field, href, load, t, text};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -29,13 +29,8 @@ pub(super) fn LetterSettings() -> impl IntoView {
                     "维护公开信笺的收信人、署名和正文。",
                     "Manage the recipient, sender, and content of the public letter.",
                 )),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
-                Feedback(component_props_builder(&Feedback).error(save.error).build()),
+                data.admin_feedback(None),
+                save.feedback(),
                 move || {
                     (!validation.get().is_empty()).then(|| {
                         blog_interface::html::p()
@@ -124,7 +119,7 @@ pub(super) fn LetterSettings() -> impl IntoView {
                                 )
                                 .class("editor-form blog-frame blog-frame--padded blog-stack")
                                 .on(blog_interface::ev::input, move |_| {
-                                    validation.set(String::new())
+                                    validation.set(String::new());
                                 })
                                 .on(blog_interface::ev::submit, move |ev| {
                                     ev.prevent_default();

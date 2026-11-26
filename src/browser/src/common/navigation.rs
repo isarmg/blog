@@ -11,18 +11,13 @@ pub(crate) fn enc(s: &str) -> String {
 }
 
 pub(crate) fn navigate(hash: &str) {
-    if let Err(error) = web_sys::window()
-        .expect("invariant: the application is mounted in a browser window")
-        .location()
-        .set_hash(hash)
-    {
+    if let Err(error) = window().location().set_hash(hash) {
         web_sys::console::warn_2(&"Unable to navigate to the selected page".into(), &error);
     }
 }
 
 fn hash() -> String {
-    web_sys::window()
-        .expect("invariant: the application is mounted in a browser window")
+    window()
         .location()
         .hash()
         .unwrap_or_default()
@@ -31,11 +26,7 @@ fn hash() -> String {
 }
 
 pub(crate) fn pathname() -> String {
-    web_sys::window()
-        .expect("invariant: the application is mounted in a browser window")
-        .location()
-        .pathname()
-        .unwrap_or_default()
+    window().location().pathname().unwrap_or_default()
 }
 
 pub(crate) fn href(path: &str) -> String {
@@ -61,22 +52,16 @@ pub(crate) fn href(path: &str) -> String {
 }
 
 pub(crate) fn query(key: &str) -> String {
-    web_sys::UrlSearchParams::new_with_str(
-        &web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
-            .location()
-            .search()
-            .unwrap_or_default(),
-    )
-    .expect("invariant: URLSearchParams accepts any search string")
-    .get(key)
-    .unwrap_or_default()
+    web_sys::UrlSearchParams::new_with_str(&window().location().search().unwrap_or_default())
+        .expect("invariant: URLSearchParams accepts any search string")
+        .get(key)
+        .unwrap_or_default()
 }
 
 pub(crate) fn hash_signal() -> RwSignal<String> {
     let s = RwSignal::new(hash());
     let listener = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "hashchange",
         move |_| s.set(hash()),
     ));
@@ -85,24 +70,12 @@ pub(crate) fn hash_signal() -> RwSignal<String> {
 }
 
 pub(crate) fn search_signal() -> RwSignal<String> {
-    let s = RwSignal::new(
-        web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
-            .location()
-            .search()
-            .unwrap_or_default(),
-    );
+    let s = RwSignal::new(window().location().search().unwrap_or_default());
     let listener = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "popstate",
         move |_| {
-            s.set(
-                web_sys::window()
-                    .expect("invariant: the application is mounted in a browser window")
-                    .location()
-                    .search()
-                    .unwrap_or_default(),
-            )
+            s.set(window().location().search().unwrap_or_default());
         },
     ));
     on_cleanup(move || drop(listener));
@@ -117,31 +90,25 @@ pub(super) fn replace_browse(s: RwSignal<String>, changes: &[(&str, Option<Strin
     update_search(s, changes, HistoryChange::Replace);
 }
 
+#[derive(Clone, Copy)]
 enum HistoryChange {
     Push,
     Replace,
 }
 
 fn update_search(s: RwSignal<String>, changes: &[(&str, Option<String>)], change: HistoryChange) {
-    let url = web_sys::Url::new(
-        &web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
-            .location()
-            .href()
-            .unwrap_or_default(),
-    )
-    .expect("invariant: the current browser location is a valid URL");
+    let url = web_sys::Url::new(&window().location().href().unwrap_or_default())
+        .expect("invariant: the current browser location is a valid URL");
     let params = url.search_params();
     for (k, v) in changes {
         if let Some(v) = v {
-            params.set(k, v)
+            params.set(k, v);
         } else {
-            params.delete(k)
+            params.delete(k);
         }
     }
     let relative = format!("{}{}{}", url.pathname(), url.search(), url.hash());
-    let history = web_sys::window()
-        .expect("invariant: the application is mounted in a browser window")
+    let history = window()
         .history()
         .expect("invariant: same-origin window history is accessible");
     let result = match change {
@@ -179,15 +146,8 @@ pub(crate) fn safe_url(s: &str, blob: bool) -> Option<String> {
     if s.is_empty() {
         return None;
     }
-    let url = web_sys::Url::new_with_base(
-        s,
-        &web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
-            .location()
-            .origin()
-            .unwrap_or_default(),
-    )
-    .ok()?;
+    let url =
+        web_sys::Url::new_with_base(s, &window().location().origin().unwrap_or_default()).ok()?;
     (["http:", "https:"].contains(&url.protocol().as_str()) || blob && url.protocol() == "blob:")
         .then(|| url.href())
 }

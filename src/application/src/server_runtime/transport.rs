@@ -311,14 +311,9 @@ async fn serve_connection<S>(
         .timer(TokioTimer::new())
         .header_read_timeout(limits.header_read_timeout)
         .max_buf_size(limits.max_buffer_bytes);
+    let socket = WriteIdleTimeout::new(socket, limits.write_idle_timeout, permit, force.clone());
     let connection = builder
-        .serve_connection(
-            TokioIo::new(
-                WriteIdleTimeout::new(socket, limits.write_idle_timeout)
-                    .with_permit(permit, force.clone()),
-            ),
-            service,
-        )
+        .serve_connection(TokioIo::new(socket), service)
         .with_upgrades();
     tokio::pin!(connection);
     let result = tokio::select! {

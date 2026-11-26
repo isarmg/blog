@@ -5,7 +5,7 @@ use syn_legacy as syn;
 
 use crate::builder::field_info::FieldBuilderAttr;
 use crate::builder::mutator::Mutator;
-use crate::builder::util::{ApplyMeta, AttrArg, path_to_single_string};
+use crate::builder::util::{ApplyMeta, AttrArg};
 
 #[derive(Debug, Default, Clone)]
 pub struct CommonDeclarationSettings {
@@ -40,7 +40,7 @@ impl ApplyMeta for CommonDeclarationSettings {
 
 impl CommonDeclarationSettings {
     pub fn get_name(&self) -> Option<TokenStream> {
-        self.name.as_ref().map(|name| name.to_token_stream())
+        self.name.as_ref().map(ToTokens::to_token_stream)
     }
 
     pub fn get_doc_or(&self, gen_doc: impl FnOnce() -> String) -> TokenStream {
@@ -147,34 +147,27 @@ pub struct TypeBuilderAttr<'a> {
 impl Default for TypeBuilderAttr<'_> {
     fn default() -> Self {
         Self {
-            doc: Default::default(),
-            builder_method: Default::default(),
-            builder_type: Default::default(),
-            build_method: Default::default(),
-            field_defaults: Default::default(),
+            doc: false,
+            builder_method: CommonDeclarationSettings::default(),
+            builder_type: BuilderTypeSettings::default(),
+            build_method: BuildMethodSettings::default(),
+            field_defaults: FieldBuilderAttr::default(),
             crate_module_path: syn::parse_quote!(::typed_builder),
-            mutators: Default::default(),
+            mutators: Vec::new(),
         }
     }
 }
 
-impl<'a> TypeBuilderAttr<'a> {
+impl TypeBuilderAttr<'_> {
     pub fn new(attrs: &[syn::Attribute]) -> Result<Self, Error> {
         let mut result = Self::default();
 
         for attr in attrs {
-            let list = match &attr.meta {
-                syn::Meta::List(list) => {
-                    if path_to_single_string(&list.path).as_deref() != Some("builder") {
-                        continue;
-                    }
-
-                    list
-                }
-                syn::Meta::Path(_) | syn::Meta::NameValue(_) => continue,
-            };
-
-            result.apply_subsections(list)?;
+            if let syn::Meta::List(list) = &attr.meta
+                && list.path.is_ident("builder")
+            {
+                result.apply_subsections(list)?;
+            }
         }
 
         if result.builder_type.common.doc.is_some() || result.build_method.common.doc.is_some() {

@@ -1,4 +1,4 @@
-//! Markdown is parsed as structured CommonMark events, never as trusted HTML.
+//! Markdown is parsed as structured `CommonMark` events, never as trusted HTML.
 //! Raw HTML events become escaped text; URL destinations are admitted before
 //! the upstream HTML renderer escapes text and attributes. No sanitizer accepts
 //! arbitrary HTML here. A dedicated video fence emits only validated players.

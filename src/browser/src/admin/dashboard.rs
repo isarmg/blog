@@ -1,7 +1,6 @@
 use super::Group;
-use crate::common::{Feedback, href, load_typed, t};
+use crate::common::{href, load_typed, t};
 use crate::models::AdminStats;
-use blog_interface::component::component_props_builder;
 use blog_interface::prelude::*;
 
 #[component]
@@ -16,13 +15,7 @@ pub(super) fn Dashboard() -> impl IntoView {
                     "网站内容与社区状态。",
                     "Site content and community status.",
                 )),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .fallback(t("统计信息加载失败", "Unable to load statistics"))
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
+                data.admin_feedback(Some(t("统计信息加载失败", "Unable to load statistics"))),
                 move || {
                     data.current().map(|stats| {
                         View::new(

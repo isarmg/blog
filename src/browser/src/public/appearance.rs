@@ -25,13 +25,12 @@ fn css_string(value: &str) -> String {
 }
 
 pub(super) fn background_style(url: Option<String>) -> String {
-    url.map(|url| {
+    url.map_or_default(|url| {
         format!(
             "background-image:linear-gradient(#0b2c3e4d,#0b2c3e73),url({})",
             css_string(&url)
         )
     })
-    .unwrap_or_default()
 }
 
 pub(super) fn site_media_url(site: Data<Site>, field: fn(&Site) -> Option<&str>) -> Option<String> {

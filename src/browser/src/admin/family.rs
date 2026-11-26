@@ -1,4 +1,4 @@
-use crate::common::{Action, Check, Feedback, Field, flag, load, num, t, text};
+use crate::common::{Action, Check, Field, flag, load, num, t, text};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -52,13 +52,8 @@ pub(super) fn FamilySettings() -> impl IntoView {
                     "这里仅由管理员创建并维护一份家的资料。",
                     "The administrator creates and maintains one home here.",
                 )),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
-                Feedback(component_props_builder(&Feedback).error(save.error).build()),
+                data.admin_feedback(None),
+                save.feedback(),
                 blog_interface::html::fieldset()
                     .child(
                         blog_interface::html::form()
@@ -178,7 +173,7 @@ pub(super) fn FamilySettings() -> impl IntoView {
                                                         .class("blog-button blog-danger")
                                                         .r#type("button")
                                                         .on(blog_interface::ev::click, move |_| {
-                                                            if web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                                            if window()
                                                                 .confirm_with_message(&t(
                                                                     "确定删除家的资料？",
                                                                     "Delete your home details?",
@@ -223,8 +218,9 @@ pub(super) fn FamilySettings() -> impl IntoView {
                                 }
                                 let path = editing
                                     .get_untracked()
-                                    .map(|id| format!("/api/v1/content/family/{id}"))
-                                    .unwrap_or("/api/v1/content/family".into());
+                                    .map_or("/api/v1/content/family".into(), |id| {
+                                        format!("/api/v1/content/family/{id}")
+                                    });
                                 save.run(
                                     path,
                                     if editing.get_untracked().is_some() {

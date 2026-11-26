@@ -20,7 +20,6 @@ use serde_json::json;
 use wasm_bindgen::JsCast;
 
 fn article_excerpt(value: &str, limit: usize) -> String {
-    let mut plain = value.to_string();
     // These fixed expressions are shared across cards, rather than compiled
     // four times for every article on every reactive render.
     static RULES: std::sync::LazyLock<[(regex::Regex, &str); 4]> = std::sync::LazyLock::new(|| {
@@ -37,6 +36,7 @@ fn article_excerpt(value: &str, limit: usize) -> String {
             )
         })
     });
+    let mut plain = value.to_owned();
     for (pattern, replacement) in RULES.iter() {
         plain = pattern.replace_all(&plain, *replacement).into_owned();
     }
@@ -53,14 +53,14 @@ fn article_excerpt(value: &str, limit: usize) -> String {
 
 #[component]
 pub(super) fn Card(item: ArticleSummary, #[prop(default = false)] compact: bool) -> impl IntoView {
-    let title = item.article_title.clone();
+    let title = item.article_title;
     View::new(
         html::a()
             .child((
                 html::div()
                     .child(
                         if let Some(u) =
-                            safe_url(&item.article_cover.clone().unwrap_or_default(), false)
+                            safe_url(item.article_cover.as_deref().unwrap_or_default(), false)
                         {
                             View::new(html::img().src(u).alt("").loading("lazy")).into_any()
                         } else {
@@ -82,7 +82,7 @@ pub(super) fn Card(item: ArticleSummary, #[prop(default = false)] compact: bool)
                     .child((
                         html::small().child((
                             t("📅 发布于 ", "📅 Published "),
-                            crate::dates::format(&item.create_time.clone().unwrap_or_default()),
+                            crate::dates::format(item.create_time.as_deref().unwrap_or_default()),
                         )),
                         html::h3().child(Sliding(
                             component_props_builder(&Sliding).title(title).build(),
@@ -106,15 +106,13 @@ pub(super) fn Card(item: ArticleSummary, #[prop(default = false)] compact: bool)
                             View::new(
                                 html::p()
                                     .child({
-                                        let s = item.search_snippet.clone().unwrap_or_default();
-                                        article_excerpt(
-                                            &if s.is_empty() {
-                                                item.excerpt.clone().unwrap_or_default()
-                                            } else {
-                                                s
-                                            },
-                                            140,
-                                        )
+                                        let excerpt = item
+                                            .search_snippet
+                                            .as_deref()
+                                            .filter(|snippet| !snippet.is_empty())
+                                            .or(item.excerpt.as_deref())
+                                            .unwrap_or_default();
+                                        article_excerpt(excerpt, 140)
                                     })
                                     .class("original-list-excerpt"),
                             )
@@ -123,11 +121,11 @@ pub(super) fn Card(item: ArticleSummary, #[prop(default = false)] compact: bool)
                             .child((
                                 html::span().child(format!(
                                     "📁 {}",
-                                    item.sort_name.clone().unwrap_or_default()
+                                    item.sort_name.as_deref().unwrap_or_default()
                                 )),
                                 html::span().child(format!(
                                     "🏷 {}",
-                                    item.label_name.clone().unwrap_or_default()
+                                    item.label_name.as_deref().unwrap_or_default()
                                 )),
                                 (!item.view_status).then(|| {
                                     View::new(
@@ -177,8 +175,7 @@ pub(super) fn Article(id: i64) -> impl IntoView {
             .title(Signal::derive(move || {
                 current
                     .get()
-                    .map(|v| v.article_title.clone())
-                    .unwrap_or(t("文章", "Articles"))
+                    .map_or(t("文章", "Articles"), |v| v.article_title.clone())
             }))
             .cover(Signal::derive(move || {
                 current
@@ -232,18 +229,12 @@ pub(super) fn Article(id: i64) -> impl IntoView {
                                 )
                                 .into_any()
                             } else {
-                                Feedback(
-                                    component_props_builder(&Feedback)
-                                        .error(access.error)
-                                        .public(true)
-                                        .retry(Some(Callback::new(move |()| access.reload())))
-                                        .fallback(t(
-                                            "文章访问状态加载失败",
-                                            "Unable to check article access",
-                                        ))
-                                        .build(),
-                                )
-                                .into_any()
+                                access
+                                    .public_feedback(Some(t(
+                                        "文章访问状态加载失败",
+                                        "Unable to check article access",
+                                    )))
+                                    .into_any()
                             };
                         }
                         let Some(info) = access.current() else {
@@ -297,7 +288,7 @@ pub(super) fn Article(id: i64) -> impl IntoView {
                                             .required(true)
                                             .prop("value", move || password.get())
                                             .on(ev::input, move |ev| {
-                                                password.set(event_target_value(&ev))
+                                                password.set(event_target_value(&ev));
                                             }),
                                     )),
                                     html::button()
@@ -351,11 +342,7 @@ fn reading_action(
             .expect("invariant: an element has text content");
         blog_interface::task::spawn_local(async move {
             let result = js_sys::futures::JsFuture::from(
-                web_sys::window()
-                    .expect("invariant: the application is mounted in a browser window")
-                    .navigator()
-                    .clipboard()
-                    .write_text(&content),
+                window().navigator().clipboard().write_text(&content),
             )
             .await;
             let message = match result {
@@ -404,11 +391,10 @@ fn Reading(article: ArticleModel) -> impl IntoView {
     let copied = RwSignal::new(String::new());
     let update = move || {
         let Some(card) = node.get() else { return };
-        let win =
-            web_sys::window().expect("invariant: the application is mounted in a browser window");
+        let win = window();
         let scroll = win.scroll_y().unwrap_or(0.);
         let start = card.get_bounding_client_rect().top() + scroll;
-        let end = (start + card.offset_height() as f64
+        let end = (start + f64::from(card.offset_height())
             - win
                 .inner_height()
                 .ok()
@@ -437,18 +423,18 @@ fn Reading(article: ArticleModel) -> impl IntoView {
         active.set(current);
     };
     let scroll = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "scroll",
         move |_| update(),
     ));
     let resize = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "resize",
         move |_| update(),
     ));
     on_cleanup(move || {
         drop(scroll);
-        drop(resize)
+        drop(resize);
     });
     let outline = move || {
         View::new(
@@ -519,7 +505,7 @@ fn Reading(article: ArticleModel) -> impl IntoView {
                                 .class("article-markdown")
                                 .inner_html(rendered.html)
                                 .on(ev::click, move |ev| {
-                                    reading_action(ev.as_ref(), lightbox, copied)
+                                    reading_action(ev.as_ref(), lightbox, copied);
                                 })
                                 .on(ev::keydown, move |ev| {
                                     if ["Enter", " "].contains(&ev.key().as_str())
@@ -527,7 +513,7 @@ fn Reading(article: ArticleModel) -> impl IntoView {
                                             e.is_instance_of::<web_sys::HtmlImageElement>()
                                         })
                                     {
-                                        reading_action(ev.as_ref(), lightbox, copied)
+                                        reading_action(ev.as_ref(), lightbox, copied);
                                     }
                                 }),
                             move || {
@@ -791,8 +777,9 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                 .unwrap_or_default()
                 .iter()
                 .find(|c| c.id == selected.get())
-                .map(|c| c.sort_name.clone())
-                .unwrap_or(t("文章分类", "Article categories"))
+                .map_or(t("文章分类", "Article categories"), |c| {
+                    c.sort_name.clone()
+                })
         }
     });
     let choose = Callback::new(move |id: i64| {
@@ -804,7 +791,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                 ("label_id", None),
                 ("page", None),
             ],
-        )
+        );
     });
     View::new(Chrome(component_props_builder(&Chrome)
                 .title( title)
@@ -931,24 +918,11 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
         ,),
 )
                             .into_any() },
-                            Feedback(component_props_builder(& Feedback)
-                            .error( categories.error)
-                            .public( true)
-                            .retry( Some(Callback::new(move |
-                            () | categories.reload()))).build()),
-                            Feedback(component_props_builder(& Feedback)
-                            .error( labels.error)
-                            .public( true)
-                            .retry( Some(Callback::new(move |
-                            () | labels.reload()))).build()),
-                            Feedback(component_props_builder(& Feedback)
-                            .error( data.error)
-                            .public( true)
-                            .fallback( if search {
+                            categories.public_feedback(None),
+                            labels.public_feedback(None),
+                            data.public_feedback(Some(if search {
                             t("搜索失败", "Search failed") } else {
-                            t("文章加载失败", "Unable to load articles") })
-                            .retry( Some(Callback::new(move |
-                            () | data.reload()))).build()),
+                            t("文章加载失败", "Unable to load articles") })),
                             move | | data.busy.get().then(| | View::new(
     html::p()
         .child(
@@ -977,8 +951,7 @@ pub(super) fn Browse(kind: BrowseKind) -> impl IntoView {
                             html::div()
                             .child((html::h2()
                             .child( t("🍃 发现", "🍃 Discover")),
-                            move | | data.current().map(| v | v.items)
-                            .unwrap_or_default().into_iter().map(| item | if search {
+                            move | | data.current().map_or_default(| v | v.items).into_iter().map(| item | if search {
                             View::new(
     html::a()
         .child(

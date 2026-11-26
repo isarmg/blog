@@ -196,7 +196,9 @@ fn platform_player(url: &Address) -> Option<String> {
                 }
             };
             if let Some(page) = url.query("p").or_else(|| url.query("page")) {
-                source.push_str(&format!("&page={}", positive_integer(page)?));
+                use std::fmt::Write;
+                write!(source, "&page={}", positive_integer(page)?)
+                    .expect("writing to a String cannot fail");
             }
             source.push_str("&autoplay=0");
             Some(iframe(&source, "Bilibili video player"))
@@ -220,8 +222,7 @@ pub(crate) fn video_html(source: &str, poster: Option<&str>) -> Option<String> {
     {
         let poster = poster
             .and_then(|poster| parse(poster.trim()))
-            .map(|poster| format!(" poster=\"{}\"", escaped(&poster.href)))
-            .unwrap_or_default();
+            .map_or_default(|poster| format!(" poster=\"{}\"", escaped(&poster.href)));
         return Some(format!(
             "<video class=\"article-video article-media\" controls playsinline preload=\"metadata\" aria-label=\"Video player\"{poster} src=\"{}\"></video>\n",
             escaped(&url.href),

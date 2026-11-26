@@ -1,5 +1,9 @@
 use crate::common::Action;
-use crate::common::*;
+use crate::common::{
+    ApiErrorCode, Check, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
+    ListState, LocalErrorCode, Pager, RequestOptions, flag, invalid, load, load_typed, navigate,
+    num, safe_url, t, table_time, text,
+};
 use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
@@ -56,7 +60,7 @@ fn insert_body_video(
 ) -> Result<(), insertion::UnfinishedFormatting> {
     let (content, cursor) =
         form.with_untracked(|form| insertion.apply(&form.article_content, block))?;
-    form.update(|draft| draft.article_content = content.clone());
+    form.update(|draft| draft.article_content.clone_from(&content));
     if let Some(area) = area.get() {
         // Write the same value as the controlled property before restoring the
         // selection; the next reactive render then leaves this caret intact.
@@ -108,8 +112,7 @@ fn prepare_creation(
 ) -> (Value, RequestOptions) {
     let request = receipt.get_untracked().unwrap_or_else(|| {
         let request = CreationReceipt {
-            key: web_sys::window()
-                .expect("invariant: the application is mounted in a browser window")
+            key: window()
                 .crypto()
                 .expect("invariant: the application window exposes browser crypto")
                 .random_uuid(),
@@ -170,9 +173,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
         preview_timer.update_value(|timer| drop((**timer).take()));
         if visible {
             let content = body.get();
-            if was_visible != Some(true) {
-                preview_html.set(crate::browser::markdown_html(&content));
-            } else {
+            if was_visible == Some(true) {
                 preview_timer.update_value(|timer| {
                     **timer = Some(blog_interface::timers::callback::Timeout::new(
                         200,
@@ -181,6 +182,8 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                         },
                     ));
                 });
+            } else {
+                preview_html.set(crate::browser::markdown_html(&content));
             }
         } else {
             preview_html.set(String::new());
@@ -215,9 +218,9 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
         upload.upload(file, move |path| {
             form.update(|f| {
                 if cover {
-                    f.article_cover = Some(path)
+                    f.article_cover = Some(path);
                 } else {
-                    f.article_content = format!("{}\n\n![{name}]({path})\n", f.article_content)
+                    f.article_content = format!("{}\n\n![{name}]({path})\n", f.article_content);
                 }
             });
             notify(t("图片已上传", "Image uploaded"));
@@ -270,7 +273,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         form.with(|form| form.article_title.clone())
                                     }))
                                     .change(Callback::new(move |v: String| {
-                                        form.update(|f| f.article_title = v)
+                                        form.update(|f| f.article_title = v);
                                     }))
                                     .required(true)
                                     .max(120)
@@ -309,7 +312,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                             f.sort_id =
                                                                 v.parse::<i64>().unwrap_or(0);
                                                             f.label_id = 0;
-                                                        })
+                                                        });
                                                     }))
                                                     .build(),
                                             ),
@@ -348,8 +351,8 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                     .change(Callback::new(move |v: String| {
                                                         form.update(|f| {
                                                             f.label_id =
-                                                                v.parse::<i64>().unwrap_or(0)
-                                                        })
+                                                                v.parse::<i64>().unwrap_or(0);
+                                                        });
                                                     }))
                                                     .build(),
                                             ),
@@ -366,7 +369,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 form.with(|form| form.article_cover.clone().unwrap_or_default())
                                             }))
                                             .change(Callback::new(move |v: String| {
-                                                form.update(|f| f.article_cover = Some(v))
+                                                form.update(|f| f.article_cover = Some(v));
                                             }))
                                             .build(),
                                     ),
@@ -377,7 +380,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 save.busy.get() || upload.busy.get()
                                             }))
                                             .choose(Callback::new(move |file| {
-                                                upload_file(file, true)
+                                                upload_file(file, true);
                                             }))
                                             .build(),
                                     ),
@@ -398,8 +401,8 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         })
                                         .on(blog_interface::ev::input, move |ev| {
                                             form.update(|f| {
-                                                f.article_content = event_target_value(&ev)
-                                            })
+                                                f.article_content = event_target_value(&ev);
+                                            });
                                         }),
                                 ))
                                 .class("blog-form-field blog-stack"),
@@ -416,7 +419,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         .class("blog-button")
                                         .r#type("button")
                                         .on(blog_interface::ev::click, move |_| {
-                                            preview.update(|v| *v = !*v)
+                                            preview.update(|v| *v = !*v);
                                         }),
                                     FilePicker(
                                         component_props_builder(&FilePicker)
@@ -425,7 +428,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 save.busy.get() || upload.busy.get()
                                             }))
                                             .choose(Callback::new(move |file| {
-                                                upload_file(file, false)
+                                                upload_file(file, false);
                                             }))
                                             .build(),
                                     ),
@@ -517,7 +520,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                         form.with(|form| form.video_url.clone().unwrap_or_default())
                                                     }))
                                                     .change(Callback::new(move |v: String| {
-                                                        form.update(|f| f.video_url = Some(v))
+                                                        form.update(|f| f.video_url = Some(v));
                                                     }))
                                                     .max(2048)
                                                     .build(),
@@ -570,7 +573,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                                 form.with(|form| form.password.clone().unwrap_or_default())
                                                             })
                                                             .on(blog_interface::ev::input, move |event| {
-                                                                form.update(|form| form.password = Some(event_target_value(&event)))
+                                                                form.update(|form| form.password = Some(event_target_value(&event)));
                                                             }),
                                                     )),
                                                 move || password_error.get().map(|error| {
@@ -612,7 +615,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 form.with(|form| form.recommend_status)
                                             }))
                                             .change(Callback::new(move |v| {
-                                                form.update(|f| f.recommend_status = v)
+                                                form.update(|f| f.recommend_status = v);
                                             }))
                                             .build(),
                                     ),
@@ -623,7 +626,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                 form.with(|form| form.comment_status)
                                             }))
                                             .change(Callback::new(move |v| {
-                                                form.update(|f| f.comment_status = v)
+                                                form.update(|f| f.comment_status = v);
                                             }))
                                             .build(),
                                     ),
@@ -639,7 +642,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                                     form.with(|form| form.tips.clone().unwrap_or_default())
                                                 }))
                                                 .change(Callback::new(move |v: String| {
-                                                    form.update(|f| f.tips = Some(v))
+                                                    form.update(|f| f.tips = Some(v));
                                                 }))
                                                 .build(),
                                         ),
@@ -661,7 +664,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                                         .disabled(move || save.busy.get() || creation.get().is_some())
                                         .on(blog_interface::ev::click, move |_| {
                                             upload.abort();
-                                            navigate("articles")
+                                            navigate("articles");
                                         }),
                                     blog_interface::html::button()
                                         .child(move || {
@@ -725,8 +728,7 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                     };
                     let target = id.or_else(|| created_id.get_untracked());
                     let path = target
-                        .map(|id| format!("/api/v1/content/articles/{id}"))
-                        .unwrap_or("/api/v1/content/articles".into());
+                        .map_or("/api/v1/content/articles".into(), |id| format!("/api/v1/content/articles/{id}"));
                     let (body, opts) = if target.is_none() {
                         prepare_creation(creation, body)
                     } else {
@@ -781,25 +783,18 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
                     "Add article") }),
                     blog_interface::html::p().class("blog-row")
                     .child( t("支持 Markdown 正文，发布后可从网站访问。",
-                    "Write in Markdown. Published articles are available on the site.")), Feedback(component_props_builder(& Feedback)
-                    .error( categories.error)
-                    .fallback( t("分类加载失败",
-                    "Unable to load categories")).retry( Some(Callback::new(move | () | categories.reload()))).build()),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( labels.error)
-                    .fallback( t("标签加载失败",
-                    "Unable to load tags")).retry( Some(Callback::new(move | () | labels.reload()))).build()),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( article.error)
-                    .fallback( t("文章加载失败",
-                    "Unable to load article")).retry( Some(Callback::new(move | () | article.reload()))).build()),
+                    "Write in Markdown. Published articles are available on the site.")), categories.admin_feedback(Some(t("分类加载失败",
+                    "Unable to load categories"))),
+                    labels.admin_feedback(Some(t("标签加载失败",
+                    "Unable to load tags"))),
+                    article.admin_feedback(Some(t("文章加载失败",
+                    "Unable to load article"))),
                     Feedback(component_props_builder(& Feedback)
                     .error( save.error)
                     .fallback( t("尚未确认文章是否已创建，请确认原提交；较新的修改会保留。",
                     "Article creation is not yet confirmed. Confirm the original submission; your newer edits will be kept.")).build()),
                     pending_creation(creation),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( upload.error).build()),
+                    upload.feedback(),
                     move | | (! validation.get().is_empty()).then(| | View::new(
     blog_interface::html::p().class("blog-row blog-danger")
         .child(
@@ -872,7 +867,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                 .disabled(move || save.busy.get() || receipt.get().is_some())
                                 .on(blog_interface::ev::click, move |_| {
                                     if form.get_untracked() != original.get_untracked()
-                                        && !web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                        && !window()
                                             .confirm_with_message(&t(
                                                 "放弃当前未保存的进展修改？",
                                                 "Discard the current unsaved update changes?",
@@ -893,7 +888,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                 .class("blog-button blog-danger")
                                 .disabled(move || save.busy.get() || receipt.get().is_some())
                                 .on(blog_interface::ev::click, move |_| {
-                                    if web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                    if window()
                                         .confirm_with_message(&t(
                                             "确定删除这条文章进展？",
                                             "Delete this article update?",
@@ -908,7 +903,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                             None,
                                             move |_| {
                                                 if editing.get_untracked() == Some(entry_id) {
-                                                    reset.run(())
+                                                    reset.run(());
                                                 }
                                                 data.reload();
                                             },
@@ -928,14 +923,9 @@ fn NewsEditor(id: i64) -> impl IntoView {
                     blog_interface::html::h2().class("blog-row")
                     .child( t("最新进展",
                     "Recent updates")),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( data.error)
-                    .fallback( t("文章进展加载失败",
-                    "Unable to load article updates"))
-                    .retry( Some(Callback::new(move | () |
-                    data.reload()))).build()),
-                    Feedback(component_props_builder(& Feedback)
-                    .error( save.error).build()),
+                    data.admin_feedback(Some(t("文章进展加载失败",
+                    "Unable to load article updates"))),
+                    save.feedback(),
                     pending_creation(receipt),
                     move | | (! validation.get().is_empty()).then(| | View::new(
     blog_interface::html::p().class("blog-row blog-danger")
@@ -988,7 +978,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
         .on(
             blog_interface::ev::click,
             move |_| if form.get_untracked() == original.get_untracked()
-                    || web_sys::window().expect("invariant: the application is mounted in a browser window")
+                    || window()
                         .confirm_with_message(
                             &t(
                                 "放弃当前未保存的进展修改？",
@@ -997,7 +987,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                         )
                         .unwrap_or(false)
                 {
-                    reset.run(())
+                    reset.run(());
                 },
         ),
 )),)).class("blog-actions blog-flow"),))
@@ -1020,7 +1010,7 @@ fn NewsEditor(id: i64) -> impl IntoView {
                         validation.set(String::new());
                         let input = json!({"content":content,"create_time":crate::dates::iso(&text(&f,"create_time"))});
                         let target = editing.get_untracked();
-                        let path = format!("/api/v1/content/articles/{id}/news{}",target.map(|id|format!("/{id}")).unwrap_or_default());
+                        let path = format!("/api/v1/content/articles/{id}/news{}",target.map_or_default(|id|format!("/{id}")));
                         let (input, opts) = if target.is_none() {
                             prepare_creation(receipt, input)
                         } else {
@@ -1153,7 +1143,7 @@ pub fn Notes() -> impl IntoView {
                                 .class("moderation-photo")
                                 .r#type("button")
                                 .on(blog_interface::ev::click, move |_| {
-                                    lightbox.set(Some(click.clone()))
+                                    lightbox.set(Some(click.clone()));
                                 }),
                         )
                     },
@@ -1175,7 +1165,7 @@ pub fn Notes() -> impl IntoView {
                                 })
                                 .on(blog_interface::ev::click, move |_| {
                                     if form.get_untracked() != original.get_untracked()
-                                        && !web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                        && !window()
                                             .confirm_with_message(&t(
                                                 "放弃当前未保存的随笔修改？",
                                                 "Discard the current unsaved note changes?",
@@ -1237,7 +1227,7 @@ pub fn Notes() -> impl IntoView {
                                     save.busy.get() || upload.busy.get() || receipt.get().is_some()
                                 })
                                 .on(blog_interface::ev::click, move |_| {
-                                    if web_sys::window().expect("invariant: the application is mounted in a browser window")
+                                    if window()
                                         .confirm_with_message(&t(
                                             "确定删除这条随笔？",
                                             "Delete this note?",
@@ -1250,7 +1240,7 @@ pub fn Notes() -> impl IntoView {
                                             None,
                                             move |_| {
                                                 if editing.get_untracked() == Some(id) {
-                                                    reset.run(())
+                                                    reset.run(());
                                                 }
                                                 data.reload();
                                             },
@@ -1270,12 +1260,8 @@ pub fn Notes() -> impl IntoView {
             (
                     blog_interface::html::p().class("blog-row")
                     .child( t("维护随笔及恋爱日常中的内容。",
-                    "Manage notes shown in the journal and everyday moments.")), Feedback(component_props_builder(& Feedback)
-                    .error( data.error)
-                    .fallback( t("随笔加载失败",
-                    "Unable to load notes")).retry( Some(Callback::new(move | () | data.reload()))).build()), Feedback(component_props_builder(& Feedback)
-                    .error( save.error).build()), Feedback(component_props_builder(& Feedback)
-                    .error( upload.error).build()),
+                    "Manage notes shown in the journal and everyday moments.")), data.admin_feedback(Some(t("随笔加载失败",
+                    "Unable to load notes"))), save.feedback(), upload.feedback(),
                     pending_creation(receipt),
                     move | | (! validation.get().is_empty()).then(| | View::new(
     blog_interface::html::p().class("blog-row blog-danger")
@@ -1325,7 +1311,7 @@ pub fn Notes() -> impl IntoView {
                     | | upload.busy.get() || save.busy.get())
                     .on(blog_interface::ev::click, move | _ | { form
                     .update(| f | f["image_path"] = Value::Null); filename
-                    .set(String::new()) })
+                    .set(String::new()); })
                 ,),
         ),
 ) }),
@@ -1358,7 +1344,7 @@ pub fn Notes() -> impl IntoView {
         .on(
             blog_interface::ev::click,
             move |_| if form.get_untracked() == original.get_untracked()
-                    || web_sys::window().expect("invariant: the application is mounted in a browser window")
+                    || window()
                         .confirm_with_message(
                             &t(
                                 "放弃当前未保存的随笔修改？",
@@ -1367,7 +1353,7 @@ pub fn Notes() -> impl IntoView {
                         )
                         .unwrap_or(false)
                 {
-                    reset.run(())
+                    reset.run(());
                 },
         ),
 )),)).class("blog-actions blog-flow"),))
@@ -1388,7 +1374,7 @@ pub fn Notes() -> impl IntoView {
                         }
                         validation.set(String::new());
                         let target = editing.get_untracked();
-                        let path = target.map(|id|format!("/api/v1/content/notes/{id}")).unwrap_or("/api/v1/content/notes".into());
+                        let path = target.map_or("/api/v1/content/notes".into(), |id|format!("/api/v1/content/notes/{id}"));
                         let (input, opts) = if target.is_none() {
                             prepare_creation(receipt, f)
                         } else {

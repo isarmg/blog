@@ -46,7 +46,6 @@ test('server and browser groups are independent and preserve every gate', () => 
   assert.match(browser, /group: \[admin, public\]/);
   for (const command of [
     'cargo fmt -p blog -p blog-application -p blog-setup -p blog-assets -p blog-browser -p blog-browser-domain-tests -p blog-interface -p blog-dom -p blog-component-macros -- --check',
-    'cargo clippy --locked --offline --all-targets --all-features -- -D clippy::pedantic -D warnings',
     'cargo clippy --locked --offline -p blog-assets -p blog-browser-domain-tests --all-targets -- -D warnings',
     'cargo clippy --locked --offline -p blog-browser --target wasm32-unknown-unknown -- -D warnings',
     'cargo test --locked --offline', 'cargo build --locked --offline', 'bash test/operations/smoke.sh',
@@ -57,6 +56,13 @@ test('server and browser groups are independent and preserve every gate', () => 
     'cargo test --locked --offline -p blog-assets -p blog-browser-domain-tests',
     'bash test/run-maintained.sh',
   ]) assert.ok(server.includes(command), `missing server check: ${command}`);
+  for (const command of [
+    'cargo clippy --locked --offline --all-targets --all-features -- -D clippy::pedantic -D warnings',
+    'cargo clippy --locked --offline -p blog-component-macros --all-targets --all-features -- -D clippy::pedantic -D warnings',
+  ]) {
+    assert.ok(server.includes(command), `missing server check: ${command}`);
+    assert.ok(releaseWorkflow.includes(command), `missing release check: ${command}`);
+  }
   const expected = [
     'language', 'admin-layout', 'corner-candidates', 'configured-media', 'article-video', 'editor-preview', 'account-settings', 'admin-cleanup',
     'management', 'contract-fixes', 'admin-recovery', 'blog-interface-runtime', 'async-state', 'transport-lifecycle', 'startup-failure', 'rust-native-domain', 'public-footer', 'public-layout', 'style-contract', 'public-recovery', 'anonymous-comments', 'pending-comment-binding',

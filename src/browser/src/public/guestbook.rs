@@ -22,7 +22,7 @@ pub(super) fn Message() -> impl IntoView {
             posts.update(|current| {
                 for item in v.as_array().cloned().unwrap_or_default() {
                     if !current.iter().any(|v| v["id"] == item["id"]) {
-                        current.push(item)
+                        current.push(item);
                     }
                 }
             });
@@ -89,16 +89,12 @@ pub(super) fn Message() -> impl IntoView {
                                         action.run("/api/v1/tree-hole/guest".into(), "POST",
                                         Some(json!({ "message" : content.trim() })), move | v | {
                                         posts.update(| items | { items.retain(| i | i["id"] !=
-                                        v["id"]); items.insert(0, v) }); if draft.get_untracked() ==
+                                        v["id"]); items.insert(0, v); }); if draft.get_untracked() ==
                                         content { draft.set(String::new()) } }); }),
                                         html::p()
                                         .child( t("弹幕将匿名发布，无需登录。",
                                         "Messages are posted anonymously. No account is needed.")).class("message-anonymous"),
-                                        Feedback(component_props_builder(& Feedback)
-                                        .error( data.error)
-                                        .public( true)
-                                        .retry( Some(Callback::new(move |
-                                        () | data.reload()))).build()),
+                                        data.public_feedback(None),
                                         Feedback(component_props_builder(& Feedback)
                                         .error( action.error)
                                         .public( true).build()),)).class("message-form-wrap"),))

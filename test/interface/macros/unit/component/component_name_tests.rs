@@ -14,7 +14,7 @@ fn raw_component_names_produce_valid_public_and_internal_identifiers() {
             unmodified_fn_name_from_fn_name(&model.body.sig.ident).to_string(),
             internal
         );
-        let expanded = model.expand(&mut Errors::default()).unwrap();
+        let expanded = model.expand(false, &mut Errors::default()).unwrap();
         syn::parse2::<syn::File>(expanded).expect("generated declarations parse as Rust");
     }
 }
@@ -25,7 +25,7 @@ fn component_names_that_cannot_form_identifiers_produce_diagnostics() {
         let result = syn::parse_str::<Model>(&format!("fn {name}() {{}}"));
         let error = match result {
             Err(error) => error,
-            Ok(model) => model.expand(&mut Errors::default()).unwrap_err(),
+            Ok(model) => model.expand(false, &mut Errors::default()).unwrap_err(),
         };
         assert!(error.to_string().contains("component name"), "{error}");
     }

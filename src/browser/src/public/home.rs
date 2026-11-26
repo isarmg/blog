@@ -2,7 +2,7 @@
 use super::appearance::{Avatar, site_name};
 use super::articles::Card;
 use super::shell::{Chrome, notices, site_data};
-use crate::common::{Feedback, href, list, load, load_typed, query, safe_url, t, text};
+use crate::common::{href, list, load, load_typed, query, safe_url, t, text};
 use crate::models::{
     ArticleSummary, Category, HomeSection as HomeSectionModel, HomeSource, Label, Page, SiteStats,
 };
@@ -34,8 +34,7 @@ pub(super) fn Home() -> impl IntoView {
     Effect::new(move |_| {
         let items = site
             .current()
-            .map(|v| notices(&v.notices.unwrap_or_default()))
-            .unwrap_or_default();
+            .map_or_default(|v| notices(&v.notices.unwrap_or_default()));
         let get = |prefix: &str| {
             items
                 .iter()
@@ -48,11 +47,7 @@ pub(super) fn Home() -> impl IntoView {
             return;
         }
         let key = format!("blog-push:{link}");
-        let store = web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
-            .local_storage()
-            .ok()
-            .flatten();
+        let store = window().local_storage().ok().flatten();
         if store
             .as_ref()
             .is_some_and(|s| s.get_item(&key).ok().flatten().as_deref() == Some("seen"))
@@ -80,22 +75,14 @@ pub(super) fn Home() -> impl IntoView {
             .home(true)
             .children(ToChildren::to_children(move || {
                 (
-                    Feedback(
-                        component_props_builder(&Feedback)
-                            .error(site.error)
-                            .public(true)
-                            .fallback(t("网站信息加载失败", "Unable to load site information"))
-                            .retry(Some(Callback::new(move |()| site.reload())))
-                            .build(),
-                    ),
-                    Feedback(
-                        component_props_builder(&Feedback)
-                            .error(sections.error)
-                            .public(true)
-                            .fallback(t("首页栏目加载失败", "Unable to load home sections"))
-                            .retry(Some(Callback::new(move |()| sections.reload())))
-                            .build(),
-                    ),
+                    site.public_feedback(Some(t(
+                        "网站信息加载失败",
+                        "Unable to load site information",
+                    ))),
+                    sections.public_feedback(Some(t(
+                        "首页栏目加载失败",
+                        "Unable to load home sections",
+                    ))),
                     html::div()
                         .child((
                             html::aside()
@@ -131,8 +118,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         html::strong().child(move || {
                                                             stats
                                                                 .current()
-                                                                .map(|v| v.article_count)
-                                                                .unwrap_or(0)
+                                                                .map_or(0, |v| v.article_count)
                                                         }),
                                                     )),
                                                     html::span().child((
@@ -149,8 +135,7 @@ pub(super) fn Home() -> impl IntoView {
                                                         html::strong().child(move || {
                                                             stats
                                                                 .current()
-                                                                .map(|v| v.view_count)
-                                                                .unwrap_or(0)
+                                                                .map_or(0, |v| v.view_count)
                                                         }),
                                                     )),
                                                 ))
@@ -476,18 +461,11 @@ fn HomeSection(section: HomeSectionModel) -> impl IntoView {
                             .href(href(&more)),
                     ))
                     .class("section-heading"),
-                Feedback(
-                    component_props_builder(&Feedback)
-                        .error(data.error)
-                        .public(true)
-                        .retry(Some(Callback::new(move |()| data.reload())))
-                        .build(),
-                ),
+                data.public_feedback(None),
                 html::div()
                     .child(move || {
                         data.current()
-                            .map(|v| v.items)
-                            .unwrap_or_default()
+                            .map_or_default(|v| v.items)
                             .into_iter()
                             .map(|item| {
                                 View::new(Card(component_props_builder(&Card).item(item).build()))

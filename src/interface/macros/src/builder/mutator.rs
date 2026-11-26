@@ -60,15 +60,11 @@ impl Parse for Mutator {
 
         let mut attribute = MutatorAttribute::default();
 
-        let mut i = 0;
-        while i < fun.attrs.len() {
-            let attr = &fun.attrs[i];
-            if attr.path().is_ident("mutator") {
-                attribute.apply_attr(attr)?;
-                fun.attrs.remove(i);
-            } else {
-                i += 1;
-            }
+        for attr in fun
+            .attrs
+            .extract_if(.., |attr| attr.path().is_ident("mutator"))
+        {
+            attribute.apply_attr(&attr)?;
         }
 
         // Ensure `&mut self` receiver
@@ -80,11 +76,10 @@ impl Parse for Mutator {
                 fun.sig
                     .inputs
                     .first()
-                    .map(Spanned::span)
-                    .unwrap_or(fun.sig.paren_token.span.span()),
+                    .map_or(fun.sig.paren_token.span.span(), Spanned::span),
                 "mutator needs to take a reference to `self`",
             ));
-        };
+        }
 
         Ok(Self {
             fun,
@@ -94,10 +89,10 @@ impl Parse for Mutator {
 }
 
 impl Mutator {
-    /// Signature for Builder::<mutator> function
+    /// Signature for a generated builder mutator.
     pub fn outer_sig(&self, output: Type) -> Signature {
         let mut sig = self.fun.sig.clone();
-        sig.output = ReturnType::Type(Default::default(), output.into());
+        sig.output = ReturnType::Type(syn::token::RArrow::default(), output.into());
 
         sig.inputs = sig
             .inputs

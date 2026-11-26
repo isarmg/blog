@@ -41,8 +41,7 @@ pub(super) fn Chrome(
     let random_cover = Memo::new(move |_| {
         let covers = site
             .current()
-            .map(|v| notices(&v.random_cover.unwrap_or_default()))
-            .unwrap_or_default();
+            .map_or_default(|v| notices(&v.random_cover.unwrap_or_default()));
         covers
             .get((js_sys::Math::random() * covers.len() as f64) as usize)
             .cloned()
@@ -50,8 +49,7 @@ pub(super) fn Chrome(
     });
     let menu = RwSignal::new(false);
     let dark = RwSignal::new(
-        web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
+        window()
             .local_storage()
             .ok()
             .flatten()
@@ -65,11 +63,10 @@ pub(super) fn Chrome(
     let direction = StoredValue::new(0i32);
     let distance = StoredValue::new(0.);
     let scroll = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "scroll",
         move |_| {
-            let win = web_sys::window()
-                .expect("invariant: the application is mounted in a browser window");
+            let win = window();
             let doc = win
                 .document()
                 .expect("invariant: the application window owns its document");
@@ -107,20 +104,20 @@ pub(super) fn Chrome(
         },
     ));
     let keys = SendWrapper::new(blog_interface::events::EventListener::new(
-        &web_sys::window().expect("invariant: the application is mounted in a browser window"),
+        &window(),
         "keydown",
         move |ev| {
             if ev
                 .dyn_ref::<web_sys::KeyboardEvent>()
                 .is_some_and(|e| e.key() == "Escape")
             {
-                menu.set(false)
+                menu.set(false);
             }
         },
     ));
     on_cleanup(move || {
         drop(scroll);
-        drop(keys)
+        drop(keys);
     });
     let nav = [
         ("🏡", t("首页", "Home"), "/"),
@@ -194,7 +191,7 @@ pub(super) fn Chrome(
                     .aria_pressed(move
                     | | dark.get().to_string())
                     .on(ev::click, move | _ | { dark
-                    .update(| v | * v = ! * v); if let Some(s) = web_sys::window().expect("invariant: the application is mounted in a browser window").local_storage().ok().flatten() && let Err(error) = s
+                    .update(| v | * v = ! * v); if let Some(s) = window().local_storage().ok().flatten() && let Err(error) = s
                     .set_item("blog-theme", if dark.get_untracked() { "dark" } else {
                     "light" }) { web_sys::console::debug_2(&"Theme preference remains limited to this document".into(), &error); } }),)).class("public-header-controls"),
                     html::button()
@@ -217,8 +214,8 @@ pub(super) fn Chrome(
             (
                     html::div()
                     .child((html::h1()
-                    .child( move | | if home { let value = site.current().map(| v | v
-                    .web_title.unwrap_or_default()).unwrap_or_default(); if
+                    .child( move | | if home { let value = site.current().map_or_default(| v | v
+                    .web_title.unwrap_or_default()); if
                     value.is_empty() { t("相信记录的力量",
                     "Believe in the power of stories") } else { value } } else {
                     title.get() }),
@@ -326,7 +323,7 @@ pub(super) fn Chrome(
                             let opts = web_sys::ScrollToOptions::new();
                             opts.set_top(0.);
                             opts.set_behavior(web_sys::ScrollBehavior::Smooth);
-                            web_sys::window().expect("invariant: the application is mounted in a browser window")
+                            window()
                                 .scroll_to_with_scroll_to_options(&opts);
                         },
                     ),

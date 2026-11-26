@@ -23,6 +23,26 @@ fn invalid_utf8_arguments_return_a_cli_error() {
     assert!(!diagnostic.contains("panicked"));
 }
 
+#[test]
+fn asset_cli_distinguishes_flags_single_values_and_repeatable_proxies() {
+    for (options, expected) in [
+        ("--offline --offline --proxy a --proxy b", None),
+        ("--dist", Some("--dist requires a value")),
+        ("--dist a --dist b", Some("Duplicate option --dist")),
+        ("--no-install", Some("Unknown option --no-install")),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_blog-assets"))
+            .arg("help")
+            .args(options.split_whitespace())
+            .output()
+            .unwrap();
+        assert_eq!(output.status.success(), expected.is_none());
+        if let Some(message) = expected {
+            assert!(String::from_utf8(output.stderr).unwrap().contains(message));
+        }
+    }
+}
+
 struct FixtureProcess {
     pid: Pid,
     started: String,

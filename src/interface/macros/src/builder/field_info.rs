@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use syn_legacy as syn;
 
 use proc_macro2::{Ident, Span, TokenStream};
@@ -11,8 +10,7 @@ use syn::{parse::Error, spanned::Spanned};
 use crate::builder::mutator::Mutator;
 use crate::builder::struct_info::StructInfo;
 use crate::builder::util::{
-    ApplyMeta, AttrArg, expr_to_lit_string, ident_to_type, path_to_single_string,
-    strip_raw_ident_prefix,
+    ApplyMeta, AttrArg, KeyValue, expr_to_lit_string, ident_to_type, strip_raw_ident_prefix,
 };
 
 #[derive(Debug)]
@@ -56,19 +54,12 @@ impl<'a> FieldInfo<'a> {
     }
 
     pub fn tuplized_type_ty_param(&self) -> syn::Type {
-        let mut types = Punctuated::default();
-        types.push(self.ty.clone());
-        types.push_punct(Default::default());
-        syn::TypeTuple {
-            paren_token: Default::default(),
-            elems: types,
-        }
-        .into()
+        super::util::type_tuple(std::iter::once(self.ty.clone())).into()
     }
 
     pub fn type_from_inside_option(&self) -> Option<&syn::Type> {
         let typ = if let syn::Type::Group(type_group) = self.ty {
-            type_group.elem.deref()
+            type_group.elem.as_ref()
         } else {
             self.ty
         };
@@ -96,25 +87,28 @@ impl<'a> FieldInfo<'a> {
     }
 
     pub fn setter_method_name(&self) -> Result<Ident, Error> {
-        let name = strip_raw_ident_prefix(self.name.to_string());
         let setter = &self.builder_attr.setter;
-        if setter.prefix.is_none() && setter.suffix.is_none() {
-            return Ok(self.name.clone());
-        }
-        let method = format!(
-            "{}{}{}",
-            setter.prefix.as_deref().unwrap_or_default(),
-            name,
-            setter.suffix.as_deref().unwrap_or_default(),
-        );
-        let mut identifier = syn::parse_str::<Ident>(&method).map_err(|_| {
-            Error::new(
-                self.name.span(),
-                "setter name must be a valid Rust identifier",
-            )
-        })?;
-        identifier.set_span(self.name.span());
-        Ok(identifier)
+        affixed_name(
+            self.name,
+            setter.prefix.as_deref(),
+            setter.suffix.as_deref(),
+            "setter",
+        )
+    }
+
+    pub fn setter_fallback_names(&self) -> syn::Result<[Option<Ident>; 2]> {
+        let setter = &self.builder_attr.setter;
+        let option = setter
+            .strip_option
+            .as_ref()
+            .map(|strip| strip.fallback_name(self.name))
+            .transpose()?
+            .flatten();
+        let boolean = setter
+            .strip_bool
+            .as_ref()
+            .and_then(|strip| strip.fallback.clone());
+        Ok([option, boolean])
     }
 
     fn post_process(mut self) -> Result<Self, Error> {
@@ -128,7 +122,7 @@ impl<'a> FieldInfo<'a> {
                 return Err(error);
             }
             self.builder_attr.default = Some(syn::Expr::Lit(syn::ExprLit {
-                attrs: Default::default(),
+                attrs: Vec::new(),
                 lit: syn::Lit::Bool(syn::LitBool {
                     value: false,
                     span: strip_bool.span,
@@ -182,13 +176,13 @@ impl<'a> FieldInfo<'a> {
         let where_clause_storage;
         let where_clause_for_default =
             if let Some(default_where) = self.builder_attr.default_where.as_ref() {
-                let mut predicates: Punctuated<_, _> = Default::default();
+                let mut predicates = Punctuated::new();
                 if let Some(where_clause) = where_clause {
                     predicates.extend(where_clause.predicates.iter().cloned());
                 }
                 predicates.extend(default_where.iter().cloned());
                 where_clause_storage = syn::WhereClause {
-                    where_token: Default::default(),
+                    where_token: syn::token::Where::default(),
                     predicates,
                 };
                 Some(&where_clause_storage)
@@ -220,6 +214,31 @@ impl<'a> FieldInfo<'a> {
     }
 }
 
+fn affixed_name(
+    name: &Ident,
+    prefix: Option<&str>,
+    suffix: Option<&str>,
+    kind: &str,
+) -> syn::Result<Ident> {
+    if prefix.is_none() && suffix.is_none() {
+        return Ok(name.clone());
+    }
+    let method = format!(
+        "{}{}{}",
+        prefix.unwrap_or_default(),
+        strip_raw_ident_prefix(name.to_string()),
+        suffix.unwrap_or_default()
+    );
+    let mut ident = syn::parse_str::<Ident>(&method).map_err(|_| {
+        Error::new(
+            name.span(),
+            format!("{kind} name must be a valid Rust identifier"),
+        )
+    })?;
+    ident.set_span(name.span());
+    Ok(ident)
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct FieldBuilderAttr<'a> {
     pub default: Option<syn::Expr>,
@@ -246,48 +265,31 @@ pub struct SetterSettings {
 }
 
 impl<'a> FieldBuilderAttr<'a> {
+    pub fn setter_doc(&self) -> TokenStream {
+        if let Some(doc) = &self.setter.doc {
+            quote!(#[doc = #doc])
+        } else {
+            let comments = &self.doc_comments;
+            quote!(#( #[doc = #comments] )*)
+        }
+    }
+
     pub fn with(mut self, name: &Ident, attrs: &'a [syn::Attribute]) -> Result<Self, Error> {
         for attr in attrs {
-            let list = match &attr.meta {
-                syn::Meta::List(list) => {
-                    let Some(path) = path_to_single_string(&list.path) else {
-                        continue;
-                    };
-
-                    if path == "deprecated" {
-                        self.deprecated = Some(attr);
-                        continue;
-                    }
-
-                    if path != "builder" {
-                        continue;
-                    }
-
-                    list
-                }
-                syn::Meta::NameValue(syn::MetaNameValue { path, value, .. }) => {
-                    match path_to_single_string(path).as_deref() {
-                        Some("deprecated") => self.deprecated = Some(attr),
-                        Some("doc") => self.doc_comments.push(value),
-                        _ => continue,
-                    }
-
-                    continue;
-                }
-                syn::Meta::Path(path) => {
-                    match path_to_single_string(path).as_deref() {
-                        Some("deprecated") => self.deprecated = Some(attr),
-                        _ => continue,
-                    }
-
-                    continue;
-                }
-            };
-
-            self.apply_subsections(list)?;
+            if attr.path().is_ident("deprecated") {
+                self.deprecated = Some(attr);
+            } else if let syn::Meta::List(list) = &attr.meta
+                && list.path.is_ident("builder")
+            {
+                self.apply_subsections(list)?;
+            } else if let syn::Meta::NameValue(value) = &attr.meta
+                && value.path.is_ident("doc")
+            {
+                self.doc_comments.push(&value.value);
+            }
         }
 
-        for mutator in self.mutators.iter_mut() {
+        for mutator in &mut self.mutators {
             mutator.required_fields.insert(name.clone());
         }
 
@@ -337,7 +339,7 @@ impl<'a> FieldBuilderAttr<'a> {
                 ),
             );
             for (caption, span) in conflicting_transformations {
-                error.combine(Error::new(*span, format_args!("{} set here", caption)));
+                error.combine(Error::new(*span, format_args!("{caption} set here")));
             }
             return Err(error);
         }
@@ -366,8 +368,7 @@ impl ApplyMeta for FieldBuilderAttr<'_> {
                     self.default = None;
                     Ok(())
                 }
-                AttrArg::Sub(_) => Err(expr.incorrect_type()),
-                AttrArg::Fn(_) => Err(expr.incorrect_type()),
+                AttrArg::Sub(_) | AttrArg::Fn(_) => Err(expr.incorrect_type()),
             },
             "default_where" => {
                 let sub_attr = expr.sub_attr()?;
@@ -386,7 +387,7 @@ impl ApplyMeta for FieldBuilderAttr<'_> {
                 let tokenized_code = TokenStream::from_str(&code.value())?;
                 self.default = Some(
                     syn::parse2(tokenized_code)
-                        .map_err(|e| Error::new_spanned(code, format!("{}", e)))?,
+                        .map_err(|e| Error::new_spanned(code, format!("{e}")))?,
                 );
 
                 Ok(())
@@ -450,7 +451,7 @@ impl ApplyMeta for SetterSettings {
             "doc" => {
                 self.doc = expr
                     .key_value_or_not()?
-                    .map(|kv| kv.parse_value())
+                    .map(KeyValue::parse_value)
                     .transpose()?;
                 Ok(())
             }
@@ -523,6 +524,21 @@ impl Strip {
             span,
         }
     }
+
+    pub fn fallback_name(&self, field: &Ident) -> syn::Result<Option<Ident>> {
+        if self.fallback.is_some()
+            || self.fallback_prefix.is_none() && self.fallback_suffix.is_none()
+        {
+            return Ok(self.fallback.clone());
+        }
+        affixed_name(
+            field,
+            self.fallback_prefix.as_deref(),
+            self.fallback_suffix.as_deref(),
+            "fallback setter",
+        )
+        .map(Some)
+    }
 }
 
 impl ApplyMeta for Strip {
@@ -536,7 +552,7 @@ impl ApplyMeta for Strip {
                     ));
                 }
 
-                let ident: syn::Ident = expr.key_value().map(|kv| kv.parse_value())??;
+                let ident = expr.key_value()?.parse_value()?;
                 self.fallback = Some(ident);
                 Ok(())
             }

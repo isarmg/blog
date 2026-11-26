@@ -310,3 +310,34 @@ mod raw_component_names {
         let _ = r#AsyncView();
     }
 }
+
+#[test]
+fn builder_fallbacks_preserve_generic_fields_and_dependent_defaults() {
+    #[derive(blog_interface::typed_builder_macro::TypedBuilder)]
+    #[builder(crate_module_path = blog_interface::typed_builder)]
+    struct Entry<'a, T, const N: usize> {
+        source: &'a [T; N],
+        #[builder(default = source.len())]
+        count: usize,
+        #[builder(setter(strip_option(fallback_prefix = "maybe_")))]
+        level: Option<usize>,
+        #[builder(setter(strip_bool(fallback = set_visible)))]
+        visible: bool,
+    }
+    let values = [3_u8, 4];
+    let entry = Entry::builder().source(&values).level(2).visible().build();
+    assert_eq!(entry.source, &values);
+    assert_eq!(entry.count, values.len());
+    assert_eq!(entry.level, Some(2));
+    assert!(entry.visible);
+
+    let entry = Entry::builder()
+        .set_visible(false)
+        .maybe_level(None)
+        .count(9)
+        .source(&values)
+        .build();
+    assert!(!entry.visible);
+    assert_eq!(entry.level, None);
+    assert_eq!(entry.count, 9);
+}

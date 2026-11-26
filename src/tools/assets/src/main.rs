@@ -50,51 +50,24 @@ fn run() -> Result<()> {
     let command = args.next().transpose()?.unwrap_or_else(|| "help".into());
     let mut values = BTreeMap::<String, Vec<String>>::new();
     while let Some(key) = args.next().transpose()? {
-        if matches!(
-            key.as_str(),
-            "--offline"
-                | "--debug"
-                | "--no-watch"
-                | "--skip-build"
-                | "--web-only"
-                | "--rust-only"
-                | "--no-install"
-        ) {
-            values.entry(key).or_default();
-        } else if key.starts_with("--") {
-            let value = args
-                .next()
-                .transpose()?
-                .with_context(|| format!("{key} requires a value"))?;
-            values.entry(key).or_default().push(value);
-        } else {
-            bail!("Unexpected argument {key:?}");
-        }
-    }
-    let allowed = [
-        "--product-root",
-        "--offline",
-        "--debug",
-        "--dist",
-        "--bind",
-        "--proxy",
-        "--no-watch",
-        "--skip-build",
-        "--config",
-        "--mode",
-        "--source-revision",
-        "--web-only",
-        "--rust-only",
-        "--no-install",
-        "--binary",
-        "--receipt",
-    ];
-    for key in values.keys() {
-        if !allowed.contains(&key.as_str()) {
-            bail!("Unknown option {key}");
-        }
-        if key != "--proxy" && values[key].len() > 1 {
-            bail!("Duplicate option {key}");
+        match key.as_str() {
+            "--offline" | "--debug" | "--no-watch" | "--skip-build" | "--web-only"
+            | "--rust-only" => {
+                values.entry(key).or_default();
+            }
+            "--product-root" | "--dist" | "--bind" | "--proxy" | "--config" | "--mode"
+            | "--source-revision" | "--binary" | "--receipt" => {
+                let value = args
+                    .next()
+                    .transpose()?
+                    .with_context(|| format!("{key} requires a value"))?;
+                if key != "--proxy" && values.contains_key(&key) {
+                    bail!("Duplicate option {key}");
+                }
+                values.entry(key).or_default().push(value);
+            }
+            _ if key.starts_with("--") => bail!("Unknown option {key}"),
+            _ => bail!("Unexpected argument {key:?}"),
         }
     }
     let value = |name: &str| values.get(name).and_then(|v| v.first()).cloned();

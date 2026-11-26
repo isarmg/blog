@@ -18,7 +18,7 @@ use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore},
     time::sleep,
 };
-use tokio_util::sync::CancellationToken;
+use tokio_util::sync::{CancellationToken, WaitForCancellationFutureOwned};
 
 const ACCEPT_BACKOFF_INITIAL: Duration = Duration::from_millis(50);
 const ACCEPT_BACKOFF_MAX: Duration = Duration::from_secs(1);
@@ -29,42 +29,29 @@ pub(crate) struct WriteIdleTimeout<T> {
     timer: Option<Pin<Box<tokio::time::Sleep>>>,
     // The permit must follow the socket even when HTTP upgrades transfer it
     // out of the connection future (e.g. a managed WebSocket).
-    permit: Option<OwnedSemaphorePermit>,
-    forced: Option<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    _permit: OwnedSemaphorePermit,
+    forced: Pin<Box<WaitForCancellationFutureOwned>>,
 }
 
 impl<T> WriteIdleTimeout<T> {
-    pub(crate) fn new(inner: T, timeout: Duration) -> Self {
+    pub(crate) fn new(
+        inner: T,
+        timeout: Duration,
+        permit: OwnedSemaphorePermit,
+        force: CancellationToken,
+    ) -> Self {
         debug_assert!(!timeout.is_zero());
         Self {
             inner,
             timeout,
             timer: None,
-            permit: None,
-            forced: None,
+            _permit: permit,
+            forced: Box::pin(force.cancelled_owned()),
         }
     }
 
-    fn clear_timer(&mut self) {
-        self.timer = None;
-    }
-
-    pub(crate) fn with_permit(
-        mut self,
-        permit: OwnedSemaphorePermit,
-        force: CancellationToken,
-    ) -> Self {
-        self.permit = Some(permit);
-        self.forced = Some(Box::pin(force.cancelled_owned()));
-        self
-    }
-
     fn check_force(&mut self, context: &mut TaskContext<'_>) -> io::Result<()> {
-        if self
-            .forced
-            .as_mut()
-            .is_some_and(|forced| forced.as_mut().poll(context).is_ready())
-        {
+        if self.forced.as_mut().poll(context).is_ready() {
             return Err(io::Error::new(
                 io::ErrorKind::ConnectionAborted,
                 "HTTP transport forced shutdown",
@@ -73,18 +60,30 @@ impl<T> WriteIdleTimeout<T> {
         Ok(())
     }
 
-    fn write_is_timed_out(&mut self, context: &mut TaskContext<'_>) -> bool {
+    fn poll_output<R>(
+        &mut self,
+        context: &mut TaskContext<'_>,
+        operation: impl FnOnce(Pin<&mut T>, &mut TaskContext<'_>) -> Poll<io::Result<R>>,
+    ) -> Poll<io::Result<R>>
+    where
+        T: Unpin,
+    {
+        self.check_force(context)?;
+        if let Poll::Ready(result) = operation(Pin::new(&mut self.inner), context) {
+            self.timer = None;
+            return Poll::Ready(result);
+        }
         let timer = self
             .timer
-            .get_or_insert_with(|| Box::pin(tokio::time::sleep(self.timeout)));
-        timer.as_mut().poll(context).is_ready()
-    }
-
-    fn timeout_error() -> io::Error {
-        io::Error::new(
-            io::ErrorKind::TimedOut,
-            "HTTP response write made no progress before the idle deadline",
-        )
+            .get_or_insert_with(|| Box::pin(sleep(self.timeout)));
+        if timer.as_mut().poll(context).is_ready() {
+            Poll::Ready(Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "HTTP response write made no progress before the idle deadline",
+            )))
+        } else {
+            Poll::Pending
+        }
     }
 }
 
@@ -105,18 +104,7 @@ impl<T: AsyncWrite + Unpin> AsyncWrite for WriteIdleTimeout<T> {
         context: &mut TaskContext<'_>,
         buffer: &[u8],
     ) -> Poll<io::Result<usize>> {
-        let this = self.as_mut().get_mut();
-        this.check_force(context)?;
-        match Pin::new(&mut this.inner).poll_write(context, buffer) {
-            Poll::Ready(result) => {
-                this.clear_timer();
-                Poll::Ready(result)
-            }
-            Poll::Pending if this.write_is_timed_out(context) => {
-                Poll::Ready(Err(Self::timeout_error()))
-            }
-            Poll::Pending => Poll::Pending,
-        }
+        self.poll_output(context, |stream, cx| stream.poll_write(cx, buffer))
     }
 
     fn poll_write_vectored(
@@ -124,18 +112,9 @@ impl<T: AsyncWrite + Unpin> AsyncWrite for WriteIdleTimeout<T> {
         context: &mut TaskContext<'_>,
         buffers: &[IoSlice<'_>],
     ) -> Poll<io::Result<usize>> {
-        let this = self.as_mut().get_mut();
-        this.check_force(context)?;
-        match Pin::new(&mut this.inner).poll_write_vectored(context, buffers) {
-            Poll::Ready(result) => {
-                this.clear_timer();
-                Poll::Ready(result)
-            }
-            Poll::Pending if this.write_is_timed_out(context) => {
-                Poll::Ready(Err(Self::timeout_error()))
-            }
-            Poll::Pending => Poll::Pending,
-        }
+        self.poll_output(context, |stream, cx| {
+            stream.poll_write_vectored(cx, buffers)
+        })
     }
 
     fn is_write_vectored(&self) -> bool {
@@ -143,36 +122,14 @@ impl<T: AsyncWrite + Unpin> AsyncWrite for WriteIdleTimeout<T> {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, context: &mut TaskContext<'_>) -> Poll<io::Result<()>> {
-        let this = self.as_mut().get_mut();
-        this.check_force(context)?;
-        match Pin::new(&mut this.inner).poll_flush(context) {
-            Poll::Ready(result) => {
-                this.clear_timer();
-                Poll::Ready(result)
-            }
-            Poll::Pending if this.write_is_timed_out(context) => {
-                Poll::Ready(Err(Self::timeout_error()))
-            }
-            Poll::Pending => Poll::Pending,
-        }
+        self.poll_output(context, AsyncWrite::poll_flush)
     }
 
     fn poll_shutdown(
         mut self: Pin<&mut Self>,
         context: &mut TaskContext<'_>,
     ) -> Poll<io::Result<()>> {
-        let this = self.as_mut().get_mut();
-        this.check_force(context)?;
-        match Pin::new(&mut this.inner).poll_shutdown(context) {
-            Poll::Ready(result) => {
-                this.clear_timer();
-                Poll::Ready(result)
-            }
-            Poll::Pending if this.write_is_timed_out(context) => {
-                Poll::Ready(Err(Self::timeout_error()))
-            }
-            Poll::Pending => Poll::Pending,
-        }
+        self.poll_output(context, AsyncWrite::poll_shutdown)
     }
 }
 
@@ -239,29 +196,12 @@ pub(crate) async fn accept_with_backoff(
             continue;
         };
         drop(readiness);
-        match accepted {
-            Ok((stream, _)) => {
-                if let Err(err) = stream.set_nonblocking(true) {
-                    drop(connection_permit);
-                    if !wait_after_accept_error(service, listener_addr, shutdown, backoff, &err)
-                        .await
-                    {
-                        return None;
-                    }
-                    continue;
-                }
-                let stream = match TcpStream::from_std(stream) {
-                    Ok(stream) => stream,
-                    Err(err) => {
-                        drop(connection_permit);
-                        if !wait_after_accept_error(service, listener_addr, shutdown, backoff, &err)
-                            .await
-                        {
-                            return None;
-                        }
-                        continue;
-                    }
-                };
+        let stream = accepted.and_then(|(stream, _)| {
+            stream.set_nonblocking(true)?;
+            TcpStream::from_std(stream)
+        });
+        match stream {
+            Ok(stream) => {
                 backoff.reset();
                 if shutdown.is_cancelled() {
                     return None;

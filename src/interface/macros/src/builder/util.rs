@@ -11,80 +11,32 @@ use syn::{
     token,
 };
 
-pub fn path_to_single_string(path: &syn::Path) -> Option<String> {
-    if path.leading_colon.is_some() {
-        return None;
-    }
-    let mut it = path.segments.iter();
-    let segment = it.next()?;
-    if it.next().is_some() {
-        // Multipart path
-        return None;
-    }
-    if segment.arguments != syn::PathArguments::None {
-        return None;
-    }
-    Some(segment.ident.to_string())
-}
-
 pub fn ident_to_type(ident: syn::Ident) -> syn::Type {
-    let mut path = syn::Path {
-        leading_colon: None,
-        segments: Default::default(),
-    };
-    path.segments.push(syn::PathSegment {
-        ident,
-        arguments: Default::default(),
-    });
-    syn::Type::Path(syn::TypePath { qself: None, path })
-}
-
-pub fn empty_type() -> syn::Type {
-    syn::TypeTuple {
-        paren_token: Default::default(),
-        elems: Default::default(),
+    syn::TypePath {
+        qself: None,
+        path: ident.into(),
     }
     .into()
 }
 
+pub fn empty_type() -> syn::Type {
+    empty_type_tuple().into()
+}
+
 pub fn type_tuple(elems: impl Iterator<Item = syn::Type>) -> syn::TypeTuple {
-    let mut result = syn::TypeTuple {
-        paren_token: Default::default(),
-        elems: elems.collect(),
-    };
-    if !result.elems.empty_or_trailing() {
-        result.elems.push_punct(Default::default());
+    let mut tuple = empty_type_tuple();
+    for elem in elems {
+        tuple.elems.push_value(elem);
+        tuple.elems.push_punct(token::Comma::default());
     }
-    result
+    tuple
 }
 
 pub fn empty_type_tuple() -> syn::TypeTuple {
     syn::TypeTuple {
-        paren_token: Default::default(),
-        elems: Default::default(),
+        paren_token: token::Paren::default(),
+        elems: Punctuated::new(),
     }
-}
-
-pub fn modify_types_generics_hack<F>(
-    ty_generics: &syn::TypeGenerics,
-    mut mutator: F,
-) -> syn::AngleBracketedGenericArguments
-where
-    F: FnMut(&mut syn::punctuated::Punctuated<syn::GenericArgument, syn::token::Comma>),
-{
-    let tokens = ty_generics.to_token_stream();
-    let mut abga = if tokens.is_empty() {
-        syn::AngleBracketedGenericArguments {
-            colon2_token: None,
-            lt_token: Default::default(),
-            args: Default::default(),
-            gt_token: Default::default(),
-        }
-    } else {
-        syn::parse2(tokens).expect("invariant: parsed generic arguments remain valid Rust")
-    };
-    mutator(&mut abga.args);
-    abga
 }
 
 pub fn strip_raw_ident_prefix(mut name: String) -> String {
@@ -130,31 +82,23 @@ pub enum AttrArg {
 impl AttrArg {
     pub fn name(&self) -> &Ident {
         match self {
-            AttrArg::Flag(name) => name,
-            AttrArg::KeyValue(KeyValue { name, .. }) => name,
-            AttrArg::Sub(SubAttr { name, .. }) => name,
-            AttrArg::Not { name, .. } => name,
+            AttrArg::Flag(name)
+            | AttrArg::KeyValue(KeyValue { name, .. })
+            | AttrArg::Sub(SubAttr { name, .. })
+            | AttrArg::Not { name, .. } => name,
             AttrArg::Fn(func) => &func.sig.ident,
         }
     }
 
     pub fn incorrect_type(&self) -> syn::Error {
-        let message = match self {
-            AttrArg::Flag(name) => format!("{:?} is not supported as a flag", name.to_string()),
-            AttrArg::KeyValue(KeyValue { name, .. }) => {
-                format!("{:?} is not supported as key-value", name.to_string())
-            }
-            AttrArg::Sub(SubAttr { name, .. }) => format!(
-                "{:?} is not supported as nested attribute",
-                name.to_string()
-            ),
-            AttrArg::Not { name, .. } => format!("{:?} cannot be nullified", name.to_string()),
-            AttrArg::Fn(func) => format!(
-                "{:?} is not supported as a function",
-                func.sig.ident.to_string()
-            ),
+        let problem = match self {
+            Self::Flag(_) => "is not supported as a flag",
+            Self::KeyValue(_) => "is not supported as key-value",
+            Self::Sub(_) => "is not supported as nested attribute",
+            Self::Not { .. } => "cannot be nullified",
+            Self::Fn(_) => "is not supported as a function",
         };
-        syn::Error::new_spanned(self, message)
+        syn::Error::new_spanned(self, format!("{:?} {problem}", self.name().to_string()))
     }
 
     pub fn flag(self) -> syn::Result<Ident> {
@@ -305,9 +249,9 @@ impl ToTokens for SubAttr {
     }
 }
 
-fn get_cursor_after_parsing<P: Parse + Spanned>(
-    input: syn::parse::ParseBuffer,
-) -> syn::Result<syn::buffer::Cursor> {
+fn get_cursor_after_parsing<'a, P: Parse + Spanned>(
+    input: &syn::parse::ParseBuffer<'a>,
+) -> syn::Result<syn::buffer::Cursor<'a>> {
     let parse_attempt: P = input.parse()?;
     let cursor = input.cursor();
     if cursor.eof() || input.peek(Token![,]) {
@@ -359,8 +303,8 @@ impl Parse for AttrArg {
                     name,
                     eq: input.parse()?,
                     value: {
-                        let cursor = get_cursor_after_parsing::<syn::Type>(input.fork())
-                            .or_else(|_| get_cursor_after_parsing::<syn::Expr>(input.fork()))?;
+                        let cursor = get_cursor_after_parsing::<syn::Type>(&input.fork())
+                            .or_else(|_| get_cursor_after_parsing::<syn::Expr>(&input.fork()))?;
                         get_token_stream_up_to_cursor(input, cursor)?
                     },
                 }))

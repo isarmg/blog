@@ -16,7 +16,7 @@ pub(crate) fn Petals() -> impl IntoView {
         .style(
             format!(
                 "--petal-left:{}%;--petal-delay:{}s;--petal-duration:{}s;--petal-drift:{}px",
-                (i * 37 + 9) % 100,- (i as f64 * 2.7), 16 + i % 7, if i % 2 == 1 { -
+                (i * 37 + 9) % 100,- (f64::from(i) * 2.7), 16 + i % 7, if i % 2 == 1 { -
                 70 } else { 90 }
             ),
         ),

@@ -292,7 +292,7 @@ pub(super) fn SiteSettings() -> impl IntoView {
                         })))
                         .build(),
                 ),
-                Feedback(component_props_builder(&Feedback).error(save.error).build()),
+                save.feedback(),
                 move || {
                     (!validation.get().is_empty()).then(|| {
                         blog_interface::html::p().class("blog-row blog-danger").role("alert").child(validation.get())
@@ -407,11 +407,7 @@ pub(super) fn SiteSettings() -> impl IntoView {
                                         .class("blog-fieldset blog-stack blog-stack--spaced")
                                         .disabled(move || save.busy.get() || upload.busy.get())
                                         .aria_label(t("网站设置", "Site settings")),
-                                    Feedback(
-                                        component_props_builder(&Feedback)
-                                            .error(upload.error)
-                                            .build(),
-                                    ),
+                                    upload.feedback(),
                                     blog_interface::html::button()
                                         .class("blog-button")
                                         .r#type("button")

@@ -219,7 +219,7 @@ fn Workspace() -> impl IntoView {
                                                     .then_some("page")
                                             })
                                             .on(blog_interface::ev::click, move |_| {
-                                                navigate(page.hash())
+                                                navigate(page.hash());
                                             }),
                                     )
                                 })

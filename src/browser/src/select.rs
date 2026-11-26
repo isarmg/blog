@@ -26,8 +26,7 @@ pub fn Select(
     let typed = StoredValue::new((String::new(), 0f64));
     let id = StoredValue::new(format!(
         "blog-select-{}",
-        web_sys::window()
-            .expect("invariant: the application is mounted in a browser window")
+        window()
             .crypto()
             .expect("invariant: the application window exposes browser crypto")
             .random_uuid()
@@ -46,8 +45,7 @@ pub fn Select(
             return;
         };
         let rect = anchor.get_bounding_client_rect();
-        let win =
-            web_sys::window().expect("invariant: the application is mounted in a browser window");
+        let win = window();
         let width = rect.width().min(
             win.inner_width()
                 .ok()
@@ -75,7 +73,7 @@ pub fn Select(
             - 12.)
             .max(0.);
         let above = (rect.top() - 12.).max(0.);
-        let upwards = below < 180f64.min(popup.scroll_height() as f64) && above > below;
+        let upwards = below < 180f64.min(f64::from(popup.scroll_height())) && above > below;
         let style = popup.unchecked_ref::<web_sys::HtmlElement>().style();
         style
             .set_property("width", &format!("{width}px"))
@@ -210,8 +208,7 @@ pub fn Select(
                 close.run(());
             }
         };
-        let win =
-            web_sys::window().expect("invariant: the application is mounted in a browser window");
+        let win = window();
         let doc = win
             .document()
             .expect("invariant: the application window owns its document");
@@ -242,7 +239,7 @@ pub fn Select(
                 {
                     return;
                 }
-                position.run(())
+                position.run(());
             },
         ));
         let blur = SendWrapper::new(blog_interface::events::EventListener::new(
@@ -269,7 +266,7 @@ pub fn Select(
                         f.matches(":disabled")
                             .expect("invariant: :disabled is a valid CSS selector")
                     }) {
-                        close.run(())
+                        close.run(());
                     }
                 });
             let observer = web_sys::MutationObserver::new(callback.as_ref().unchecked_ref())
@@ -361,9 +358,9 @@ pub fn Select(
             event.prevent_default();
             event.stop_propagation();
             if open.get_untracked() {
-                commit.run(active.get_untracked())
+                commit.run(active.get_untracked());
             } else {
-                show.run(None)
+                show.run(None);
             }
             return;
         }
@@ -375,7 +372,7 @@ pub fn Select(
         }
         if key == "Tab" {
             if open.get_untracked() {
-                commit.run(active.get_untracked())
+                commit.run(active.get_untracked());
             }
             return;
         }
@@ -413,7 +410,7 @@ pub fn Select(
             } else {
                 selected
             };
-            let offset = if term.chars().count() == 1 { 1 } else { 0 };
+            let offset = usize::from(term.chars().count() == 1);
             let found = options.with_untracked(|opts| {
                 (0..count)
                     .map(|n| (from + offset + n) % count)
@@ -425,7 +422,7 @@ pub fn Select(
                     reveal.update(|n| *n += 1);
                 }
             } else {
-                show.run(found)
+                show.run(found);
             }
         }
     };
@@ -440,8 +437,7 @@ pub fn Select(
                                 options.with(|opts| {
                                     opts.iter()
                                         .find(|(v, _)| *v == selected)
-                                        .map(|(_, label)| label.clone())
-                                        .unwrap_or_else(|| "\u{a0}".into())
+                                        .map_or_else(|| "\u{a0}".into(), |(_, label)| label.clone())
                                 })
                             })
                             .class("blog-select-value"),
@@ -478,9 +474,9 @@ pub fn Select(
                     .on(blog_interface::ev::click, move |ev| {
                         ev.prevent_default();
                         if open.get_untracked() {
-                            close.run(())
+                            close.run(());
                         } else {
-                            show.run(None)
+                            show.run(None);
                         }
                     })
                     .on(blog_interface::ev::keydown, keydown),
@@ -588,7 +584,7 @@ pub fn Select(
                                                 (active.get() == i).then_some("true")
                                             })
                                             .on(blog_interface::ev::pointermove, move |_| {
-                                                active.set(i)
+                                                active.set(i);
                                             })
                                             .on(blog_interface::ev::click, move |ev| {
                                                 ev.prevent_default();
