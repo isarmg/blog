@@ -504,7 +504,7 @@ async fn article_receipt_survives_database_reopen_with_initial_fingerprint() {
     .unwrap();
     // Keep the canonical payload bytes stable for receipts already on disk.
     assert_eq!(
-        hex::encode(&before.0),
+        blog_application::hexadecimal(&before.0),
         "7c2d5250c90714c90af45f73deb19bd30c3e2a78cbe6fb898bcd87795d8ba3b0"
     );
     let mut updated = original;

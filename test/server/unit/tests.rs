@@ -1,6 +1,5 @@
 use crate::{
-    AppState,
-    app::router,
+    app::{RouterState, router},
     database::{initialize, initialize_new_database, open_database, validate_existing_database},
 };
 use axum::{Router, http::StatusCode, response::Response};
@@ -52,7 +51,7 @@ async fn setup_with_password_slots(
     .await
     .unwrap();
     std::fs::write(dir.path().join("index.html"), "<h1>BLOG</h1>").unwrap();
-    let state = AppState {
+    let state = RouterState {
         password_slots,
         ..fixture_state(dir.path(), &pool)
     };
@@ -60,11 +59,11 @@ async fn setup_with_password_slots(
     (dir, app, pool)
 }
 
-fn fixture_state(media: &std::path::Path, pool: &SqlitePool) -> AppState {
+fn fixture_state(media: &std::path::Path, pool: &SqlitePool) -> RouterState {
     let admin = Arc::new(AdministratorService::new(SqliteAdministratorStore::new(
         pool.clone(),
     )));
-    AppState {
+    RouterState {
         scope: blog_application::server_runtime::WorkScope::new(),
         pool: pool.clone(),
         admin,

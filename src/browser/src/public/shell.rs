@@ -119,6 +119,14 @@ pub(super) fn Chrome(
         drop(scroll);
         drop(keys);
     });
+    let theme_label = move || {
+        if dark.get() {
+            t("切换到浅色模式", "Switch to light mode")
+        } else {
+            t("切换到深色模式", "Switch to dark mode")
+        }
+    };
+    let current_path = pathname();
     let nav = [
         ("🏡", t("首页", "Home"), "/"),
         ("💖", t("家", "Home and love"), "/love"),
@@ -128,7 +136,15 @@ pub(super) fn Chrome(
         ("📸", t("相册", "Photos"), "/travel"),
         ("🧰", t("百宝箱", "Toolbox"), "/favorite"),
         ("📪", t("留言", "Messages"), "/message"),
-    ];
+    ]
+    .into_iter()
+    .map(|(icon, label, path)| {
+        html::a()
+            .child((html::span().child(icon).aria_hidden("true"), " ", label))
+            .href(href(path))
+            .aria_current((current_path == path).then_some("page"))
+    })
+    .collect_view();
     View::new(
     html::div()
         .child(
@@ -149,22 +165,7 @@ pub(super) fn Chrome(
                     .child((html::span()
                     .child( t("欢迎光临",
                     "Welcome")).class("public-mobile-title"),
-                    nav.into_iter().map(| (icon, label, path) | View::new(
-    html::a()
-        .child(
-            (
-                    html::span()
-                    .child( icon)
-                    .aria_hidden("true"),
-                    " ",
-                    label
-                ,),
-        )
-        .href(href(path))
-        .aria_current(
-            (pathname() == path).then_some("page"),
-        ),
-)).collect_view(),))
+                    nav,))
                     .class(move | | if menu.get() {
                     "open" } else { "" })
                     .aria_label(t("主导航",
@@ -183,14 +184,7 @@ pub(super) fn Chrome(
                     "1em").attr("viewBox", "0 0 24 24").attr("fill", "none")
                     .attr("stroke", "currentColor").attr("stroke-width", "1.7"))
                     .class("theme-toggle").r#type("button")
-                    .aria_label(move
-                    | | if dark.get() { t("切换到浅色模式",
-                    "Switch to light mode") } else { t("切换到深色模式",
-                    "Switch to dark mode") })
-                    .title(move
-                    | | if dark.get() { t("切换到浅色模式",
-                    "Switch to light mode") } else { t("切换到深色模式",
-                    "Switch to dark mode") })
+                    .aria_label(theme_label).title(theme_label)
                     .aria_pressed(move
                     | | dark.get().to_string())
                     .on(ev::click, move | _ | { dark
@@ -217,11 +211,7 @@ pub(super) fn Chrome(
             (
                     html::div()
                     .child((html::h1()
-                    .child( move | | if home { let value = site.current().map_or_default(| v | v
-                    .web_title.unwrap_or_default()); if
-                    value.is_empty() { t("相信记录的力量",
-                    "Believe in the power of stories") } else { value } } else {
-                    title.get() }),
+                    .child(move || if home { home_title(site) } else { title.get() }),
                     home.then(| | View::new(
     html::p()
         .child(
@@ -233,32 +223,11 @@ pub(super) fn Chrome(
         )
         .class("hero-poem"),
 )),
-                    move | | (! subtitle.get().is_empty()).then(| | View::new(
-    html::p()
-        .child(
-
-            subtitle.get(),
-        )
-        .class("hero-subtitle"),
-)),
-                    move | | metadata.get().map(| a | View::new(
-    html::p()
-        .child(
-
-            format!(
-                        "👤 {}　·　📅 {}　·　🔥 {}{}{}{}{}{}", a.username
-                        .clone().unwrap_or_default(), crate ::dates::format(& a
-                        .create_time.clone().unwrap_or_default()), a.view_count,
-                        t(" 热度 · 💬 ", " views · 💬 "), a.comment_count,
-                        t(" 评论 · ❤️ ", " comments · ❤️ "), a
-                        .like_count, t(" 点赞", " likes")
-                    ),
-        )
-        .class("hero-article-meta"),
-)),))
-                    .class(move | | if metadata
-                    .get().is_some() { "hero-article-info" } else { "hero-center"
+                    move || subtitle.with(|text| {
+                        (!text.is_empty()).then(|| html::p().child(text.clone()).class("hero-subtitle"))
                     }),
+                    move || metadata.with(|article| article.as_ref().map(article_metadata)),))
+                    .class(move || if metadata.with(Option::is_some) { "hero-article-info" } else { "hero-center" }),
                     home.then(| | View::new(
     (
             html::a()
@@ -274,65 +243,18 @@ pub(super) fn Chrome(
 ))
                 ,),
         )
-        .style(
-            move || {
-                let requested = cover.get();
-                let info = site.current();
-                let image = if requested.is_empty() && inherit_background {
-                    let background = info
-                        .and_then(|info| info.background_image)
-                        .unwrap_or_default();
-                    if background.is_empty() {
-                        random_cover.get()
-                    } else {
-                        background
-                    }
-                } else {
-                    requested
-                };
-                background_style(safe_url(image.trim(), false))
-            },
-        )
-        .class(
-            move || format!(
-                    "hero{}", if home { " home-hero" } else if metadata.get()
-                    .is_some() { " article-hero" } else { " compact-hero" }
-                ),
-        ),
+        .style(hero_background(site, cover, inherit_background, random_cover))
+        .class(move || {
+            if home { "hero home-hero" }
+            else if metadata.with(Option::is_some) { "hero article-hero" }
+            else { "hero compact-hero" }
+        }),
 )),
                     html::main()
                     .child( children())
                     .class(if home { "public-main" } else { "public-main extra-main"
                     }).id("public-content"),
-                    move | | scrolled.get().then(| | View::new(
-    html::div()
-        .child(
-
-            html::button()
-                    .child(
-
-                        html::span()
-                                .child( "↑")
-                                .aria_hidden("true"),
-                    )
-                    .class("back-top")
-                    .r#type("button")
-                    .aria_label(
-                        t("返回顶部", "Back to top"),
-                    )
-                    .on(
-                        ev::click,
-                        move |_| {
-                            let opts = web_sys::ScrollToOptions::new();
-                            opts.set_top(0.);
-                            opts.set_behavior(web_sys::ScrollBehavior::Smooth);
-                            window()
-                                .scroll_to_with_scroll_to_options(&opts);
-                        },
-                    ),
-        )
-        .class("public-tools"),
-))
+                    move || scrolled.get().then(back_to_top)
                 ,),
         )
         .class(
@@ -344,6 +266,73 @@ pub(super) fn Chrome(
                 ),
         ),
 )
+}
+
+fn home_title(site: Data<Site>) -> String {
+    site.with_current(|site| {
+        site.and_then(|site| site.web_title.as_deref())
+            .filter(|title| !title.is_empty())
+            .map_or_else(
+                || t("相信记录的力量", "Believe in the power of stories"),
+                str::to_owned,
+            )
+    })
+}
+
+fn article_metadata(article: &ArticleModel) -> impl IntoView + use<> {
+    html::p()
+        .child(format!(
+            "👤 {}　·　📅 {}　·　🔥 {}{}{}{}{}{}",
+            article.username.as_deref().unwrap_or_default(),
+            crate::dates::format(article.create_time.as_deref().unwrap_or_default()),
+            article.view_count,
+            t(" 热度 · 💬 ", " views · 💬 "),
+            article.comment_count,
+            t(" 评论 · ❤️ ", " comments · ❤️ "),
+            article.like_count,
+            t(" 点赞", " likes")
+        ))
+        .class("hero-article-meta")
+}
+
+fn hero_background(
+    site: Data<Site>,
+    cover: Signal<String>,
+    inherit_background: bool,
+    random_cover: Memo<String>,
+) -> impl Fn() -> String + Send + 'static {
+    move || {
+        let style = |image: &str| background_style(safe_url(image.trim(), false));
+        cover.with(|requested| {
+            site.with_current(|site| {
+                if requested.is_empty() && inherit_background {
+                    site.and_then(|site| site.background_image.as_deref())
+                        .filter(|image| !image.is_empty())
+                        .map_or_else(|| random_cover.with(|image| style(image)), style)
+                } else {
+                    style(requested)
+                }
+            })
+        })
+    }
+}
+
+fn back_to_top() -> impl IntoView {
+    html::div()
+        .child(
+            html::button()
+                .child(html::span().child("↑").aria_hidden("true"))
+                .class("back-top")
+                .r#type("button")
+                .aria_label(t("返回顶部", "Back to top"))
+                .on(ev::click, move |_| {
+                    let opts = web_sys::ScrollToOptions::new();
+                    opts.set_top(0.);
+                    opts.set_behavior(web_sys::ScrollBehavior::Smooth);
+                    window().scroll_to_with_scroll_to_options(&opts);
+                }),
+        )
+        .class("public-tools")
 }
 
 pub(super) fn notices(v: &str) -> Vec<String> {

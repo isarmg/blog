@@ -1,11 +1,11 @@
 use crate::{
-    AppState, PRODUCT_ID,
-    app::router,
+    Error, PRODUCT_ID,
+    app::{RouterState, router},
     config,
     database::{open_database, validate_existing_database},
+    error::finish_operation,
     lifecycle, media, schema, static_assets,
 };
-use crate::{Error, error::finish_operation};
 use blog_application::admin_auth::AdministratorOriginMode;
 use blog_application::admin_core::AdministratorService;
 use blog_application::admin_sqlite::SqliteAdministratorStore;
@@ -65,13 +65,13 @@ pub(crate) async fn run(root: &Path) -> Result<(), Error> {
         .with_schema_identity(schema::current_identity())
         .build()?;
         media::recover_deletions(&pool, &media).await?;
-        let state = AppState {
+        let state = RouterState {
             scope,
             pool: pool.clone(),
             admin,
             origin,
             media,
-            media_operations: std::sync::Arc::new(tokio::sync::Mutex::new(())),
+            media_operations: Arc::new(tokio::sync::Mutex::new(())),
             public_mutations: Arc::new(crate::app::PublicMutationCapacity::default()),
             password_slots: Arc::new(tokio::sync::Semaphore::new(2)),
         };
