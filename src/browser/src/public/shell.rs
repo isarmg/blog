@@ -7,6 +7,7 @@ use blog_interface::html;
 use blog_interface::prelude::*;
 use blog_interface::svg;
 use blog_interface::thread_bound::SendWrapper;
+use num_traits::ToPrimitive;
 use wasm_bindgen::JsCast;
 
 pub(super) fn site_data() -> Data<Site> {
@@ -43,8 +44,10 @@ pub(super) fn Chrome(
             s.map_or_default(|s| notices(s.random_cover.as_deref().unwrap_or_default()))
         });
         let len = u32::try_from(covers.len()).expect("invariant: cover list fits a browser index");
-        let index = (js_sys::Math::random() * f64::from(len)) as usize;
-        covers.into_iter().nth(index).unwrap_or_default()
+        (js_sys::Math::random() * f64::from(len))
+            .to_usize()
+            .and_then(|index| covers.into_iter().nth(index))
+            .unwrap_or_default()
     });
     let menu = RwSignal::new(false);
     let dark = RwSignal::new(
@@ -58,9 +61,7 @@ pub(super) fn Chrome(
     );
     let scrolled = RwSignal::new(false);
     let hidden = RwSignal::new(false);
-    let previous = StoredValue::new(0.);
-    let direction = StoredValue::new(0i32);
-    let distance = StoredValue::new(0.);
+    let (mut previous, mut distance) = (0., 0.);
     let scroll = SendWrapper::new(blog_interface::events::EventListener::new(
         &window(),
         "scroll",
@@ -70,8 +71,7 @@ pub(super) fn Chrome(
                 .document()
                 .expect("invariant: the application window owns its document");
             let position = win.scroll_y().unwrap_or(0.).max(0.);
-            let delta = position - previous.get_value();
-            previous.set_value(position);
+            let delta = position - std::mem::replace(&mut previous, position);
             scrolled.set(position > 40.);
             if position <= 48.
                 || menu.get_untracked()
@@ -79,27 +79,24 @@ pub(super) fn Chrome(
                     .active_element()
                     .is_some_and(|e| e.matches(".public-header :focus-visible").unwrap_or(false))
             {
-                direction.set_value(0);
-                distance.set_value(0.);
+                distance = 0.;
                 hidden.set(false);
                 return;
             }
             if delta == 0. {
                 return;
             }
-            let next = if delta > 0. { 1 } else { -1 };
-            let d = if next == direction.get_value() {
-                distance.get_value() + delta.abs()
-            } else {
-                delta.abs()
-            };
-            direction.set_value(next);
-            if d < 8. {
-                distance.set_value(d);
+            // Keep the direction in the sign of the accumulated motion.
+            if (distance > 0.) != (delta > 0.) {
+                distance = 0.;
+            }
+            distance += delta;
+            if distance.abs() < 8. {
                 return;
             }
-            distance.set_value(0.);
-            hidden.set(next > 0);
+            let conceal = distance > 0.;
+            distance = 0.;
+            hidden.set(conceal);
         },
     ));
     let keys = SendWrapper::new(blog_interface::events::EventListener::new(
