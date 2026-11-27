@@ -47824,7 +47824,7 @@
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
         "src/content/catalog.rs": "1c0f5f6b896f20b167cc731886bbae7b5dae73a43be6d58eb9dbaa12cd3847da",
         "src/content/comments.rs": "bba4bf7fb0e490fc78b1480abc6cc658708fa9e537ce015550dbcdda9bc1b982",
-        "src/content/family.rs": "2f63722053299f0b4d9f148b5826bb804bd32ebcf5d679aac34e31a49a0a8ec1",
+        "src/content/family.rs": "6b709d30ac4ff12aa3708bbad17bc89019b7906590b71f5538580dae7e9eaf0a",
         "src/content/guestbook.rs": "312c8d69059f37f33e5912e2237655d81173d19102b3381bad39ac6009b7a3e6",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
         "src/content/letter.rs": "0ee63cf6547973a87251519012dbe16802f801be54ad8bb2ba9a953fc96bf0c7",

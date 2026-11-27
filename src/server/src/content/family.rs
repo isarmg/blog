@@ -80,19 +80,14 @@ fn valid_image(value: Option<&str>) -> bool {
     })
 }
 fn validate_family(input: &FamilyInput) -> Result<(), AppError> {
-    if input.man_name.trim().is_empty()
-        || input.man_name.chars().count() > 32
-        || input.woman_name.trim().is_empty()
-        || input.woman_name.chars().count() > 32
+    let invalid_name = |name: &str| name.trim().is_empty() || name.chars().count() > 32;
+    if invalid_name(&input.man_name)
+        || invalid_name(&input.woman_name)
         || input.timing.chars().count() > 32
-        || input
-            .countdown_title
-            .as_deref()
-            .is_some_and(|v| v.chars().count() > 32)
-        || input
-            .countdown_time
-            .as_deref()
-            .is_some_and(|v| v.chars().count() > 32)
+        || [&input.countdown_title, &input.countdown_time]
+            .into_iter()
+            .flatten()
+            .any(|value| value.chars().count() > 32)
         || input
             .family_info
             .as_deref()
