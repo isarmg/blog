@@ -176,6 +176,7 @@ dependencies = [
  "blog-interface",
  "blog-interface-browser-api",
  "blog-interface-javascript-api",
+ "blog-math-numeric-traits",
  "blog-network-web-address",
  "blog-text-pattern-search",
  "blog-wasm-browser-bridge",

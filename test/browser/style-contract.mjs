@@ -162,12 +162,19 @@ async function managedFieldFocus(locator, label) {
     let result;
     await expect.poll(async () => {
       result = await locator.evaluate(async node => {
-        const css = getComputedStyle(node), box = node.getBoundingClientRect();
-        const layer = css.borderImageSource !== 'none' ? css.borderImageSource : css.backgroundImage;
+        const paintLayer = css => css.borderImageSource !== 'none' ? css.borderImageSource : css.backgroundImage;
+        const layer = paintLayer(getComputedStyle(node));
         const source = /^url\((["']?)(.*?)\1\)$/.exec(layer)?.[2];
         if (!source?.startsWith('blob:')) return { ready: false };
         try {
           const svg = new DOMParser().parseFromString(await (await fetch(source)).text(), 'image/svg+xml');
+          const css = getComputedStyle(node), box = node.getBoundingClientRect();
+          // Measure the currently painted box, not a Blob left over from the previous layout.
+          const mask = svg.querySelector('mask#outside');
+          const paintWidth = Number(svg.documentElement.getAttribute('width')) + 2 * parseFloat(mask?.getAttribute('x'));
+          const paintHeight = Number(svg.documentElement.getAttribute('height')) + 2 * parseFloat(mask?.getAttribute('y'));
+          if (layer !== paintLayer(css) ||
+              !(Math.abs(paintWidth - box.width) <= .1 && Math.abs(paintHeight - box.height) <= .1)) return { ready: false };
           const contour = svg.querySelector('clipPath#inside path')?.getAttribute('d');
           const strokes = [...svg.querySelectorAll('path[stroke]')].map(path => ({
             color: path.getAttribute('stroke'), width: Number(path.getAttribute('stroke-width')),

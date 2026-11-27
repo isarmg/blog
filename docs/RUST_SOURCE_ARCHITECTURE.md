@@ -38,7 +38,7 @@
 | network | 12 | domain-tests, host-tools, native, workspace-tests | collections, diagnostics, encoding, format, platform, runtime, sync, text, unicode |
 | operations | 1 | native, workspace-tests | cli, diagnostics, product, runtime |
 | platform | 8 | host-tools, native, workspace-tests | collections, interface, native, wasm |
-| product | 2 | native, web-release, workspace-tests | application, assets, cli, crypto, diagnostics, filesystem, format, interface, network, runtime, storage, syntax, text, wasm |
+| product | 2 | native, web-release, workspace-tests | application, assets, cli, crypto, diagnostics, filesystem, format, interface, math, network, runtime, storage, syntax, text, wasm |
 | runtime | 10 | host-tools, native, web-release, workspace-tests | collections, diagnostics, encoding, platform, sync, syntax |
 | storage | 3 | native, workspace-tests | collections, diagnostics, encoding, format, network, runtime, sync, syntax, text |
 | sync | 13 | host-tools, native, web-release, workspace-tests | collections, format, math, native, platform, runtime |
@@ -213,7 +213,7 @@
 | blog-math-integer-traits (`src/foundation/math/integer-traits`) | integer traits | host-tools, workspace-tests | src/foundation/math/large-integer | num-integer@0.1.47 |
 | blog-math-keyed-fingerprint (`src/foundation/math/keyed-fingerprint`) | keyed fingerprint | host-tools, workspace-tests | src/foundation/lookup/script-table-hashing | siphasher@1.0.4 |
 | blog-math-large-integer (`src/foundation/math/large-integer`) | large integer | host-tools, workspace-tests | src/foundation/assets/compiler | num-bigint@0.5.1 |
-| blog-math-numeric-traits (`src/foundation/math/numeric-traits`) | numeric traits | native, web-release, host-tools, workspace-tests | src/application, src/foundation/assets/compiler, src/foundation/format/date-time, src/foundation/math/integer-traits, src/foundation/math/large-integer | num-traits@0.2.19 |
+| blog-math-numeric-traits (`src/foundation/math/numeric-traits`) | numeric traits | native, web-release, host-tools, workspace-tests | src/application, src/browser, src/foundation/assets/compiler, src/foundation/format/date-time, src/foundation/math/integer-traits, src/foundation/math/large-integer | num-traits@0.2.19 |
 | blog-math-password-random-traits (`src/foundation/math/password-random-traits`) | password random traits | native, workspace-tests | src/foundation/crypto/password-algorithm-traits, src/foundation/crypto/password-format | rand_core@0.6.4 |
 | blog-math-type-integers (`src/foundation/math/type-integers`) | type integers | native, host-tools, workspace-tests | src/foundation/crypto/password-algorithm-traits, src/foundation/math/constant-array, src/foundation/math/typed-array | typenum@1.20.1 |
 | blog-math-typed-array (`src/foundation/math/typed-array`) | typed array | native, workspace-tests | src/foundation/crypto/password-algorithm-traits, src/foundation/crypto/password-hash-blocks | generic-array@0.14.7 |

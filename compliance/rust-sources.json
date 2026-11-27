@@ -6040,12 +6040,12 @@
   },
   "local_modifications_sha256": "f9fe267cce7b151d8160674e554c900cd89d98109a59d58935a2c9503ad34e58",
   "lockfiles_sha256": {
-    "Cargo.lock": "3e1d013c147776b8aa6eff59fa5e93682f45119405e53669c2e912b84a8f6f4b"
+    "Cargo.lock": "d462f3d8ea5339a367985f6859c42c18856b7f47e70346fcc8b4cba6b86b4345"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
-    "src/application/Cargo.toml": "f89d93addf523901d9c38dae94cfbf91dcd217eb4685bc547ad1c8491b017ce3",
-    "src/browser/Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
+    "src/application/Cargo.toml": "2d613c66544951b0a97d7283e934485e3ef67387484e0160287099361dc10aef",
+    "src/browser/Cargo.toml": "fec78fce2a0b0f8b73137095d0a4286d0f181b7c6072c75e45da2798010526a8",
     "src/foundation/assets/compiler/Cargo.toml": "f410c9eb4e98d96a08cf17bd2a1903a6ed0e10573dfcb19b62734d22b1cc247a",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
     "src/foundation/assets/style-compiler/Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
@@ -34266,7 +34266,7 @@
       ],
       "directory": "src/application",
       "files_sha256": {
-        "Cargo.toml": "f89d93addf523901d9c38dae94cfbf91dcd217eb4685bc547ad1c8491b017ce3",
+        "Cargo.toml": "2d613c66544951b0a97d7283e934485e3ef67387484e0160287099361dc10aef",
         "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
         "schemas/admin/persistent-v1.sql": "767889d1925178d8ac632ed54e2e4e69ec8253d2b4e798b62bcfca4d948d8ec6",
         "schemas/platform/v1.sql": "f96ee5c99dc7dd89dc2c0bfb4dc332ce9ca28a314e4e6685aa1e96ee7cdae199",
@@ -34391,6 +34391,7 @@
         "src/foundation/format/json",
         "src/foundation/interface/browser-api",
         "src/foundation/interface/javascript-api",
+        "src/foundation/math/numeric-traits",
         "src/foundation/network/web-address",
         "src/foundation/text/pattern-search",
         "src/foundation/wasm/browser-bridge",
@@ -34398,7 +34399,7 @@
       ],
       "directory": "src/browser",
       "files_sha256": {
-        "Cargo.toml": "9fa5f366d9adf5ca9bf504eefdf8c396dd57dc9f92c98820fc70056a77a426db",
+        "Cargo.toml": "fec78fce2a0b0f8b73137095d0a4286d0f181b7c6072c75e45da2798010526a8",
         "src/admin.rs": "64b58d0fe06354b3f940959d27ed87b7c6b8d488222e1dee1f8f0a87b1467498",
         "src/admin/articles.rs": "e0c5190dd90aec37c618b789ad8c14c808b5963aff2de4960e00d93ee3bf8b96",
         "src/admin/dashboard.rs": "1043d01b24b0fb9f23586ff07715baafe4edf8a5ee84467e4a0ee6a531a1e4ea",
@@ -34438,7 +34439,7 @@
         "src/public/love.rs": "c573ec5ae71938a9684cf837b0ee8d59a1d2a495c2ae33e0fd905aaf359cd8c9",
         "src/public/mod.rs": "b646d49c65acc2a114925e05938e81706e85f5e5b69a2516a4e12735089e45d3",
         "src/public/photos.rs": "59be1503acf00f1bda4945df555bd325befacffaf38d9b601e4eac1de0b4e662",
-        "src/public/shell.rs": "33121f7b8a0ecac069a1ee9cc4fed0dc692d4eee4b2a2c3085c5579da77cb3fd",
+        "src/public/shell.rs": "3a2288bfefac9300a4d37266724443864084906fb23837b2cb5c804dc8bed459",
         "src/public/toolbox.rs": "7185a47b4ee49f70af929b2c546db6b235b1bcce8472c049c8385002c7381550",
         "src/select.rs": "568dfdaca4bbbf9d97fcb8611897ecf6fa2e3e89b23e53f947d645e9b691e7aa"
       },
@@ -34479,7 +34480,7 @@
         "test/browser/rust-native-domain.mjs": "41938db5eb47d3d999916b5c58daa27d0ddcc250e119ae78786d810561264c0c",
         "test/browser/startup-failure.mjs": "b570eb39ef8539569527af4f197187019582820ffa8b17ecc21b1d6bf110bb0a",
         "test/browser/startup-failures.mjs": "c0a34b2e61a5728fa070f3036870b9cc50532c27a9a35bd71adc02a2a6bf91ac",
-        "test/browser/style-contract.mjs": "6dd149f0cfb3bff1f6f3541d7109d606b69129e0d3ef93671414c74c8ea40c5f",
+        "test/browser/style-contract.mjs": "3ca7ea2d58fd1f482b5dc343e7d3b727d2eff8ae2cda58dc764d422551aab769",
         "test/browser/toolchain-contract.test.mjs": "2e41f75f268fd9ab35e1ff80faab7031af131555c08135ec290a0bbb31395f82",
         "test/browser/transport-lifecycle.mjs": "5741792f85a350c368715bbad5738957a6da4b8c35dc55ce2f126f247fe23767",
         "test/browser/unit/admin/routes.rs": "9073614d9031604bb972cb742cf30f831ed49df6260c7818f1a0488150c8ef24",
@@ -47823,7 +47824,7 @@
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
         "src/content/catalog.rs": "1c0f5f6b896f20b167cc731886bbae7b5dae73a43be6d58eb9dbaa12cd3847da",
         "src/content/comments.rs": "bba4bf7fb0e490fc78b1480abc6cc658708fa9e537ce015550dbcdda9bc1b982",
-        "src/content/family.rs": "d8e3ac7edaf53f38e8de459de73b4017f24de8059fe0689079a35ea9829b55b1",
+        "src/content/family.rs": "2f63722053299f0b4d9f148b5826bb804bd32ebcf5d679aac34e31a49a0a8ec1",
         "src/content/guestbook.rs": "312c8d69059f37f33e5912e2237655d81173d19102b3381bad39ac6009b7a3e6",
         "src/content/input.rs": "7f3cafab6108c9d5d6f12f2e85c1057ef81c1c4f3177b5a7a961f1837a5cfaaf",
         "src/content/letter.rs": "0ee63cf6547973a87251519012dbe16802f801be54ad8bb2ba9a953fc96bf0c7",
