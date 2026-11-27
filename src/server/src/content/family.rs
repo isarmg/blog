@@ -54,6 +54,25 @@ pub(super) struct FamilyInput {
     family_info: Option<String>,
     status: bool,
 }
+type FamilyWrite =
+    sqlx::query::QueryAs<'static, sqlx::Sqlite, AdminFamily, sqlx::sqlite::SqliteArguments>;
+
+impl FamilyInput {
+    fn write_query(self, sql: &'static str, author: i64) -> FamilyWrite {
+        sqlx::query_as(sql)
+            .bind(author)
+            .bind(self.bg_cover)
+            .bind(self.man_cover)
+            .bind(self.woman_cover)
+            .bind(self.man_name)
+            .bind(self.woman_name)
+            .bind(self.timing)
+            .bind(self.countdown_title)
+            .bind(self.countdown_time)
+            .bind(self.family_info)
+            .bind(i64::from(self.status))
+    }
+}
 fn valid_image(value: Option<&str>) -> bool {
     value.is_none_or(|v| {
         v.len() <= 2048
@@ -94,24 +113,13 @@ pub(super) async fn create_family(
     validate_family(&input)?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
     let author = crate::site_author_id(&mut *transaction).await?;
-    let family = sqlx::query_as(
+    let family = input.write_query(
         "INSERT INTO family(user_id,bg_cover,man_cover,woman_cover,man_name,woman_name,timing,countdown_title,countdown_time,family_info,status)
-         SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM family WHERE user_id=?)
+         SELECT ?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11 WHERE NOT EXISTS (SELECT 1 FROM family WHERE user_id=?1)
          RETURNING *",
+        author,
     )
-    .bind(author)
-    .bind(input.bg_cover)
-    .bind(input.man_cover)
-    .bind(input.woman_cover)
-    .bind(input.man_name)
-    .bind(input.woman_name)
-    .bind(input.timing)
-    .bind(input.countdown_title)
-    .bind(input.countdown_time)
-    .bind(input.family_info)
-    .bind(i64::from(input.status))
-    .bind(author)
-    .fetch_optional(&mut *transaction)
+        .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::Public(HttpStatus::Conflict, "家已创建，请编辑现有资料"))?;
     transaction.commit().await?;
@@ -126,24 +134,14 @@ pub(super) async fn update_family(
     validate_family(&input)?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
     let author = crate::site_author_id(&mut *transaction).await?;
-    let family = sqlx::query_as(
-        "UPDATE family SET bg_cover=?,man_cover=?,woman_cover=?,man_name=?,woman_name=?,timing=?,
-         countdown_title=?,countdown_time=?,family_info=?,status=?,update_time=CURRENT_TIMESTAMP
-         WHERE id=? AND user_id=? RETURNING *",
+    let family = input.write_query(
+        "UPDATE family SET bg_cover=?2,man_cover=?3,woman_cover=?4,man_name=?5,woman_name=?6,timing=?7,
+         countdown_title=?8,countdown_time=?9,family_info=?10,status=?11,update_time=CURRENT_TIMESTAMP
+         WHERE id=?12 AND user_id=?1 RETURNING *",
+        author,
     )
-    .bind(input.bg_cover)
-    .bind(input.man_cover)
-    .bind(input.woman_cover)
-    .bind(input.man_name)
-    .bind(input.woman_name)
-    .bind(input.timing)
-    .bind(input.countdown_title)
-    .bind(input.countdown_time)
-    .bind(input.family_info)
-    .bind(i64::from(input.status))
     .bind(id)
-    .bind(author)
-    .fetch_optional(&mut *transaction)
+        .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(absent)?;
     transaction.commit().await?;

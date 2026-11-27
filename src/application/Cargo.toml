@@ -79,12 +79,7 @@ default-features = true
 path = "../foundation/runtime/async-toolkit"
 package = "blog-runtime-async-toolkit"
 default-features = false
-features = [
-    "executor",
-    "shared-state",
-    "std",
-    "utilities",
-]
+features = ["executor"]
 
 [dependencies.tracing]
 path = "../foundation/diagnostics/structured-events"
