@@ -52,10 +52,6 @@ package = "blog-native-target-conditions"
 path = "../../encoding/integer-format"
 package = "blog-encoding-integer-format"
 
-[dependencies.static_assertions]
-path = "../../syntax/compile-assertions"
-package = "blog-syntax-compile-assertions"
-
 [dependencies.zmij]
 path = "../../encoding/decimal-float-format"
 package = "blog-encoding-decimal-float-format"

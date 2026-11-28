@@ -148,11 +148,9 @@ pub(super) async fn delete_family(
     Path(id): Path<i64>,
 ) -> ApiResult<serde_json::Value> {
     let author = crate::site_author_id(&state.pool).await?;
-    let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed = sqlx::query("DELETE FROM family WHERE id=? AND user_id=?")
+    let transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
+    let deletion = sqlx::query("DELETE FROM family WHERE id=? AND user_id=?")
         .bind(id)
-        .bind(author)
-        .execute(&mut *transaction)
-        .await?;
-    super::finish_delete(transaction, changed).await
+        .bind(author);
+    super::finish_delete(transaction, deletion).await
 }

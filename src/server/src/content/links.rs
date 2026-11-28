@@ -243,10 +243,7 @@ pub(super) async fn delete_link(
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     Path(id): Path<i64>,
 ) -> ApiResult<serde_json::Value> {
-    let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed = sqlx::query("DELETE FROM resource_path WHERE id=?")
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
-    super::finish_delete(transaction, changed).await
+    let transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
+    let deletion = sqlx::query("DELETE FROM resource_path WHERE id=?").bind(id);
+    super::finish_delete(transaction, deletion).await
 }

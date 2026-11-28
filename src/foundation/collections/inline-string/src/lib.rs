@@ -2691,5 +2691,5 @@ fn unwrap_with_msg_fail<E: fmt::Display>(error: E) -> ! {
     panic!("{error}")
 }
 
-static_assertions::assert_eq_size!(CompactString, String);
-static_assertions::assert_eq_size!(Option<CompactString>, CompactString);
+const _: () = assert!(mem::size_of::<CompactString>() == mem::size_of::<String>());
+const _: () = assert!(mem::size_of::<Option<CompactString>>() == mem::size_of::<CompactString>());

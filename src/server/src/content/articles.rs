@@ -346,13 +346,11 @@ pub(super) async fn admin_delete_article_news(
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     Path((article_id, news_id)): Path<(i64, i64)>,
 ) -> ApiResult<serde_json::Value> {
-    let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let changed = sqlx::query("DELETE FROM wei_yan WHERE id=? AND source=? AND type='news'")
+    let transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
+    let deletion = sqlx::query("DELETE FROM wei_yan WHERE id=? AND source=? AND type='news'")
         .bind(news_id)
-        .bind(article_id)
-        .execute(&mut *transaction)
-        .await?;
-    super::finish_delete(transaction, changed).await
+        .bind(article_id);
+    super::finish_delete(transaction, deletion).await
 }
 
 pub(super) async fn admin_update_article_news(
@@ -761,14 +759,12 @@ pub(super) async fn delete_article(
     axum::Extension(identity): axum::Extension<AuthenticatedIdentity>,
     Path(id): Path<i64>,
 ) -> ApiResult<serde_json::Value> {
-    let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
-    let result = sqlx::query(
+    let transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
+    let deletion = sqlx::query(
         "UPDATE article SET deleted=1,update_time=CURRENT_TIMESTAMP WHERE id=? AND deleted=0",
     )
-    .bind(id)
-    .execute(&mut *transaction)
-    .await?;
-    super::finish_delete(transaction, result).await
+    .bind(id);
+    super::finish_delete(transaction, deletion).await
 }
 
 #[path = "../../../../test/server/unit/content/articles/pagination_tests.rs"]

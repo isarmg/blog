@@ -23,7 +23,7 @@
 | build | 1 | host-tools, workspace-tests | assets, crypto, diagnostics, encoding, filesystem, format, network, platform, runtime, text, wasm |
 | checksum | 1 | host-tools, workspace-tests | native |
 | cli | 4 | native, workspace-tests | assets, collections, encoding, format, syntax, text |
-| collections | 14 | domain-tests, host-tools, native, web-release, workspace-tests | encoding, format, memory, native, platform, runtime, storage, sync, syntax, unicode |
+| collections | 14 | domain-tests, host-tools, native, web-release, workspace-tests | encoding, format, memory, native, platform, runtime, storage, sync, unicode |
 | crypto | 13 | host-tools, native, workspace-tests | encoding, math, native, platform |
 | diagnostics | 9 | domain-tests, host-tools, native, web-release, workspace-tests | cli, collections, format, sync, syntax, text |
 | encoding | 17 | domain-tests, host-tools, native, web-release, workspace-tests | checksum, diagnostics, format, syntax, unicode |
@@ -328,7 +328,7 @@
 | --- | --- | --- | --- | --- |
 | blog-syntax-alternative (`src/foundation/syntax/alternative`) | alternative | native, web-release, host-tools, workspace-tests | src/foundation/encoding/text-writer, src/foundation/format/json-schema, src/foundation/runtime/parallel-iterator, src/foundation/storage/sqlite-access, src/foundation/syntax/compiler-iterators, src/foundation/syntax/style-iterators, src/interface/dom | either@1.19.0 |
 | blog-syntax-async-trait (`src/foundation/syntax/async-trait`) | async trait | native, workspace-tests | src/application, src/server | async-trait@0.1.92 |
-| blog-syntax-compile-assertions (`src/foundation/syntax/compile-assertions`) | compile assertions | host-tools, workspace-tests | src/foundation/collections/inline-string | static_assertions@1.1.0 |
+| blog-syntax-compile-assertions (`src/foundation/syntax/compile-assertions`) | compile assertions | 当前入口未选用 | 入口或保留实现 | static_assertions@1.1.0 |
 | blog-syntax-compiler-iterators (`src/foundation/syntax/compiler-iterators`) | compiler iterators | host-tools, workspace-tests | src/foundation/assets/compiler, src/foundation/assets/style-compiler | itertools@0.15.0 |
 | blog-syntax-derive-structure (`src/foundation/syntax/derive-structure`) | derive structure | native, host-tools, domain-tests, workspace-tests | src/foundation/unicode/borrow-conversion-derive, src/foundation/unicode/borrowed-data-derive | synstructure@0.14.0 |
 | blog-syntax-index-expansion (`src/foundation/syntax/index-expansion`) | index expansion | 当前入口未选用 | 入口或保留实现 | seq-macro@0.3.6 |

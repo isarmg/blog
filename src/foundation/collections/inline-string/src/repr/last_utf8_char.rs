@@ -1,4 +1,4 @@
-use alloc::string::String;
+use core::mem::size_of;
 
 /// [`LastByte`] is an unsigned 8-bit integer data type that has a valid range of `[0, 217]`.
 /// Excluding `[218, 255]` allows the Rust compiler to use these values as niches.
@@ -241,5 +241,5 @@ pub(crate) enum LastByte {
     Static = 217,
 }
 
-static_assertions::assert_eq_size!(LastByte, Option<LastByte>, u8);
-static_assertions::const_assert!(core::mem::size_of::<String>() <= 24);
+const _: () = assert!(size_of::<LastByte>() == 1 && size_of::<Option<LastByte>>() == 1);
+const _: () = assert!(size_of::<alloc::string::String>() <= 24);

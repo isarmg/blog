@@ -4959,6 +4959,21 @@
       "file": "Cargo.toml",
       "reason": "Route DOM compile-time name generation to the same local proc macro as the style compiler. No browser runtime or asset parsing dependency is added.",
       "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/collections/inline-string",
+      "files": [
+        "Cargo.toml",
+        "src/lib.rs",
+        "src/repr/capacity.rs",
+        "src/repr/heap.rs",
+        "src/repr/inline.rs",
+        "src/repr/last_utf8_char.rs",
+        "src/repr/mod.rs",
+        "src/repr/static_str.rs"
+      ],
+      "reason": "Replace the external assertion macro calls with Rust const assertions preserving all fifteen compile-time size, alignment and niche predicates, and remove the now-unused package edge without changing repr, runtime code or the original minimum Rust version.",
+      "production_behavior_change": false
     }
   ]
 }

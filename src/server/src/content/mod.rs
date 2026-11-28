@@ -23,10 +23,10 @@ pub(crate) use authorization::begin_mutation;
 pub(crate) use input::IdempotencyKeyError;
 
 async fn finish_delete(
-    transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
-    change: sqlx::sqlite::SqliteQueryResult,
+    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    deletion: sqlx::query::Query<'_, sqlx::Sqlite, sqlx::sqlite::SqliteArguments>,
 ) -> crate::ApiResult<serde_json::Value> {
-    if change.rows_affected() == 0 {
+    if deletion.execute(&mut *transaction).await?.rows_affected() == 0 {
         return Err(crate::absent());
     }
     transaction.commit().await?;

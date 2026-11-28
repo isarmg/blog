@@ -14,9 +14,9 @@ pub(crate) struct StaticStr {
     #[allow(unused)]
     discriminant: [u8; DISCRIMINANT_SIZE],
 }
-static_assertions::assert_eq_size!(StaticStr, Repr);
-static_assertions::assert_eq_align!(StaticStr, Repr);
-static_assertions::assert_eq_size!(&'static str, (*const u8, usize));
+const _: () = assert!(mem::size_of::<StaticStr>() == mem::size_of::<Repr>());
+const _: () = assert!(mem::align_of::<StaticStr>() == mem::align_of::<Repr>());
+const _: () = assert!(mem::size_of::<&'static str>() == mem::size_of::<(*const u8, usize)>());
 
 impl StaticStr {
     #[inline]

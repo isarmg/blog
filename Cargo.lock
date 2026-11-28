@@ -265,7 +265,6 @@ dependencies = [
  "blog-encoding-integer-format",
  "blog-memory-type-specialization",
  "blog-native-target-conditions",
- "blog-syntax-compile-assertions",
 ]
 
 [[package]]
@@ -1167,10 +1166,6 @@ dependencies = [
  "blog-syntax-token-stream",
  "blog-syntax-token-templates",
 ]
-
-[[package]]
-name = "blog-syntax-compile-assertions"
-version = "0.0.0"
 
 [[package]]
 name = "blog-syntax-compiler-iterators"

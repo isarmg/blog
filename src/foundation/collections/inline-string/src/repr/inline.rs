@@ -9,8 +9,8 @@ pub(crate) struct InlineBuffer(pub(crate) [u8; MAX_SIZE]);
 #[repr(C, align(4))]
 pub(crate) struct InlineBuffer(pub(crate) [u8; MAX_SIZE]);
 
-static_assertions::assert_eq_size!(InlineBuffer, Repr);
-static_assertions::assert_eq_align!(InlineBuffer, Repr);
+const _: () = assert!(core::mem::size_of::<InlineBuffer>() == core::mem::size_of::<Repr>());
+const _: () = assert!(core::mem::align_of::<InlineBuffer>() == core::mem::align_of::<Repr>());
 
 impl InlineBuffer {
     /// Construct a new [`InlineString`]. A string that lives in a small buffer on the stack

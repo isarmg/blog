@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{fmt, mem};
 
 use crate::repr::LastByte;
 
@@ -54,8 +54,8 @@ pub(crate) const MAX_VALUE: usize = {
 #[repr(transparent)]
 pub(crate) struct Capacity(usize);
 
-static_assertions::assert_eq_size!(Capacity, usize);
-static_assertions::assert_eq_align!(Capacity, usize);
+const _: () = assert!(mem::size_of::<Capacity>() == mem::size_of::<usize>());
+const _: () = assert!(mem::align_of::<Capacity>() == mem::align_of::<usize>());
 
 impl fmt::Debug for Capacity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

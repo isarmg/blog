@@ -253,9 +253,6 @@ pub(super) async fn delete_label(
     if used {
         return Err(AppError::Public(HttpStatus::Conflict, "标签中还有文章"));
     }
-    let changed = sqlx::query("DELETE FROM label WHERE id=?")
-        .bind(id)
-        .execute(&mut *transaction)
-        .await?;
-    super::finish_delete(transaction, changed).await
+    let deletion = sqlx::query("DELETE FROM label WHERE id=?").bind(id);
+    super::finish_delete(transaction, deletion).await
 }

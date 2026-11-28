@@ -58,7 +58,7 @@ pub(crate) struct Repr(
     /// value.
     LastByte,
 );
-static_assertions::assert_eq_size!([u8; MAX_SIZE], Repr);
+const _: () = assert!(mem::size_of::<[u8; MAX_SIZE]>() == mem::size_of::<Repr>());
 
 unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}

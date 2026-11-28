@@ -28,8 +28,8 @@ pub(crate) struct HeapBuffer {
     pub(crate) len: usize,
     pub(crate) cap: Capacity,
 }
-static_assertions::assert_eq_size!(HeapBuffer, Repr);
-static_assertions::assert_eq_align!(HeapBuffer, Repr);
+const _: () = assert!(mem::size_of::<HeapBuffer>() == mem::size_of::<Repr>());
+const _: () = assert!(mem::align_of::<HeapBuffer>() == mem::align_of::<Repr>());
 
 impl HeapBuffer {
     /// Allocate a heap buffer, copy `text` into it, and return the raw `(ptr, capacity)` pair

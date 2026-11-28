@@ -596,11 +596,7 @@ impl Linker {
         Ok(())
     }
 
-    fn public_output(&mut self, source: &Path, bytes: Vec<u8>) -> Result<Option<String>> {
-        let Ok(relative) = source.strip_prefix(self.web.join("public")) else {
-            return Ok(None);
-        };
-        let name = inventory::relative(relative)?;
+    fn public_output(&mut self, name: String, bytes: Vec<u8>) -> Result<String> {
         if name == "index.html" {
             return Err(AssetError::PublicHtml);
         }
@@ -618,12 +614,12 @@ impl Linker {
             self.outputs.insert(name.clone(), bytes);
             self.public_outputs.insert(name.clone());
         }
-        Ok(Some(name))
+        Ok(name)
     }
 
     fn copy_public(&mut self) -> Result<()> {
         self.public_media.clear();
-        let expected = if self.config.web.public_assets_manifest.is_empty() {
+        let mut expected = if self.config.web.public_assets_manifest.is_empty() {
             None
         } else {
             let path = public_manifest_path(&self.web, &self.config.web.public_assets_manifest)?;
@@ -655,29 +651,27 @@ impl Linker {
                 .collect();
             Some(expected.files)
         };
-        let mut actual = Files::new();
         let public = self.web.join("public");
         for path in source_inputs::web_paths(&self.web, &public)
             .map_err(|source| input_error(&public, source))?
         {
             let bytes = inventory::read(&path)?;
-            let digest = inventory::sha(&bytes);
             let name = inventory::relative(
-                path.strip_prefix(self.web.join("public"))
+                path.strip_prefix(&public)
                     .expect("invariant: an enumerated public path belongs to its root"),
             )?;
-            if let Some(expected) = &expected
-                && expected.get(&name) != Some(&digest)
+            if let Some(files) = &mut expected
+                && files
+                    .remove(&name)
+                    .is_none_or(|digest| digest != inventory::sha(&bytes))
             {
                 return Err(AssetError::PublicInventory(
                     self.config.web.public_assets_manifest.clone(),
                 ));
             }
-            self.public_output(&path, bytes)?
-                .expect("invariant: an enumerated public file belongs to the public root");
-            actual.insert(name, digest);
+            self.public_output(name, bytes)?;
         }
-        if expected.is_some_and(|expected| actual != expected) {
+        if expected.is_some_and(|files| !files.is_empty()) {
             return Err(AssetError::PublicInventory(
                 self.config.web.public_assets_manifest.clone(),
             ));
@@ -754,9 +748,8 @@ impl Linker {
                 break;
             }
         }
-        let output = if source.starts_with(self.web.join("public")) {
-            self.public_output(source, bytes)?
-                .expect("invariant: a public source publishes with its relative name")
+        let output = if let Ok(relative) = source.strip_prefix(self.web.join("public")) {
+            self.public_output(inventory::relative(relative)?, bytes)?
         } else if let Some(output) = fixed {
             self.generated_output(output.clone(), bytes)?;
             output
