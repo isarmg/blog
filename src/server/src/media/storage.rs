@@ -135,21 +135,6 @@ pub(super) async fn reconcile_deletion(
     .map_err(AppError::from)
 }
 
-pub(super) async fn recover_failed_deletion(
-    pool: &SqlitePool,
-    directory: &Arc<PrivateDirectory>,
-    filename: &MediaFilename,
-    operation: AppError,
-) -> AppError {
-    match reconcile_deletion(pool, directory, filename).await {
-        Ok(()) => operation,
-        Err(recovery) => AppError::DeletionRecovery {
-            operation: Box::new(operation),
-            recovery: Box::new(recovery),
-        },
-    }
-}
-
 pub(crate) async fn recover_deletions(
     pool: &SqlitePool,
     media: &std::path::Path,

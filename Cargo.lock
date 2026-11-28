@@ -143,7 +143,6 @@ dependencies = [
  "blog-lookup-script-table",
  "blog-syntax-compiler-iterators",
  "blog-syntax-token-concat",
- "blog-text-compile-time-text",
 ]
 
 [[package]]
@@ -1208,10 +1207,6 @@ dependencies = [
 
 [[package]]
 name = "blog-text-case-insensitive-text"
-version = "0.0.0"
-
-[[package]]
-name = "blog-text-compile-time-text"
 version = "0.0.0"
 
 [[package]]

@@ -6058,13 +6058,29 @@
         ],
         "production_behavior_change": false,
         "reason": "Reuse the existing WebAssembly module encoder for target feature sections and share the checked reader; keep the original variable-integer source, archive, and license records."
+      },
+      {
+        "directory": "src/foundation/assets/style-compiler",
+        "files": [
+          "Cargo.toml",
+          "parts/style_optimizer/src/macros.rs",
+          "parts/style_optimizer/src/values/length.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Reuse CSS keyword and unit spellings and the existing dimension parser; retain the previous crate and original evidence as inactive sources."
+      },
+      {
+        "directory": "src/foundation/assets/style-value-derive",
+        "file": "src/lib.rs",
+        "production_behavior_change": false,
+        "reason": "Generate the existing CSS enum keyword spelling with the already selected case library, keeping adjacent digits in the same word."
       }
     ],
     "schema": 1
   },
-  "local_modifications_sha256": "cb773966c0364b5b6d1f549c47e816b2f4b64ae8510464010b2e34c20feb309d",
+  "local_modifications_sha256": "eed54a9cb5c3466301455864ed422db1d7f4eb67411d1abd69c9d8d7034c1e1e",
   "lockfiles_sha256": {
-    "Cargo.lock": "e4153a8a4de8c908ef6ad0c2ca0f56eee8ee1540d09ff97faad5e66ec95a470f"
+    "Cargo.lock": "7184516bf20c8e6ae4e5ffb637009cbf7879074807086896eb694eac28df0096"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6072,7 +6088,7 @@
     "src/browser/Cargo.toml": "fec78fce2a0b0f8b73137095d0a4286d0f181b7c6072c75e45da2798010526a8",
     "src/foundation/assets/compiler/Cargo.toml": "f410c9eb4e98d96a08cf17bd2a1903a6ed0e10573dfcb19b62734d22b1cc247a",
     "src/foundation/assets/markdown-parser/Cargo.toml": "9ceffb0e44051a4a9e4616cdbeba4c0b8d83e6289de0c243901561cb3a40d94b",
-    "src/foundation/assets/style-compiler/Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
+    "src/foundation/assets/style-compiler/Cargo.toml": "8afe4ba2099015bbb7f8b5d6937aad83c02f4570a6ff4b780b3ecd86db538a7f",
     "src/foundation/assets/style-token-macros/Cargo.toml": "6340289a5b5298a9d9d58f4fae39117168e3671da157a9e65ace843c66e4301b",
     "src/foundation/assets/style-value-derive/Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
     "src/foundation/checksum/fast-crc/Cargo.toml": "1dd270a14cce29f3d81b40953cfcab25c256ddfb22a07029486597a4ddfef6c3",
@@ -35258,12 +35274,11 @@
         "src/foundation/encoding/integer-format",
         "src/foundation/lookup/script-table",
         "src/foundation/syntax/compiler-iterators",
-        "src/foundation/syntax/token-concat",
-        "src/foundation/text/compile-time-text"
+        "src/foundation/syntax/token-concat"
       ],
       "directory": "src/foundation/assets/style-compiler",
       "files_sha256": {
-        "Cargo.toml": "a2a191e1ac0b41e77b0d8f025b1dcc3ccb4736360da06d93df816935fd47f468",
+        "Cargo.toml": "8afe4ba2099015bbb7f8b5d6937aad83c02f4570a6ff4b780b3ecd86db538a7f",
         "parts/cached_hash/src/lib.rs": "079a5f369a82b4573cca488a8c52a8427546e9050c89964a7b554215dd4da5f1",
         "parts/float_format/.cargo_vcs_info.json": "c745454c84bcf2144e28b355f7e63c480768bbd013043293a35bca550ec73094",
         "parts/float_format/src/diyfp.rs": "0c5c1be29ffe1d2623226bbae145d9998abf6542d633a368c1536b8d197b3301",
@@ -35284,7 +35299,7 @@
         "parts/style_optimizer/src/error.rs": "d67450b293091448957f18b4826d064c67f810dd63f5f763bf07c466f3c5260d",
         "parts/style_optimizer/src/lib.rs": "b09f5b01b3cd5aa00009f4a2ed26d3fad4b1a3e05cdcbda0e7204598377501b5",
         "parts/style_optimizer/src/logical.rs": "0fad64141084a347ff1f20389068ee1cf7d69ab4042e28b46d267ff8e8fa6fb4",
-        "parts/style_optimizer/src/macros.rs": "0e60325bd587837b6e92ec9ada70a20f78f87d8e01445ec8f898400ddca67f89",
+        "parts/style_optimizer/src/macros.rs": "27e8b6e1f033acefba54ef37a864cb17a39996bc75ceeb85acb53999115c415f",
         "parts/style_optimizer/src/main.rs": "00c32ae790f5a33b9f09792112181e9112696e5de9dd3c505bf2ec74da13ba4e",
         "parts/style_optimizer/src/media_query.rs": "cd7c6da58299bfbe05d463e9665ae37480de065828a0210aaf786bb3118adc02",
         "parts/style_optimizer/src/parser.rs": "ca7e91b0344334bd8e458b1a1683690fe8c3ad906b4216eced696866a3755ecf",
@@ -35354,7 +35369,7 @@
         "parts/style_optimizer/src/values/gradient.rs": "22f3e9858f82198708d8484943df2464eeb3500646b5a4cdb4520e030dc2692a",
         "parts/style_optimizer/src/values/ident.rs": "68da8a5753b96926c8bb0d8eac41c5ddfb814d610f3299ec8b63da7a41eb0485",
         "parts/style_optimizer/src/values/image.rs": "d6fdb12f7888cf3fbf45e9ff25ad2cf42dacb2288831860f4f42a7ad163b0266",
-        "parts/style_optimizer/src/values/length.rs": "ec88c71e2a097a2958188da82b06ba492ff8e07d0fe09fb11df4d3893a495dcb",
+        "parts/style_optimizer/src/values/length.rs": "6b32dc12ca148a98559bb65d716fe19490a4685e52b8a616d716b7d3128b50ca",
         "parts/style_optimizer/src/values/mod.rs": "b11c5ef7ba52f4bb1f9cdc636ff9969dbe3dbdb962c6b2124887d800c6f60518",
         "parts/style_optimizer/src/values/number.rs": "3b365e55b6fa6d7db29d8e08325e542721e8e365476537f93d64fe1f6f0ee28d",
         "parts/style_optimizer/src/values/percentage.rs": "cde4423ffc5afb9de7100cd92313b99239b9fd71be7dbaa00ce695e02468bf5a",
@@ -35478,7 +35493,7 @@
       "files_sha256": {
         ".cargo_vcs_info.json": "db973f9a2733250132b9044f1fb04eab41441af8c41201d3b91e47f77f6ea043",
         "Cargo.toml": "cd5634f566e786a900275c2ea4d12e14a51652dbc256932fae1fb16fe28cc1ae",
-        "src/lib.rs": "cbd180297c3ff4d6e7cb64121ecbb3b486a5b2250a30c5c29c44315a6604d2f9",
+        "src/lib.rs": "0b7eda186e5b41c74e1f0e3690c7748d05151dc4e00c203b548a20a698e7424c",
         "src/parse.rs": "f381727aeaa143a34394edc01c0e9276f47a1cca6e80dc0b0fe9148410dfe9ea",
         "src/to_css.rs": "4c036c5331fd9f4a590d992091a4a737e844a7faceacdf1a145cbee1a124c017",
         "src/visit.rs": "c11e1a56ce574d5454539201b985a491b472c7eb107d895e7938658cf938ef1b"
@@ -47867,10 +47882,10 @@
         "src/lifecycle.rs": "8757492cf14a15f3635a2225960d3f17118fc184a280d197c8a498a5a37c4f34",
         "src/main.rs": "b587a932c9a90d9780f2a81b784f5bc7342ea8dfd9ce619d87a863f2cdb35ea4",
         "src/maintenance.rs": "fd48aa154d442c9142299933024c721dacfe4ca11f1b63ae1c9d0de7dc832cb1",
-        "src/media.rs": "80797c6b3b41ffd3f898f6e97e6a242f85672f33e86c25ec3315253aab2ad4fa",
+        "src/media.rs": "fe0c5308e8aec9ea530fbf188edbf0876ffedc11025788ca65945a85137b8d11",
         "src/media/formats.rs": "c19ef710018c1df814d38b8d057c036c835add40ccfb959048d5ed6558e5ab29",
         "src/media/references.rs": "11882b9dcca1a19c7c144c2dbc72a3fbc74c7b10dc8cb693403daa40a21ed30a",
-        "src/media/storage.rs": "44cb32f10788fa08bd46e50afd2d7fbb5562c57cab3cbb9cdcf4f8b9cb9fbc3d",
+        "src/media/storage.rs": "c9300002b4065e8239fd10ab5b4ba25eb52c40ae07fb1d26196ff19384993baa",
         "src/runtime.rs": "71a411f42250bc4f8953d34c26d37f9b1e0c5ef4adfbc83074cf08faad48dbbd",
         "src/schema.rs": "bcdaf13cb66a8a7c4b3f6eb24be32bc60d29633807fecda9612012314e71a72c",
         "src/schema_definition.rs": "8ac18c726b151002f5239750395590ad896aea6e2159f1a5dcf96e30755adfe6",
@@ -51262,14 +51277,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/text/compile-time-text": {
-          "features": [],
-          "name": "blog-text-compile-time-text",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/text/inline-ascii": {
           "features": [
             "alloc",
@@ -53678,14 +53685,6 @@
         "src/foundation/text/case-insensitive-text": {
           "features": [],
           "name": "blog-text-case-insensitive-text",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/text/compile-time-text": {
-          "features": [],
-          "name": "blog-text-compile-time-text",
           "roles": [
             "compile"
           ],

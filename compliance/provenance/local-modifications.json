@@ -4980,6 +4980,18 @@
       "files": ["Cargo.toml", "src/wasm_conventions.rs"],
       "reason": "Reuse the existing WebAssembly module encoder for target feature sections and share the checked reader; keep the original variable-integer source, archive, and license records.",
       "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/style-compiler",
+      "files": ["Cargo.toml", "parts/style_optimizer/src/macros.rs", "parts/style_optimizer/src/values/length.rs"],
+      "reason": "Reuse CSS keyword and unit spellings and the existing dimension parser; retain the previous crate and original evidence as inactive sources.",
+      "production_behavior_change": false
+    },
+    {
+      "directory": "src/foundation/assets/style-value-derive",
+      "file": "src/lib.rs",
+      "reason": "Generate the existing CSS enum keyword spelling with the already selected case library, keeping adjacent digits in the same word.",
+      "production_behavior_change": false
     }
   ]
 }

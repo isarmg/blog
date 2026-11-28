@@ -26,11 +26,6 @@ path = "../../collections/bit-set"
 features = []
 default-features = true
 
-[dependencies.const_str]
-package = "blog-text-compile-time-text"
-path = "../../text/compile-time-text"
-default-features = false
-
 [dependencies.base64]
 package = "blog-encoding-application-base-encoding"
 path = "../../encoding/application-base-encoding"

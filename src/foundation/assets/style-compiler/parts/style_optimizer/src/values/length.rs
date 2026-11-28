@@ -14,7 +14,6 @@ use crate::style_optimizer::traits::{
 use crate::style_optimizer::traits::{IsCompatible, TrySign};
 #[cfg(all())]
 use crate::style_optimizer::visitor::Visit;
-use const_str;
 use crate::style_parser::*;
 
 /// A CSS [`<length-percentage>`](https://www.w3.org/TR/css-values-4/#typedef-length-percentage) value.
@@ -107,19 +106,8 @@ macro_rules! define_length_units {
         let location = input.current_source_location();
         let token = input.next()?;
         match *token {
-          Token::Dimension { value, ref unit, .. } => {
-            Ok(match unit {
-              $(
-                s if s.eq_ignore_ascii_case(stringify!($name)) => LengthValue::$name(value),
-              )+
-              _ => return Err(location.new_unexpected_token_error(token.clone())),
-            })
-          },
-          Token::Number { value, .. } => {
-            // TODO: quirks mode only?
-            Ok(LengthValue::Px(value))
-          }
-          ref token => return Err(location.new_unexpected_token_error(token.clone())),
+          Token::Number { value, .. } => Ok(LengthValue::Px(value)),
+          _ => Self::try_from(token).map_err(|()| location.new_unexpected_token_error(token.clone())),
         }
       }
     }
@@ -147,7 +135,7 @@ macro_rules! define_length_units {
       pub fn to_unit_value(&self) -> (CSSNumber, &str) {
         match self {
           $(
-            LengthValue::$name(value) => (*value, const_str::convert_ascii_case!(lower, stringify!($name))),
+            LengthValue::$name(value) => (*value, pastey::paste! { stringify!([<$name:lower>]) }),
           )+
         }
       }

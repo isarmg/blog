@@ -26,7 +26,7 @@ use sqlx::Row;
 use self::{
     formats::{MediaFilename, MediaKind},
     references::referenced,
-    storage::{UploadedMedia, not_found, reconcile_deletion, recover_failed_deletion},
+    storage::{UploadedMedia, not_found, reconcile_deletion},
 };
 use crate::{ApiResult, AppError, AppState};
 
@@ -219,27 +219,28 @@ async fn delete_resource(
                 Ok::<_, AppError>(())
             }
             .await;
-            if let Err(operation) = deletion {
-                if let Err(rollback) = transaction.rollback().await {
-                    return Err(AppError::DeletionRollback {
-                        operation: Box::new(operation),
-                        rollback,
-                    });
-                }
-                return Err(
-                    recover_failed_deletion(&owned.pool, &directory, &filename, operation).await,
-                );
-            }
-            if let Err(error) = transaction.commit().await {
-                return Err(recover_failed_deletion(
-                    &owned.pool,
-                    &directory,
-                    &filename,
-                    error.into(),
-                )
-                .await);
-            }
-            reconcile_deletion(&owned.pool, &directory, &filename).await?;
+            let operation = match deletion {
+                Ok(()) => transaction.commit().await.map_err(AppError::from),
+                Err(operation) => match transaction.rollback().await {
+                    Ok(()) => Err(operation),
+                    Err(rollback) => {
+                        return Err(AppError::DeletionRollback {
+                            operation: Box::new(operation),
+                            rollback,
+                        });
+                    }
+                },
+            };
+            // The committed row determines whether the quarantined file is restored.
+            let recovery = reconcile_deletion(&owned.pool, &directory, &filename).await;
+            match (operation, recovery) {
+                (Ok(()), outcome) => outcome,
+                (Err(operation), Ok(())) => Err(operation),
+                (Err(operation), Err(recovery)) => Err(AppError::DeletionRecovery {
+                    operation: Box::new(operation),
+                    recovery: Box::new(recovery),
+                }),
+            }?;
             Ok(Json(serde_json::json!({"deleted":true})))
         })?
         .await

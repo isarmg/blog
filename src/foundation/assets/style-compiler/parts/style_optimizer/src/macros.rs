@@ -24,11 +24,8 @@ macro_rules! enum_property {
     impl $name {
       /// Returns a string representation of the value.
       pub fn as_str(&self) -> &str {
-        use $name::*;
         match self {
-          $(
-            $x => const_str::convert_ascii_case!(kebab, stringify!($x)),
-          )+
+          $(Self::$x => lightningcss_derive::css_keyword!($x),)+
         }
       }
     }
