@@ -67,17 +67,10 @@ pub(super) async fn content_tree_hole(
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<TreeHole>> {
     let pagination = query.admin_bounds();
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM tree_hole")
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items = sqlx::query_as(TREE_HOLE_PAGE)
-        .bind(pagination.size)
-        .bind(pagination.offset())
-        .fetch_all(&mut *transaction)
-        .await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar("SELECT COUNT(*) FROM tree_hole");
+    let rows = sqlx::query_as(TREE_HOLE_PAGE);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 pub(super) async fn delete_tree_hole(
     State(state): State<AppState>,

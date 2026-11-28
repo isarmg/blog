@@ -27,17 +27,13 @@ pub(super) async fn note_page(
     let pagination = query.bounds(10, 50);
     let mut transaction = state.pool.begin().await?;
     let author = crate::site_author_id(&mut *transaction).await?;
-    let total: i64 = sqlx::query_scalar(
+    let count = sqlx::query_scalar(
         "SELECT COUNT(*) FROM wei_yan WHERE type='friend' AND user_id=? AND is_public=1",
     )
-    .bind(author)
-    .fetch_one(&mut *transaction)
-    .await?;
-    let items=sqlx::query_as::<_,Note>("SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.like_count,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id WHERE w.type='friend' AND w.user_id=? AND w.is_public=1 ORDER BY w.id DESC LIMIT ? OFFSET ?")
-        .bind(author).bind(pagination.size).bind(pagination.offset())
-        .fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    .bind(author);
+    let rows = sqlx::query_as("SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.like_count,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id WHERE w.type='friend' AND w.user_id=? AND w.is_public=1 ORDER BY w.id DESC LIMIT ? OFFSET ?")
+        .bind(author);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -187,14 +183,12 @@ pub(super) async fn content_notes(
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<AdminNote>> {
     let pagination = query.admin_bounds();
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM wei_yan WHERE type='friend'")
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items = sqlx::query_as::<_,AdminNote>("SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id WHERE w.type='friend' ORDER BY w.id DESC LIMIT ? OFFSET ?")
-        .bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar("SELECT COUNT(*) FROM wei_yan WHERE type='friend'");
+    let rows = sqlx::query_as(
+        "SELECT w.id,w.user_id,u.username,w.content,w.image_path,w.is_public,w.create_time FROM wei_yan w LEFT JOIN user u ON u.id=w.user_id WHERE w.type='friend' ORDER BY w.id DESC LIMIT ? OFFSET ?",
+    );
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 pub(super) async fn delete_note(
     State(state): State<AppState>,

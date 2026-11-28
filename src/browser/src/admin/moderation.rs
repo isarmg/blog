@@ -1,7 +1,7 @@
 use super::Page;
 use crate::common::{
-    Action, Data, FilePicker, Lightbox, ListState, Pager, load, nullable_num, num, page_items,
-    safe_url, t, table_time, text, tr,
+    Action, Data, FilePicker, Lightbox, ListState, Pager, framed_table, load, nullable_num, num,
+    page_items, safe_url, t, table_time, text, tr,
 };
 use blog_interface::component::component_props_builder as props;
 use blog_interface::components::notify;
@@ -194,21 +194,7 @@ fn moderation_table(
                 .chain([("操作", "Actions")])
                 .map(|(zh, en)| html::th().child(t(zh, en)))
                 .collect_view();
-            let table = html::table()
-                .class("blog-table")
-                .aria_label(title.clone())
-                .child((
-                    html::thead().child(html::tr().child(headers)),
-                    html::tbody().child(rows),
-                ));
-            Some(
-                html::div()
-                    .class("blog-table-scroll blog-frame")
-                    .tabindex("0")
-                    .role("region")
-                    .aria_label(t("数据表格", "Data table"))
-                    .child(table),
-            )
+            Some(framed_table(title.clone(), headers, rows))
         })
     }
 }

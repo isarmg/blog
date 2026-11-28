@@ -5,7 +5,7 @@ use crate::{
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     fs, io,
     path::{Path, PathBuf},
 };
@@ -221,7 +221,6 @@ fn cargo_sources(
     repository: &Path,
     base: &Path,
     workspace: &toml::Value,
-    seen: &mut BTreeSet<PathBuf>,
     hashes: &mut SnapshotFiles,
     records: &mut BTreeMap<String, Files>,
 ) -> Result<()> {
@@ -232,10 +231,13 @@ fn cargo_sources(
             path: base.to_owned(),
             source,
         })?;
-    if !base.starts_with(repository) {
+    let Ok(local) = base.strip_prefix(repository) else {
         return Err(InventoryError::DependencyOutsideRepository(base));
-    }
-    if !seen.insert(base.clone()) {
+    };
+    if local
+        .to_str()
+        .is_some_and(|name| records.contains_key(name))
+    {
         return Ok(());
     }
     if base
@@ -269,13 +271,8 @@ fn cargo_sources(
             path: base.clone(),
             source,
         })?;
-    records.insert(
-        relative(
-            base.strip_prefix(repository)
-                .expect("invariant: accepted dependency is inside the repository"),
-        )?,
-        input,
-    );
+    // Register the package before following edges that may point back to it.
+    records.insert(relative(local)?, input);
     fn dependencies(
         value: &toml::Value,
         base: &Path,
@@ -338,7 +335,7 @@ fn cargo_sources(
     let mut paths = Vec::new();
     sections(&manifest, &base, repository, workspace, &mut paths)?;
     for dependency in paths {
-        cargo_sources(repository, &dependency, workspace, seen, hashes, records)?;
+        cargo_sources(repository, &dependency, workspace, hashes, records)?;
     }
     Ok(())
 }
@@ -368,7 +365,6 @@ pub fn snapshot(root: &Path) -> Result<Value> {
     let web = root.join(layout::WEB);
     let frontend = root.join(layout::BROWSER);
     let mut rust = BTreeMap::new();
-    let mut seen = BTreeSet::new();
     let mut hashes = SnapshotFiles::default();
     let workspace_path = root.join("Cargo.toml");
     let workspace_bytes = hashes
@@ -378,25 +374,11 @@ pub fn snapshot(root: &Path) -> Result<Value> {
             source,
         })?;
     let workspace = parse_manifest(&workspace_path, workspace_bytes)?;
-    cargo_sources(
-        root,
-        &frontend,
-        &workspace,
-        &mut seen,
-        &mut hashes,
-        &mut rust,
-    )?;
+    cargo_sources(root, &frontend, &workspace, &mut hashes, &mut rust)?;
     let builder = root.join(layout::BUILDER);
     let has_builder = optional_hash(&mut hashes, &builder.join("Cargo.toml"))?.is_some();
     if has_builder {
-        cargo_sources(
-            root,
-            &builder,
-            &workspace,
-            &mut seen,
-            &mut hashes,
-            &mut rust,
-        )?;
+        cargo_sources(root, &builder, &workspace, &mut hashes, &mut rust)?;
     }
     validate_vendors(&web.join("vendor"))?;
     let mut assets = Files::new();

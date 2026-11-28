@@ -61,15 +61,14 @@ pub(super) async fn link_page(
         size: query.size,
     }
     .bounds(12, 100);
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM resource_path WHERE type=?1 AND status=1 AND (?2 IS NULL OR classify=?2)")
-        .bind(query.kind.as_str()).bind(&query.classify)
-        .fetch_one(&mut *transaction).await?;
-    let items=sqlx::query_as::<_,PublicLink>("SELECT id,title,classify,cover,url,introduction,type AS link_type,create_time FROM resource_path WHERE type=?1 AND status=1 AND (?2 IS NULL OR classify=?2) ORDER BY id DESC LIMIT ?3 OFFSET ?4")
-        .bind(query.kind.as_str()).bind(&query.classify).bind(pagination.size).bind(pagination.offset())
-        .fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar("SELECT COUNT(*) FROM resource_path WHERE type=?1 AND status=1 AND (?2 IS NULL OR classify=?2)")
+        .bind(query.kind.as_str())
+        .bind(&query.classify);
+    let rows = sqlx::query_as("SELECT id,title,classify,cover,url,introduction,type AS link_type,create_time FROM resource_path WHERE type=?1 AND status=1 AND (?2 IS NULL OR classify=?2) ORDER BY id DESC LIMIT ?3 OFFSET ?4")
+        .bind(query.kind.as_str())
+        .bind(&query.classify);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 #[derive(Serialize, sqlx::FromRow)]
 pub(super) struct LinkClass {
@@ -123,18 +122,16 @@ pub(super) async fn content_links(
     if query.status.is_some_and(|status| !matches!(status, 0 | 1)) {
         return Err(invalid("资源状态无效"));
     }
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar(
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar(
         "SELECT COUNT(*) FROM resource_path WHERE (?1 IS NULL OR type=?1) AND (?2 IS NULL OR status=?2)",
     )
     .bind(kind)
-    .bind(query.status)
-    .fetch_one(&mut *transaction)
-    .await?;
-    let items = sqlx::query_as::<_, AdminLink>("SELECT id,title,classify,cover,url,introduction,type AS link_type,status,create_time FROM resource_path WHERE (?1 IS NULL OR type=?1) AND (?2 IS NULL OR status=?2) ORDER BY id DESC LIMIT ?3 OFFSET ?4")
-        .bind(kind).bind(query.status).bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    .bind(query.status);
+    let rows = sqlx::query_as("SELECT id,title,classify,cover,url,introduction,type AS link_type,status,create_time FROM resource_path WHERE (?1 IS NULL OR type=?1) AND (?2 IS NULL OR status=?2) ORDER BY id DESC LIMIT ?3 OFFSET ?4")
+        .bind(kind)
+        .bind(query.status);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

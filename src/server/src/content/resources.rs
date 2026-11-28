@@ -19,12 +19,10 @@ pub(super) async fn resources(
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<AdminResource>> {
     let pagination = query.admin_bounds();
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM resource")
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items=sqlx::query_as::<_,AdminResource>("SELECT id,original_name,path,type AS resource_type,size,status,create_time FROM resource ORDER BY id DESC LIMIT ? OFFSET ?")
-        .bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar("SELECT COUNT(*) FROM resource");
+    let rows = sqlx::query_as(
+        "SELECT id,original_name,path,type AS resource_type,size,status,create_time FROM resource ORDER BY id DESC LIMIT ? OFFSET ?",
+    );
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }

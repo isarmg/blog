@@ -8,6 +8,7 @@ mod navigation;
 mod paged_list;
 mod pagination;
 mod request;
+mod table;
 
 pub(crate) use action::Action;
 pub(crate) use blog_interface::i18n::t;
@@ -28,6 +29,7 @@ pub(crate) use request::{
     request,
 };
 use serde_json::Value;
+pub(crate) use table::framed_table;
 
 pub(crate) fn tr(zh: &str, en: &str, args: &[String]) -> String {
     let mut out = t(zh, en);

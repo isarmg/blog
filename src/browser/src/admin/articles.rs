@@ -1,4 +1,4 @@
-use crate::common::{Action, Data, Feedback, Pager, load_typed, navigate, t};
+use crate::common::{Action, Data, Feedback, Pager, framed_table, load_typed, navigate, t};
 use crate::models::{ArticleSummary, Page};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -83,21 +83,7 @@ fn article_table(data: ArticlesData, action: Action) -> impl IntoView {
                 .iter()
                 .map(|item| article_row(item, data, action))
                 .collect_view();
-            let table = html::table()
-                .class("blog-table")
-                .aria_label(t("文章列表", "Article list"))
-                .child((
-                    html::thead().child(html::tr().child(titles)),
-                    html::tbody().child(rows),
-                ));
-            Some(
-                html::div()
-                    .child(table)
-                    .class("blog-table-scroll blog-frame")
-                    .tabindex("0")
-                    .role("region")
-                    .aria_label(t("数据表格", "Data table")),
-            )
+            Some(framed_table(t("文章列表", "Article list"), titles, rows))
         })
     }
 }

@@ -1,5 +1,6 @@
 use crate::common::{
-    Action, Data, Field, ListState, Pager, enc, flag, form_check, load, num, page_items, t, text,
+    Action, Data, Field, ListState, Pager, enc, flag, form_check, framed_table, load, num,
+    page_items, t, text,
 };
 use crate::select::Select;
 use blog_interface::component::component_props_builder;
@@ -342,22 +343,11 @@ fn links_table(manager: LinkManager) -> impl IntoView {
                 t("操作", "Actions"),
             ]
             .map(|label| html::th().child(label));
-            Some(
-                html::div()
-                    .class("blog-table-scroll blog-frame")
-                    .tabindex("0")
-                    .role("region")
-                    .aria_label(t("数据表格", "Data table"))
-                    .child(
-                        html::table()
-                            .class("blog-table")
-                            .aria_label(t("内容资源列表", "Content resource list"))
-                            .child((
-                                html::thead().child(html::tr().child(headers)),
-                                html::tbody().child(rows),
-                            )),
-                    ),
-            )
+            Some(framed_table(
+                t("内容资源列表", "Content resource list"),
+                headers,
+                rows,
+            ))
         })
     }
 }

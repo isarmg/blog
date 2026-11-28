@@ -1,9 +1,14 @@
-use crate::AppState;
+use crate::{AppError, AppState};
 use axum::{
     Router,
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use sqlx::{
+    FromRow, Sqlite, SqliteTransaction,
+    query::{QueryAs, QueryScalar},
+    sqlite::{SqliteArguments, SqliteRow},
+};
 
 mod articles;
 mod authorization;
@@ -67,17 +72,29 @@ struct PageBounds {
 }
 
 impl PageBounds {
-    fn offset(&self) -> i64 {
-        (self.page - 1) * self.size
-    }
-
-    fn result<T>(self, items: Vec<T>, total: i64) -> PageResult<T> {
-        PageResult {
+    // Count and rows share the caller’s snapshot. Rows takes LIMIT and OFFSET last.
+    async fn fetch<T>(
+        self,
+        mut transaction: SqliteTransaction<'_>,
+        count: QueryScalar<'_, Sqlite, i64, SqliteArguments>,
+        rows: QueryAs<'_, Sqlite, T, SqliteArguments>,
+    ) -> Result<PageResult<T>, AppError>
+    where
+        T: for<'row> FromRow<'row, SqliteRow> + Send + Unpin,
+    {
+        let total = count.fetch_one(&mut *transaction).await?;
+        let items = rows
+            .bind(self.size)
+            .bind((self.page - 1) * self.size)
+            .fetch_all(&mut *transaction)
+            .await?;
+        transaction.commit().await?;
+        Ok(PageResult {
             items,
             total,
             page: self.page,
             size: self.size,
-        }
+        })
     }
 }
 

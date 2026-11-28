@@ -209,12 +209,13 @@ fn root_workspace_paths_cover_complete_foundation_and_relocated_inputs() -> Resu
     )?;
     fs::write(
         frontend.join("Cargo.toml"),
-        "[package]\nname='browser'\nversion='1.0.0'\n[dependencies]\nlocal.workspace=true\n",
+        "[package]\nname='browser'\nversion='1.0.0'\n[dependencies]\nlocal.workspace=true\n\
+         [build-dependencies]\nlocal={path='../foundation/local-1.0.0'}\n",
     )?;
     fs::write(frontend.join("src/lib.rs"), "")?;
     fs::write(
         dependency.join("Cargo.toml"),
-        "[package]\nname='local'\nversion='1.0.0'\n",
+        "[package]\nname='local'\nversion='1.0.0'\n[dev-dependencies]\nbrowser={path='../../browser'}\n",
     )?;
     fs::write(dependency.join("src/lib.rs"), "")?;
     fs::write(dependency.join("native/helper.c"), "int answer=1;")?;
@@ -224,7 +225,11 @@ fn root_workspace_paths_cover_complete_foundation_and_relocated_inputs() -> Resu
     )?;
     let before = snapshot(root)?;
     assert_eq!(before["lockfile"], "Cargo.lock");
-    assert!(before["patched_inputs"]["src/foundation/local-1.0.0"]["native/helper.c"].is_string());
+    // Workspace and relative build paths share a record, even with a dev cycle.
+    assert_eq!(
+        before["patched_inputs"],
+        json!({"src/foundation/local-1.0.0": files(&dependency)?})
+    );
     assert!(
         before["foundation_inputs"]["docs/dependencies/origins/local-1.0.0/README.md"].is_string()
     );

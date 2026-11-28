@@ -228,7 +228,7 @@ const COMMENT_SQL: &str = "SELECT c.id,c.user_id,u.username,u.avatar,c.comment_c
     (SELECT COUNT(*) FROM comment child WHERE child.floor_comment_id=c.id AND child.type=c.type) AS reply_count
     FROM comment c LEFT JOIN user u ON u.id=c.user_id LEFT JOIN user pu ON pu.id=c.parent_user_id";
 async fn comment_page(
-    mut transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
+    transaction: sqlx::Transaction<'_, sqlx::Sqlite>,
     target: CommentTarget,
     floor: Option<i64>,
     query: PageQuery,
@@ -253,25 +253,14 @@ async fn comment_page(
     let pagination = query.bounds(default_size, 50);
     let (source, kind) = target.database_fields();
     let mut count = sqlx::query_scalar(count_sql);
-    let mut data = sqlx::query_as(sqlx::AssertSqlSafe(format!("{COMMENT_SQL} {items_sql}")));
+    let mut rows = sqlx::query_as(sqlx::AssertSqlSafe(format!("{COMMENT_SQL} {items_sql}")));
     if let Some(id) = floor {
         count = count.bind(id);
-        data = data.bind(id);
+        rows = rows.bind(id);
     }
-    let total = count
-        .bind(source)
-        .bind(kind)
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items = data
-        .bind(source)
-        .bind(kind)
-        .bind(pagination.size)
-        .bind(pagination.offset())
-        .fetch_all(&mut *transaction)
-        .await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let count = count.bind(source).bind(kind);
+    let rows = rows.bind(source).bind(kind);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 
 pub(super) async fn comments(
@@ -378,14 +367,12 @@ pub(super) async fn admin_comments(
     Query(query): Query<PageQuery>,
 ) -> ApiResult<PageResult<AdminComment>> {
     let pagination = query.admin_bounds();
-    let mut transaction = state.pool.begin().await?;
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM comment")
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items=sqlx::query_as::<_,AdminComment>("SELECT c.id,c.source,c.type AS comment_type,c.user_id,u.username,c.comment_content,c.create_time FROM comment c LEFT JOIN user u ON u.id=c.user_id ORDER BY c.id DESC LIMIT ? OFFSET ?")
-        .bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let transaction = state.pool.begin().await?;
+    let count = sqlx::query_scalar("SELECT COUNT(*) FROM comment");
+    let rows = sqlx::query_as(
+        "SELECT c.id,c.source,c.type AS comment_type,c.user_id,u.username,c.comment_content,c.create_time FROM comment c LEFT JOIN user u ON u.id=c.user_id ORDER BY c.id DESC LIMIT ? OFFSET ?",
+    );
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 pub(super) async fn delete_comment(
     State(state): State<AppState>,

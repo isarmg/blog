@@ -1,4 +1,6 @@
-use crate::common::{Action, Data, Field, load, nullable_num, num, t, text, validation_message};
+use crate::common::{
+    Action, Data, Field, framed_table, load, nullable_num, num, t, text, validation_message,
+};
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
@@ -368,22 +370,9 @@ impl TaxonomyEditor {
                 ]
                 .map(|label| html::th().child(label));
                 let id_header = kind.labels().then(|| html::th().child("ID"));
-                let header = html::thead().child(html::tr().child((id_header, headers)));
-                let rows =
-                    html::tbody().child(rows.iter().map(|item| self.row(item)).collect_view());
+                let rows = rows.iter().map(|item| self.row(item)).collect_view();
                 let label = kind.wording(("分类列表", "Category list"), ("标签列表", "Tag list"));
-                let table = html::table()
-                    .class("blog-table")
-                    .aria_label(label)
-                    .child((header, rows));
-                Some(
-                    html::div()
-                        .class("blog-table-scroll blog-frame")
-                        .tabindex("0")
-                        .role("region")
-                        .aria_label(t("数据表格", "Data table"))
-                        .child(table),
-                )
+                Some(framed_table(label, (id_header, headers), rows))
             })
         }
     }

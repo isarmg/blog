@@ -107,29 +107,22 @@ async fn list_articles(
     let recommended = query.recommended.map(i64::from);
     let phrase = format!("\"{}\"", search.replace('"', "\"\""));
     let (count_sql, list_sql) = article_page_sql(&query, audience, search);
-    let mut transaction = pool.begin().await?;
-    let total: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(count_sql))
+    let transaction = pool.begin().await?;
+    let count = sqlx::query_scalar(sqlx::AssertSqlSafe(count_sql))
         .bind(query.sort_id)
         .bind(search)
         .bind(&pattern)
         .bind(recommended)
         .bind(&phrase)
-        .bind(query.label_id)
-        .fetch_one(&mut *transaction)
-        .await?;
-    let items = sqlx::query_as::<_, ArticleSummary>(sqlx::AssertSqlSafe(list_sql))
+        .bind(query.label_id);
+    let rows = sqlx::query_as(sqlx::AssertSqlSafe(list_sql))
         .bind(query.sort_id)
         .bind(search)
         .bind(&pattern)
         .bind(recommended)
         .bind(&phrase)
-        .bind(query.label_id)
-        .bind(pagination.size)
-        .bind(pagination.offset())
-        .fetch_all(&mut *transaction)
-        .await?;
-    transaction.commit().await?;
-    Ok(pagination.result(items, total))
+        .bind(query.label_id);
+    pagination.fetch(transaction, count, rows).await
 }
 
 fn article_page_sql(
@@ -313,15 +306,11 @@ pub(super) async fn admin_article_news(
     let pagination = query.admin_bounds();
     let mut transaction = state.pool.begin().await?;
     article_author(&mut transaction, id).await?;
-    let total: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM wei_yan WHERE type='news' AND source=?")
-            .bind(id)
-            .fetch_one(&mut *transaction)
-            .await?;
-    let items = sqlx::query_as::<_, ArticleNews>(sqlx::AssertSqlSafe(format!("{ARTICLE_NEWS_SQL} WHERE w.type='news' AND w.source=? ORDER BY w.create_time DESC,w.id DESC LIMIT ? OFFSET ?")))
-        .bind(id).bind(pagination.size).bind(pagination.offset()).fetch_all(&mut *transaction).await?;
-    transaction.commit().await?;
-    Ok(Json(pagination.result(items, total)))
+    let count =
+        sqlx::query_scalar("SELECT COUNT(*) FROM wei_yan WHERE type='news' AND source=?").bind(id);
+    let rows = sqlx::query_as(sqlx::AssertSqlSafe(format!("{ARTICLE_NEWS_SQL} WHERE w.type='news' AND w.source=? ORDER BY w.create_time DESC,w.id DESC LIMIT ? OFFSET ?")))
+        .bind(id);
+    pagination.fetch(transaction, count, rows).await.map(Json)
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

@@ -1,8 +1,8 @@
 use crate::common::Action;
 use crate::common::{
     ApiErrorCode, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
-    ListState, LocalErrorCode, Pager, RequestOptions, flag, form_check, invalid, load, load_typed,
-    navigate, num, page_items, safe_url, t, table_time, text, validation_message,
+    ListState, LocalErrorCode, Pager, RequestOptions, flag, form_check, framed_table, invalid,
+    load, load_typed, navigate, num, page_items, safe_url, t, table_time, text, validation_message,
 };
 use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
@@ -818,31 +818,6 @@ pub fn ArticleEditor(#[prop(optional)] id: Option<ArticleId>) -> impl IntoView {
         .class("blog-content-stack blog-stack"),
 )
 }
-fn editor_table<const N: usize>(
-    name: String,
-    columns: [String; N],
-    rows: impl IntoView,
-) -> impl IntoView {
-    let headings = columns
-        .into_iter()
-        .map(|label| html::th().child(label))
-        .collect_view();
-    html::div()
-        .child(
-            html::table()
-                .child((
-                    html::thead().child(html::tr().child(headings)),
-                    html::tbody().child(rows),
-                ))
-                .class("blog-table")
-                .aria_label(name),
-        )
-        .class("blog-table-scroll blog-frame")
-        .tabindex("0")
-        .role("region")
-        .aria_label(t("数据表格", "Data table"))
-}
-
 #[derive(Clone, Copy)]
 struct ContentDraft {
     form: RwSignal<Value>,
@@ -1084,9 +1059,9 @@ fn NewsEditor(id: i64) -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move || data.with_current(|page| page.map(|page| editor_table(
+                    move || data.with_current(|page| page.map(|page| framed_table(
                         t("文章进展", "Article updates"),
-                        [t("时间", "Time"), t("内容", "Content"), t("操作", "Actions")],
+                        [t("时间", "Time"), t("内容", "Content"), t("操作", "Actions")].map(|label| html::th().child(label)),
                         page.items.iter().map(render_row).collect_view(),
                     ))),
                     Pager(component_props_builder(& Pager)
@@ -1359,10 +1334,10 @@ pub fn Notes() -> impl IntoView {
                             data.reload();
                         });
                     }),
-                    move || data.with_current(|page| page.map(|page| editor_table(
+                    move || data.with_current(|page| page.map(|page| framed_table(
                         t("随笔列表", "Note list"),
                         [t("作者", "Author"), t("内容", "Content"), t("图片", "Image"),
-                         t("状态", "Status"), t("时间", "Time"), t("操作", "Actions")],
+                         t("状态", "Status"), t("时间", "Time"), t("操作", "Actions")].map(|label| html::th().child(label)),
                         page_items(page).iter().map(render_row).collect_view(),
                     ))),
                     ListState(component_props_builder(& ListState)
