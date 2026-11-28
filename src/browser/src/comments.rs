@@ -1,6 +1,6 @@
 use crate::common::{
-    Pager, RequestOptions, load, merge_page, num, page_items, public_error, request, safe_url, t,
-    text, unsigned_field,
+    Pager, RequestOptions, confirm, load, merge_page, num, page_items, public_error, request,
+    safe_url, t, text, unsigned_field,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::prelude::*;
@@ -331,9 +331,7 @@ pub(crate) fn Comments(
                                         .r#type("button")
                                         .disabled(move || busy.get())
                                         .on(blog_interface::ev::click, move |_| {
-                                            if !window()
-                                                .confirm_with_message(&t("这条评论可能已经发表。请先检查评论列表；确定放弃确认原提交并清空草稿？", "This comment may already be posted. Check the comments first. Stop confirming this submission and clear its draft?"))
-                                                .unwrap_or(false)
+                                            if !confirm(&t("这条评论可能已经发表。请先检查评论列表；确定放弃确认原提交并清空草稿？", "This comment may already be posted. Check the comments first. Stop confirming this submission and clear its draft?"))
                                             {
                                                 return;
                                             }

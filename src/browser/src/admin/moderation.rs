@@ -1,7 +1,7 @@
 use super::Page;
 use crate::common::{
-    Action, Data, FilePicker, Lightbox, ListState, Pager, framed_table, load, nullable_num, num,
-    page_items, safe_url, t, table_time, text, tr,
+    Action, Data, FilePicker, Lightbox, ListState, Pager, confirm, framed_table, load,
+    nullable_num, num, page_items, safe_url, t, table_time, text, tr,
 };
 use blog_interface::component::component_props_builder as props;
 use blog_interface::components::notify;
@@ -161,7 +161,7 @@ fn row(
                     Files => t("确定删除这个文件及其媒体数据？", "Delete this file and its media data?"),
                     Messages => t("确定删除这条留言？", "Delete this message?"),
                 };
-                if window().confirm_with_message(&prompt).unwrap_or(false) {
+                if confirm(&prompt) {
                     let body = (kind == Files).then(|| json!({"path": path}));
                     action.run(format!("/api/v1/content/{}/{id}", kind.page().hash()), "DELETE", body, move |_| data.reload());
                 }

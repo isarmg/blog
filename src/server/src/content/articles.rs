@@ -6,9 +6,14 @@ use crate::{ApiResult, AppError, AppState, absent, invalid};
 use axum::{Json, extract::State, http::HeaderMap};
 use blog_application::admin_core::AuthenticatedIdentity;
 use blog_application::server_cli::{ContractPath as Path, ContractQuery as Query};
-use blog_application::{admin_auth::Password, error::HttpStatus};
+use blog_application::{
+    admin_auth::{Password, verify_password},
+    error::HttpStatus,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use std::{sync::Arc, time::Duration};
+use tokio::sync::Semaphore;
 
 #[derive(Serialize, sqlx::FromRow)]
 struct ArticlePresentation {
@@ -501,30 +506,13 @@ pub(super) async fn unlock_article(
     .fetch_optional(&state.pool)
     .await?
     .ok_or_else(absent)?;
-    let permit = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        std::sync::Arc::clone(&state.password_slots).acquire_owned(),
+    let (allowed, stored) = run_password_job(
+        &state.password_slots,
+        "密码验证暂时繁忙",
+        "密码验证失败",
+        move || (verify_password(&input.password, &stored), stored),
     )
-    .await
-    .map_err(|source| AppError::Busy {
-        message: "密码验证暂时繁忙",
-        source,
-    })?
-    .expect("invariant: password semaphore is never closed");
-    let password = input.password;
-    // The permit remains held by the worker even if the HTTP request is cancelled.
-    let (allowed, stored) = tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        (
-            blog_application::admin_auth::verify_password(&password, &stored),
-            stored,
-        )
-    })
-    .await
-    .map_err(|source| AppError::Task {
-        message: "密码验证失败",
-        source,
-    })?;
+    .await?;
     if !allowed {
         return Err(AppError::Public(HttpStatus::Forbidden, "访问密码错误"));
     }
@@ -630,13 +618,7 @@ pub(super) async fn create_article(
         return Err(invalid("加密文章必须设置访问密码"));
     }
     let request = IdempotencyKey::from_headers(&headers)?.map(|key| key.bind_payload(&input));
-    let password = input
-        .password
-        .as_deref()
-        .map(Password::new)
-        .transpose()
-        .map_err(AppError::InvalidPassword)?;
-    let password = hash_article_password(&state, password).await?;
+    let password = hash_article_password(&state.password_slots, input.password.as_deref()).await?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
     if let Some(request) = &request
         && let Some((hash, id, deleted)) = sqlx::query_as::<_, (Vec<u8>, i64, i64)>(
@@ -679,32 +661,46 @@ pub(super) async fn create_article(
     Ok(Json(article))
 }
 
+async fn run_password_job<T: Send + 'static>(
+    slots: &Arc<Semaphore>,
+    busy_message: &'static str,
+    failure_message: &'static str,
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, AppError> {
+    let permit = tokio::time::timeout(Duration::from_secs(2), Arc::clone(slots).acquire_owned())
+        .await
+        .map_err(|source| AppError::Busy {
+            message: busy_message,
+            source,
+        })?
+        .expect("invariant: password semaphore is never closed");
+    // The blocking job, not the request, owns the permit through completion.
+    tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        work()
+    })
+    .await
+    .map_err(|source| AppError::Task {
+        message: failure_message,
+        source,
+    })
+}
+
 async fn hash_article_password(
-    state: &AppState,
-    password: Option<Password>,
+    slots: &Arc<Semaphore>,
+    password: Option<&str>,
 ) -> Result<Option<String>, AppError> {
     let Some(password) = password else {
         return Ok(None);
     };
-    let permit = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        std::sync::Arc::clone(&state.password_slots).acquire_owned(),
+    let password = Password::new(password).map_err(AppError::InvalidPassword)?;
+    run_password_job(
+        slots,
+        "密码计算暂时繁忙",
+        "密码计算失败",
+        move || password.hash(),
     )
-    .await
-    .map_err(|source| AppError::Busy {
-        message: "密码计算暂时繁忙",
-        source,
-    })?
-    .expect("invariant: password semaphore is never closed");
-    tokio::task::spawn_blocking(move || {
-        let _permit = permit;
-        password.hash()
-    })
-    .await
-    .map_err(|source| AppError::Task {
-        message: "密码计算失败",
-        source,
-    })?
+    .await?
     .map(Some)
     .map_err(AppError::Password)
 }
@@ -715,13 +711,7 @@ pub(super) async fn update_article(
     Path(id): Path<i64>,
     crate::ContractJson(ArticleInput(input)): crate::ContractJson<ArticleInput>,
 ) -> ApiResult<ArticleDetail> {
-    let password = input
-        .password
-        .as_deref()
-        .map(Password::new)
-        .transpose()
-        .map_err(AppError::InvalidPassword)?;
-    let password = hash_article_password(&state, password).await?;
+    let password = hash_article_password(&state.password_slots, input.password.as_deref()).await?;
     let mut transaction = crate::content::begin_mutation(&state.pool, &identity).await?;
     let has_password: bool =
         sqlx::query_scalar("SELECT password IS NOT NULL FROM article WHERE id=? AND deleted=0")

@@ -523,10 +523,6 @@ name = "blog-encoding-script-float-format"
 version = "0.0.0"
 
 [[package]]
-name = "blog-encoding-signed-variable-integer"
-version = "0.0.0"
-
-[[package]]
 name = "blog-encoding-text-writer"
 version = "0.0.0"
 
@@ -1474,11 +1470,11 @@ dependencies = [
  "blog-diagnostics-error-context",
  "blog-diagnostics-event-facade",
  "blog-diagnostics-symbol-decoder",
- "blog-encoding-signed-variable-integer",
  "blog-format-data-model",
  "blog-format-json",
  "blog-wasm-browser-bridge-schema",
  "blog-wasm-module-decoder",
+ "blog-wasm-module-encoder",
  "blog-wasm-module-transform",
 ]
 

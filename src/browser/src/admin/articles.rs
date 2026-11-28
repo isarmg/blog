@@ -1,4 +1,6 @@
-use crate::common::{Action, Data, Feedback, Pager, framed_table, load_typed, navigate, t};
+use crate::common::{
+    Action, Data, Feedback, Pager, confirm, framed_table, load_typed, navigate, t,
+};
 use crate::models::{ArticleSummary, Page};
 use blog_interface::children::ToChildren;
 use blog_interface::component::component_props_builder;
@@ -116,10 +118,7 @@ fn article_row(item: &ArticleSummary, data: ArticlesData, action: Action) -> imp
                     .child(t("删除", "Delete"))
                     .disabled(move || action.busy.get())
                     .on(ev::click, move |_| {
-                        if window()
-                            .confirm_with_message(&t("确定删除这篇文章？", "Delete this article?"))
-                            .unwrap_or(false)
-                        {
+                        if confirm(&t("确定删除这篇文章？", "Delete this article?")) {
                             action.run(
                                 format!("/api/v1/content/articles/{id}"),
                                 "DELETE",

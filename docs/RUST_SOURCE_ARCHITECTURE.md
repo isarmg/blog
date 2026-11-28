@@ -152,7 +152,7 @@
 | blog-encoding-radix-codecs (`src/foundation/encoding/radix-codecs`) | radix codecs | 当前入口未选用 | 入口或保留实现 | data-encoding@2.11.1 |
 | blog-encoding-roundtrip-float-format (`src/foundation/encoding/roundtrip-float-format`) | roundtrip float format | 当前入口未选用 | src/foundation/network/form-data | ryu@1.0.23 |
 | blog-encoding-script-float-format (`src/foundation/encoding/script-float-format`) | script float format | host-tools, workspace-tests | src/foundation/assets/compiler | dragonbox_ecma@0.1.12 |
-| blog-encoding-signed-variable-integer (`src/foundation/encoding/signed-variable-integer`) | signed variable integer | host-tools, workspace-tests | src/foundation/wasm/browser-module | leb128@0.2.7 |
+| blog-encoding-signed-variable-integer (`src/foundation/encoding/signed-variable-integer`) | signed variable integer | 当前入口未选用 | 入口或保留实现 | leb128@0.2.7 |
 | blog-encoding-text-writer (`src/foundation/encoding/text-writer`) | text writer | native, host-tools, domain-tests, workspace-tests | src/foundation/encoding/borrowed-unicode, src/foundation/unicode/data-provider, src/foundation/unicode/locale-identifiers | writeable@0.6.4 |
 | blog-encoding-unicode-decoder (`src/foundation/encoding/unicode-decoder`) | unicode decoder | native, workspace-tests | src/foundation/cli/terminal-style | utf8parse@0.2.2 |
 | blog-encoding-unicode-iterator (`src/foundation/encoding/unicode-iterator`) | unicode iterator | native, host-tools, domain-tests, workspace-tests | src/foundation/network/web-address, src/foundation/unicode/boundary-analysis, src/foundation/unicode/data-collections, src/foundation/unicode/text-normalizer | utf8_iter@1.0.4 |
@@ -395,7 +395,7 @@
 | blog-wasm-browser-bridge-schema (`src/foundation/wasm/browser-bridge-schema`) | browser bridge schema | web-release, host-tools, workspace-tests | src/foundation/wasm/browser-bridge, src/foundation/wasm/browser-bridge-entry, src/foundation/wasm/browser-module | wasm-bindgen-shared@0.2.129 |
 | blog-wasm-browser-module (`src/foundation/wasm/browser-module`) | browser module | host-tools, workspace-tests | src/tools/assets | wasm-bindgen-cli-support@0.2.129 |
 | blog-wasm-module-decoder (`src/foundation/wasm/module-decoder`) | module decoder | host-tools, workspace-tests | src/foundation/wasm/browser-module, src/foundation/wasm/module-encoder, src/foundation/wasm/module-transform | wasmparser@0.245.1 |
-| blog-wasm-module-encoder (`src/foundation/wasm/module-encoder`) | module encoder | host-tools, workspace-tests | src/foundation/wasm/module-transform | wasm-encoder@0.245.1 |
+| blog-wasm-module-encoder (`src/foundation/wasm/module-encoder`) | module encoder | host-tools, workspace-tests | src/foundation/wasm/browser-module, src/foundation/wasm/module-transform | wasm-encoder@0.245.1 |
 | blog-wasm-module-transform (`src/foundation/wasm/module-transform`) | module transform | host-tools, workspace-tests | src/foundation/wasm/browser-module | walrus@0.27.2 |
 | blog-wasm-module-transform-derive (`src/foundation/wasm/module-transform-derive`) | module transform derive | host-tools, workspace-tests | src/foundation/wasm/module-transform | walrus-macro@0.26.0 |
 

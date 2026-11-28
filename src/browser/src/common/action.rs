@@ -6,6 +6,10 @@ use blog_interface::thread_bound::SendWrapper;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+pub(crate) fn confirm(prompt: &str) -> bool {
+    window().confirm_with_message(prompt).unwrap_or(false)
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct Action {
     pub busy: RwSignal<bool>,

@@ -1,8 +1,9 @@
 use crate::common::Action;
 use crate::common::{
     ApiErrorCode, ControlledCheck, ControlledField, Feedback, Field, FilePicker, Lightbox,
-    ListState, LocalErrorCode, Pager, RequestOptions, flag, form_check, framed_table, invalid,
-    load, load_typed, navigate, num, page_items, safe_url, t, table_time, text, validation_message,
+    ListState, LocalErrorCode, Pager, RequestOptions, confirm, flag, form_check, framed_table,
+    invalid, load, load_typed, navigate, num, page_items, safe_url, t, table_time, text,
+    validation_message,
 };
 use crate::models::{Article, ArticleDraft, ArticleId, Category, Label, News, Page};
 use blog_interface::component::component_props_builder;
@@ -848,9 +849,7 @@ impl ContentDraft {
     fn can_discard(self, prompt: (&str, &str)) -> bool {
         self.form
             .with_untracked(|form| self.original.with_untracked(|original| form == original))
-            || window()
-                .confirm_with_message(&t(prompt.0, prompt.1))
-                .unwrap_or(false)
+            || confirm(&t(prompt.0, prompt.1))
     }
 }
 
@@ -941,12 +940,10 @@ fn NewsEditor(id: i64) -> impl IntoView {
                                 .class("blog-button blog-danger")
                                 .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
-                                    if window()
-                                        .confirm_with_message(&t(
+                                    if confirm(&t(
                                             "确定删除这条文章进展？",
                                             "Delete this article update?",
                                         ))
-                                        .unwrap_or(false)
                                     {
                                         save.run(
                                             format!(
@@ -1201,12 +1198,7 @@ pub fn Notes() -> impl IntoView {
                                 .class("blog-button blog-danger")
                                 .disabled(locked)
                                 .on(blog_interface::ev::click, move |_| {
-                                    if window()
-                                        .confirm_with_message(&t(
-                                            "确定删除这条随笔？",
-                                            "Delete this note?",
-                                        ))
-                                        .unwrap_or(false)
+                                    if confirm(&t("确定删除这条随笔？", "Delete this note?"))
                                     {
                                         save.run(
                                             format!("/api/v1/content/notes/{id}"),

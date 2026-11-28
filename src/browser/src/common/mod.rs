@@ -10,7 +10,7 @@ mod pagination;
 mod request;
 mod table;
 
-pub(crate) use action::Action;
+pub(crate) use action::{Action, confirm};
 pub(crate) use blog_interface::i18n::t;
 pub(crate) use decoration::{Petals, Sliding};
 pub(crate) use feedback::{Feedback, ListState, public_error};

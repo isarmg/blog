@@ -6049,13 +6049,22 @@
         ],
         "production_behavior_change": false,
         "reason": "Replace the external assertion macro calls with Rust const assertions preserving all fifteen compile-time size, alignment and niche predicates, and remove the now-unused package edge without changing repr, runtime code or the original minimum Rust version."
+      },
+      {
+        "directory": "src/foundation/wasm/browser-module",
+        "files": [
+          "Cargo.toml",
+          "src/wasm_conventions.rs"
+        ],
+        "production_behavior_change": false,
+        "reason": "Reuse the existing WebAssembly module encoder for target feature sections and share the checked reader; keep the original variable-integer source, archive, and license records."
       }
     ],
     "schema": 1
   },
-  "local_modifications_sha256": "08ffe6c8ccafa1ade5050759573fe2ba14181ad62472e5ac4c17ffc2d0551924",
+  "local_modifications_sha256": "cb773966c0364b5b6d1f549c47e816b2f4b64ae8510464010b2e34c20feb309d",
   "lockfiles_sha256": {
-    "Cargo.lock": "9055604b384778a1ad573480bd7570cbabba3b820aa82b98c3a5711d773bf603"
+    "Cargo.lock": "e4153a8a4de8c908ef6ad0c2ca0f56eee8ee1540d09ff97faad5e66ec95a470f"
   },
   "manifests_sha256": {
     "Cargo.toml": "cda82070a8ea9fb9208597827974da25e142ef826e50df42827ed8702bfae9d7",
@@ -6253,7 +6262,7 @@
     "src/foundation/wasm/browser-bridge-entry/Cargo.toml": "eaeb2c240945fdb64ec3a4d7bb33e4f67d727f9dcd64fb74951f8c44a701933f",
     "src/foundation/wasm/browser-bridge-schema/Cargo.toml": "1f9c9b36e8f4f3dbf359da6b7072708d3c5850894e91405ff744d5d2230af763",
     "src/foundation/wasm/browser-bridge/Cargo.toml": "a871c24574018e4bfe49a621b05780d12fe2f4d1b173f41175dc917aae39e66b",
-    "src/foundation/wasm/browser-module/Cargo.toml": "7819b9099e8c645316ecb8e6abc8da2cf8731ab56ce4bd4224d5f8b3c18a45a0",
+    "src/foundation/wasm/browser-module/Cargo.toml": "747eb59896722c87043c396a4bf891f79a31445da9f2965f384b532ba98949cb",
     "src/foundation/wasm/module-decoder/Cargo.toml": "f8988378a795f559bed556dd6eef6237567de1d616ec6f0ee00609168c451c37",
     "src/foundation/wasm/module-encoder/Cargo.toml": "17b2e606c906842b46fd587da82ad286f8c84faaab56b91b1f39a4876d23490b",
     "src/foundation/wasm/module-transform-derive/Cargo.toml": "4f045834af7215e6e5fc5ce31e0f9d978311b45f40d188be556126b88f17515f",
@@ -34416,23 +34425,23 @@
       "files_sha256": {
         "Cargo.toml": "fec78fce2a0b0f8b73137095d0a4286d0f181b7c6072c75e45da2798010526a8",
         "src/admin.rs": "64b58d0fe06354b3f940959d27ed87b7c6b8d488222e1dee1f8f0a87b1467498",
-        "src/admin/articles.rs": "ea03c48d9fbf0f16b911267609933f22a6ddf658529d5bfffafbbb297aa9164c",
+        "src/admin/articles.rs": "ff7a45280dbdd2803fe7b5905e59db7be8c12a4585a6ff8815fdd15a56feeb73",
         "src/admin/dashboard.rs": "1043d01b24b0fb9f23586ff07715baafe4edf8a5ee84467e4a0ee6a531a1e4ea",
-        "src/admin/family.rs": "2fa7f6ce8477a2a6cc398767562fad4a7de0532c90fffcb9fcd6046752c99429",
+        "src/admin/family.rs": "d0c913cc8951bdd607f6766050fba55017fa9e4f4a802bb3a198429ccd9b3727",
         "src/admin/home.rs": "c69282262da0ece1a05037d359c5b863972053c0fa64fa95d8091bc5baa3615b",
         "src/admin/letter.rs": "69fd34ed608a6d14e103783f250fca77096969d492c6a15402e1eef3a944769f",
-        "src/admin/links.rs": "0f6290ee3ae8c3016d4f1da231c03d25608ce865b6d5b70aa633d8e99215b865",
-        "src/admin/moderation.rs": "67cd66d4a1bb9490619def60535b0d4c3b7df7cdf2182b26c060ea9c035b14c2",
+        "src/admin/links.rs": "0f57fbf01943d702df60f2b94ad535aae142c013270915b68126b3d8e51ad8cc",
+        "src/admin/moderation.rs": "b3ded993eda50ab5f3e8511c3f1bbd6a1c2131ceb4cbda7e32650212c388ee9c",
         "src/admin/site.rs": "5b200af3a6b50376c08d648b2b7b955aa0aafc0700b9848acdaa5edbb96967f9",
-        "src/admin/taxonomy.rs": "d75161507d01a8eea16083789b38c3d1115825186b1c1be536a759575367a9ba",
+        "src/admin/taxonomy.rs": "74c0c9f05dc0da7ae310162aba138f5ca93989a7451017e4a1f6c2c6f2e7719a",
         "src/browser.rs": "4693f0c02b5ce688816695c42efbc5dcedade7666cedde87febaa5f556a1744e",
-        "src/comments.rs": "718100cce69a16f7560b4484fc1754305d49c68d247ba99e97f2c5eac296b577",
-        "src/common/action.rs": "872dd97bf38b60acec5387ef6f99181679a49fb6a79c305c4c1344c8b84e51ef",
+        "src/comments.rs": "48ffed9062bf797f301753ca55edd752f175e489eac66d7a9e6d445a874ec657",
+        "src/common/action.rs": "829bc7955025757a4a50f77c3122cc0373506b4bc7fe8ca1ac731c09d2e4f238",
         "src/common/decoration.rs": "9b13d2c7f006f1ee1641cc81e768287542fb7670b40730ab1da8f90ae944096c",
         "src/common/feedback.rs": "4702176d8a1ea42d4fa769a0d35a4f888c94e45f37910eadbac314dad5f3792f",
         "src/common/forms.rs": "926bd78dcbd71a04539a7808fd7c35a5d28f5427430507e2a68858ef52d8f49e",
         "src/common/lightbox.rs": "e2521ca7a75831bcea530b00b76a19cca1755a7ba10eb4c74c407d0050ef917e",
-        "src/common/mod.rs": "414045f7159f8f8327f3fa2ff03d5c2ebfac46dda99416fcf52fcaa218af57b8",
+        "src/common/mod.rs": "ced75dffdc48ef6a8643bfe0c9ae38b328d92d16c06daaa658b086ed7ec09889",
         "src/common/navigation.rs": "7173a26289f043b9b0a8a92b42efdcc87feb8221c411652ee999e0ff62178fab",
         "src/common/paged_list.rs": "b1925984f65c4866e2851807f35e111c97de77b35618a86f14357f04d7d6ae1b",
         "src/common/pagination.rs": "1e9c422fc1dcd3c40c0471f82c9ac1bb15179d7867108f9930a1d703cd28a83b",
@@ -34441,7 +34450,7 @@
         "src/contracts.rs": "b7c314b7b7a805ca88cfed1c32dd081658b46aa35105b61386916ea804629cfb",
         "src/corner_surfaces.txt": "f5b67b57585b2a9cf52fe2a646a21f2e9126f73d83c42c2121c68df46c54f5ca",
         "src/dates.rs": "e74422fb4ada91d800f3d4a3b0ca3ddc46776fd6cf99a88f4a77081b677a5f1e",
-        "src/editor.rs": "5f33796fd5e9a7adaec08ca865c0e09968507d7cc5870fd5cb5c719863d1b2dc",
+        "src/editor.rs": "f388024d4d6b9261b72a3d92090b571574c3b0cc4b654bb6c269d6b1f7ab4f59",
         "src/editor/insertion.rs": "f83fb8295c9753d863728da53ef265bcac4a2541571ededaf567573ebfc22fb5",
         "src/lib.rs": "a0c8349911140a65c7eea34d44e5a8dee103f56fb256d889386494e7dd514762",
         "src/markdown.rs": "a4573f58260a81123c21ec5fc460616842b7bcca5399c35c05782ff20b3bc602",
@@ -47130,17 +47139,17 @@
         "src/foundation/diagnostics/error-context",
         "src/foundation/diagnostics/event-facade",
         "src/foundation/diagnostics/symbol-decoder",
-        "src/foundation/encoding/signed-variable-integer",
         "src/foundation/format/data-model",
         "src/foundation/format/json",
         "src/foundation/wasm/browser-bridge-schema",
         "src/foundation/wasm/module-decoder",
+        "src/foundation/wasm/module-encoder",
         "src/foundation/wasm/module-transform"
       ],
       "directory": "src/foundation/wasm/browser-module",
       "files_sha256": {
         ".cargo_vcs_info.json": "9915a0947a6db98a5dd6f3a0a7d43b2db7afea5356752c7e52d56dc0c7b81a85",
-        "Cargo.toml": "7819b9099e8c645316ecb8e6abc8da2cf8731ab56ce4bd4224d5f8b3c18a45a0",
+        "Cargo.toml": "747eb59896722c87043c396a4bf891f79a31445da9f2965f384b532ba98949cb",
         "src/decode.rs": "8fa1b01bf93e599ec86b058b7cc287615c02b9605fb394bbe75f73681b5b4546",
         "src/descriptor.rs": "9d8c54c180c5bf9699aa677d17173e1f422e17539fe47c606848345dc0183ba5",
         "src/descriptors.rs": "83b39ab75da5479e0bdf4c0def09ff5891c418bc3a8c23005438f747e71e37f5",
@@ -47162,7 +47171,7 @@
         "src/transforms/test-data/catch_handler_legacy.wat": "a6e1192479a19662a2d08a55e9e38260ce6aa7e7f420b43cc4c92ba032a3fd43",
         "src/transforms/test-data/catch_handler_modern.wat": "1104decb11d85d839275f6ec7cc821bf2e10b62cbfb6ba2c59383f514b1148fe",
         "src/transforms/threads/mod.rs": "4615c8e4bb78e316a550044b695667e71a7be50d1fdf180fc9d50f909424f560",
-        "src/wasm_conventions.rs": "f8de1a94560b0a15d7e8debd748c63a05b45b01c34a88b752921bafdd36b5f8b",
+        "src/wasm_conventions.rs": "88eff8e38fbdac6a635fa2928fb0504a8b25dc827d0339b60399ab35571b55f7",
         "src/wasm_typescript.rs": "752aef43e6e826fd8c394c466f9d83e9ba392dbf183908e2c52859e74f4b75ab",
         "src/wit/incoming.rs": "730ca5d96bec42c67e17c00d1ced2af3196be695971afcec57154149f7cc707b",
         "src/wit/mod.rs": "4c981643050d73cc2dea679d4d821fae28ca051d29c52920bbeffb08e235ad66",
@@ -47182,7 +47191,7 @@
         "test/foundation/wasm/browser-module/unit/src/descriptor/12306.rs": "8edf85ae0423dca2ffd8a741775b4d6f70e9dc4122c6c21ce95ca180e1d7253b",
         "test/foundation/wasm/browser-module/unit/src/suggest/tests.rs": "a96d68337e84db1fa22e18c05114bcab290e553fa43fb34318c3879105f18a6d",
         "test/foundation/wasm/browser-module/unit/src/transforms/multi_value/tests/mod.rs": "f11de6a07582860ef7ffef7923db4ef05fd4a9873946ff8d88145aeb70edabd5",
-        "test/foundation/wasm/browser-module/unit/src/wasm_conventions/tests.rs": "0c7f3d180d30025bfcfedb349e783257c0512ed8b97ed207c9f414bc6d878d64",
+        "test/foundation/wasm/browser-module/unit/src/wasm_conventions/tests.rs": "ab48d96ec24a9d900f266cbb266e199c78516df34d19f81eb5e71b0945d7739e",
         "test/foundation/wasm/browser-module/unit/src/wasm_typescript/tests.rs": "ebc752a4d743435deba6f8f183cffaa8e86e338a21a768dfb1e4a3b86867ab27",
         "test/foundation/wasm/browser-module/unit/src/wit/mod/tests.rs": "49ba86c93626520a4aee8249322e95f70466c1e7beb829b6b16ea1e234ad2223",
         "test/foundation/wasm/browser-module/unit/src/wit/outgoing/32415.rs": "601c3410764ac24fea35e6a7464ebbd8d4b7df4f90f45a5459e9928008115438"
@@ -47835,7 +47844,7 @@
         "src/app.rs": "99819bea892f91396acb209840410629fd2b6a622606bbb750da329b9f6c9e36",
         "src/config.rs": "f2bfd36e246ce8152b0f456b3079b8f610fbc4e30850b64d27049ed0ca2d0ac6",
         "src/config_definition.rs": "ccccd30fef770247ff32d4beedead7ba878efcabc3fb4e357c7de7ca443c21ac",
-        "src/content/articles.rs": "570ca7829ae4794b92458b2a4b8fe5f58e0dda220c35f50795dc618c433b7ffe",
+        "src/content/articles.rs": "db7f34548891fa0af310403abe0e5dc65884001c5576cc9c5063559c2c730e13",
         "src/content/authorization.rs": "377288ad8daa964e9e9f087d17f0a1a97d574c8fba3b0f9e8ef0ee577eb8ac29",
         "src/content/catalog.rs": "b83a8575f4485fe28039d1bc3d9545b4397e9a4a8ba3cae62936e62d34874d5d",
         "src/content/comments.rs": "d57ce05bcb38f816cb6bab8c3e1dda3c13d61773c32ac570e14e123a4e45a3c2",
@@ -50530,14 +50539,6 @@
           ],
           "version": "0.0.0"
         },
-        "src/foundation/encoding/signed-variable-integer": {
-          "features": [],
-          "name": "blog-encoding-signed-variable-integer",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
         "src/foundation/encoding/text-writer": {
           "features": [
             "alloc"
@@ -52551,14 +52552,6 @@
             "ecma"
           ],
           "name": "blog-encoding-script-float-format",
-          "roles": [
-            "compile"
-          ],
-          "version": "0.0.0"
-        },
-        "src/foundation/encoding/signed-variable-integer": {
-          "features": [],
-          "name": "blog-encoding-signed-variable-integer",
           "roles": [
             "compile"
           ],

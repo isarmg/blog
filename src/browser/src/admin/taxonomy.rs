@@ -1,5 +1,6 @@
 use crate::common::{
-    Action, Data, Field, framed_table, load, nullable_num, num, t, text, validation_message,
+    Action, Data, Field, confirm, framed_table, load, nullable_num, num, t, text,
+    validation_message,
 };
 use blog_interface::component::component_props_builder;
 use blog_interface::components::notify;
@@ -173,12 +174,10 @@ impl TaxonomyEditor {
 
     fn remove(self, id: i64) {
         if self.save.busy.get_untracked()
-            || !window()
-                .confirm_with_message(&self.kind.wording(
-                    ("确定删除这个分类？", "Delete this category?"),
-                    ("确定删除这个标签？", "Delete this tag?"),
-                ))
-                .unwrap_or(false)
+            || !confirm(&self.kind.wording(
+                ("确定删除这个分类？", "Delete this category?"),
+                ("确定删除这个标签？", "Delete this tag?"),
+            ))
         {
             return;
         }

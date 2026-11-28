@@ -239,3 +239,18 @@
         assert_eq!(get_function_table_entry(&module, 0).unwrap(), func_a);
         assert_eq!(get_function_table_entry(&module, 128).unwrap(), func_b);
     }
+
+    #[test]
+    fn target_feature_enable_and_append_use_the_same_entries() {
+        let mut module = Module::with_config(ModuleConfig::new());
+        let id = module.customs.add(RawCustomSection {
+            name: "target_features".into(),
+            data: b"\x81\0-\x01x".to_vec(),
+        });
+        assert!(!target_feature(&module, "x").unwrap());
+        insert_target_feature(&mut module, "x").unwrap();
+        assert!(target_feature(&module, "x").unwrap());
+        assert_eq!(&module.customs.get(id).unwrap().data, b"\x81\0+\x01x");
+        insert_target_feature(&mut module, "y").unwrap();
+        assert_eq!(&module.customs.get(id).unwrap().data, b"\x02+\x01x+\x01y");
+    }

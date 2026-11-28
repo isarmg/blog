@@ -39,10 +39,6 @@ path = "../../../../test/foundation/wasm/browser-module/integration/termination_
 path = "../../diagnostics/error-context"
 package = "blog-diagnostics-error-context"
 
-[dependencies.leb128]
-path = "../../encoding/signed-variable-integer"
-package = "blog-encoding-signed-variable-integer"
-
 [dependencies.log]
 path = "../../diagnostics/event-facade"
 package = "blog-diagnostics-event-facade"
@@ -67,6 +63,11 @@ package = "blog-wasm-module-transform"
 [dependencies.wasm-bindgen-shared]
 path = "../browser-bridge-schema"
 package = "blog-wasm-browser-bridge-schema"
+
+[dependencies.wasm-encoder]
+default-features = false
+path = "../module-encoder"
+package = "blog-wasm-module-encoder"
 
 [dependencies.wasmparser]
 default-features = false

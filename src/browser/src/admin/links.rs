@@ -1,5 +1,5 @@
 use crate::common::{
-    Action, Data, Field, ListState, Pager, enc, flag, form_check, framed_table, load, num,
+    Action, Data, Field, ListState, Pager, confirm, enc, flag, form_check, framed_table, load, num,
     page_items, t, text,
 };
 use crate::select::Select;
@@ -127,10 +127,7 @@ impl LinkManager {
                 Some(json!({"active": true})),
             ),
             RowChange::Delete => {
-                if !window()
-                    .confirm_with_message(&t("确定删除这条资源？", "Delete this resource?"))
-                    .unwrap_or(false)
-                {
+                if !confirm(&t("确定删除这条资源？", "Delete this resource?")) {
                     return;
                 }
                 (format!("{LINKS}/{id}"), "DELETE", None)

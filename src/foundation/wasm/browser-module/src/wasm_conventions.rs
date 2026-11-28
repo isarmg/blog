@@ -6,13 +6,12 @@
 //! * The stack pointer
 //! * The canonical linear memory that contains the stack
 
-use std::io::Cursor;
-
 use anyhow::{anyhow, bail, Context, Result};
 use walrus::{
     ir::Value, ConstExpr, ConstOp, ElementItems, FunctionBuilder, FunctionId, FunctionKind,
     GlobalId, GlobalKind, MemoryId, Module, RawCustomSection, ValType,
 };
+use wasm_encoder::Encode;
 use wasmparser::BinaryReader;
 
 /// Get a Wasm module's canonical linear memory.
@@ -292,116 +291,84 @@ pub fn get_or_insert_start_builder(module: &mut Module) -> &mut FunctionBuilder 
         .builder_mut()
 }
 
-pub fn target_feature(module: &Module, feature: &str) -> Result<bool> {
-    // Taken from <https://github.com/bytecodealliance/wasm-tools/blob/f1898f46bb9d96f0f09682415cb6ccfd6a4dca79/crates/wasmparser/src/limits.rs#L27>.
-    anyhow::ensure!(feature.len() <= 100_000, "feature name too long");
+enum TargetFeature {
+    Found { offset: usize, prefix: u8 },
+    Missing { count: u32, count_end: usize },
+}
 
-    // Try to find an existing section.
-    let section = module
+fn check_feature_name(name: &str) -> Result<()> {
+    // Taken from <https://github.com/bytecodealliance/wasm-tools/blob/f1898f46bb9d96f0f09682415cb6ccfd6a4dca79/crates/wasmparser/src/limits.rs#L27>.
+    anyhow::ensure!(name.len() <= 100_000, "feature name too long");
+    Ok(())
+}
+
+fn scan_target_feature(data: &[u8], name: &str) -> Result<TargetFeature> {
+    let mut reader = BinaryReader::new(data, 0);
+    let count = reader.read_var_u32()?;
+    let count_end = reader.current_position();
+    for _ in 0..count {
+        let offset = reader.current_position();
+        let prefix = reader.read_u8()?;
+        let length = reader.read_var_u32()?;
+        if reader.read_bytes(length as usize)? == name.as_bytes() {
+            return Ok(TargetFeature::Found { offset, prefix });
+        }
+    }
+    Ok(TargetFeature::Missing { count, count_end })
+}
+
+pub fn target_feature(module: &Module, feature: &str) -> Result<bool> {
+    check_feature_name(feature)?;
+    let Some((_, section)) = module
         .customs
         .iter()
-        .find(|(_, custom)| custom.name() == "target_features");
-
-    if let Some((_, section)) = section {
-        let section: &RawCustomSection = section
-            .as_any()
-            .downcast_ref()
-            .context("failed to read section")?;
-        let mut reader = BinaryReader::new(&section.data, 0);
-        // The first integer contains the target feature count.
-        let count = reader.read_var_u32()?;
-
-        // Try to find if the target feature is already present.
-        for _ in 0..count {
-            // First byte is the prefix.
-            let prefix = reader.read_u8()?;
-            // Read the feature.
-            let length = reader.read_var_u32()?;
-            let this_feature = reader.read_bytes(length as usize)?;
-
-            // If we found the target feature, we are done here.
-            if this_feature == feature.as_bytes() {
-                // Make sure we set any existing prefix to "enabled".
-                if prefix == b'-' {
-                    return Ok(false);
-                }
-
-                return Ok(true);
-            }
-        }
-
-        Ok(false)
-    } else {
-        Ok(false)
-    }
+        .find(|(_, custom)| custom.name() == "target_features")
+    else {
+        return Ok(false);
+    };
+    let section = section
+        .as_any()
+        .downcast_ref::<RawCustomSection>()
+        .context("failed to read section")?;
+    Ok(matches!(
+        scan_target_feature(&section.data, feature)?,
+        TargetFeature::Found { prefix, .. } if prefix != b'-'
+    ))
 }
 
 pub fn insert_target_feature(module: &mut Module, new_feature: &str) -> Result<()> {
-    // Taken from <https://github.com/bytecodealliance/wasm-tools/blob/f1898f46bb9d96f0f09682415cb6ccfd6a4dca79/crates/wasmparser/src/limits.rs#L27>.
-    anyhow::ensure!(new_feature.len() <= 100_000, "feature name too long");
-
-    // Try to find an existing section.
-    let section = module
+    check_feature_name(new_feature)?;
+    let Some((_, section)) = module
         .customs
         .iter_mut()
-        .find(|(_, custom)| custom.name() == "target_features");
-
-    // If one exists, check if the target feature is already present.
-    let section = if let Some((_, section)) = section {
-        let section: &mut RawCustomSection = section
-            .as_any_mut()
-            .downcast_mut()
-            .context("failed to read section")?;
-        let mut reader = BinaryReader::new(&section.data, 0);
-        // The first integer contains the target feature count.
-        let count = reader.read_var_u32()?;
-
-        // Try to find if the target feature is already present.
-        for _ in 0..count {
-            // First byte is the prefix.
-            let prefix_index = reader.current_position();
-            let prefix = reader.read_u8()?;
-            // Read the feature.
-            let length = reader.read_var_u32()?;
-            let feature = reader.read_bytes(length as usize)?;
-
-            // If we found the target feature, we are done here.
-            if feature == new_feature.as_bytes() {
-                // Make sure we set any existing prefix to "enabled".
-                if prefix == b'-' {
-                    section.data[prefix_index] = b'+';
-                }
-
-                return Ok(());
-            }
-        }
-
-        section
-    } else {
-        let mut data = Vec::new();
-        leb128::write::unsigned(&mut data, 0).unwrap();
-        let id = module.customs.add(RawCustomSection {
+        .find(|(_, custom)| custom.name() == "target_features")
+    else {
+        let mut data = vec![1, b'+'];
+        new_feature.encode(&mut data);
+        module.customs.add(RawCustomSection {
             name: String::from("target_features"),
             data,
         });
-        module.customs.get_mut(id).unwrap()
+        return Ok(());
     };
-
-    // If we couldn't find the target feature, insert it.
-
-    // The first byte contains an integer describing the target feature count, which we increase by one.
-    let mut data = Cursor::new(&section.data);
-    let count = leb128::read::unsigned(&mut data).unwrap();
-    let mut new_count = Vec::new();
-    leb128::write::unsigned(&mut new_count, count + 1).unwrap();
-    section.data.splice(0..data.position() as usize, new_count);
-    // Then we insert the "enabled" prefix at the end.
-    section.data.push(b'+');
-    // The next byte contains the length of the target feature string.
-    leb128::write::unsigned(&mut section.data, new_feature.len() as u64).unwrap();
-    // Lastly the target feature string is inserted.
-    section.data.extend(new_feature.as_bytes());
-
+    let section = section
+        .as_any_mut()
+        .downcast_mut::<RawCustomSection>()
+        .context("failed to read section")?;
+    match scan_target_feature(&section.data, new_feature)? {
+        TargetFeature::Found { offset, prefix } => {
+            if prefix == b'-' {
+                section.data[offset] = b'+';
+            }
+        }
+        TargetFeature::Missing { count, count_end } => {
+            let mut encoded = Vec::new();
+            (u64::from(count) + 1).encode(&mut encoded);
+            section.data.splice(..count_end, encoded);
+            section.data.push(b'+');
+            new_feature.encode(&mut section.data);
+        }
+    }
     Ok(())
 }
 

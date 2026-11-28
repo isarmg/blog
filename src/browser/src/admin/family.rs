@@ -1,4 +1,4 @@
-use crate::common::{Action, Data, Field, flag, form_check, load, num, t, text};
+use crate::common::{Action, Data, Field, confirm, flag, form_check, load, num, t, text};
 use blog_interface::components::notify;
 use blog_interface::prelude::*;
 use blog_interface::{ev, html};
@@ -92,10 +92,7 @@ fn family_editor(
                 .class("blog-button blog-danger")
                 .r#type("button")
                 .on(ev::click, move |_| {
-                    if window()
-                        .confirm_with_message(&t("确定删除家的资料？", "Delete your home details?"))
-                        .unwrap_or(false)
-                    {
+                    if confirm(&t("确定删除家的资料？", "Delete your home details?")) {
                         save.run(format!("{ENDPOINT}/{id}"), "DELETE", None, move |_| {
                             data.reload();
                         });
